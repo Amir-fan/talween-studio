@@ -20,7 +20,7 @@ export default function Header() {
           <Link href="#" className="font-semibold text-muted-foreground transition-colors hover:text-primary">التلوين</Link>
           <Link href="#" className="font-semibold text-muted-foreground transition-colors hover:text-primary">مكتبتي</Link>
           <Link href="#" className="font-semibold text-muted-foreground transition-colors hover:text-primary">المدارس</Link>
-          <Link href="#" className="font-semibold text-muted-foreground transition-colors hover:text-primary">حسابي</Link>
+          <Link href="/account" className="font-semibold text-muted-foreground transition-colors hover:text-primary">حسابي</Link>
           <Link href="#" className="font-semibold text-muted-foreground transition-colors hover:text-primary">الاشتراك</Link>
         </nav>
         <div className="flex flex-1 items-center justify-end gap-4">
@@ -28,9 +28,11 @@ export default function Header() {
             <Globe />
             English
           </Button>
-          <Button variant="outline" size="sm" className="hidden items-center gap-2 md:flex">
-            <User />
-            حسابي
+          <Button asChild variant="outline" size="sm" className="hidden items-center gap-2 md:flex">
+            <Link href="/account">
+              <User />
+              حسابي
+            </Link>
           </Button>
           <Button asChild size="sm">
             <Link href="/create">أنشئ قصة</Link>
