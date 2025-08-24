@@ -1,65 +1,115 @@
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, Image as ImageIcon, Pencil, Sparkles } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { BookOpen, Image as ImageIcon, Sparkles, Type, FileImage, Bot } from 'lucide-react';
 import Link from 'next/link';
 
 const creationOptions = [
   {
     href: '/create/word',
-    title: 'أنشئ من كلمة',
-    description: 'اكتب فكرتك ودع الذكاء الاصطناعي يبدع لك رسمة.',
-    icon: <Pencil className="h-8 w-8" />,
-    enabled: true,
+    title: 'الكلمات - الصورة',
+    description: 'اكتب فكرة واحصل على 3 خيارات رائعة من الرسوم الخطية.',
+    icon: <Type className="h-12 w-12" />,
+    buttonText: 'ابدأ الإنشاء',
+    buttonClass: 'bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 text-white',
+    badge: (
+      <div className="absolute top-4 right-4 flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
+        <Bot className="h-4 w-4" />
+        <span>"تنين"</span>
+      </div>
+    ),
   },
   {
     href: '#',
-    title: 'حوّل صورة',
-    description: 'ارفع صورة لنحولها إلى صفحة تلوين جاهزة.',
-    icon: <ImageIcon className="h-8 w-8" />,
-    enabled: false,
+    title: 'الصورة - التلوين',
+    description: 'حوّل أي صورة إلى رسمة خطوط واضحة مثالية للتلوين.',
+    icon: <ImageIcon className="h-12 w-12" />,
+    buttonText: 'ابدأ الإنشاء',
+    buttonClass: 'bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white',
+    badge: (
+      <div className="absolute top-4 right-4 flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
+        <div className="h-3 w-3 rounded-full bg-red-500"></div>
+        <div className="h-3 w-3 rounded-full bg-green-500"></div>
+        <div className="h-3 w-3 rounded-full bg-blue-500"></div>
+      </div>
+    ),
+    disabled: true,
   },
   {
     href: '#',
-    title: 'اصنع قصة',
-    description: 'ولّد قصة مصورة من عدة صفحات جاهزة للتلوين.',
-    icon: <BookOpen className="h-8 w-8" />,
-    enabled: false,
+    title: 'القوالب الجاهزة',
+    description: 'مئات القوالب الجاهزة مصنفة حسب الموضوع والصعوبة.',
+    icon: <FileImage className="h-12 w-12" />,
+    buttonText: 'ابدأ الإنشاء',
+    buttonClass: 'bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-white',
+    badge: (
+      <div className="absolute top-4 right-4 flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
+        <span>🎨</span>
+        <span>✨</span>
+        <span>🦕</span>
+      </div>
+    ),
+    disabled: true,
   },
   {
     href: '#',
-    title: 'استخدم قالب',
-    description: 'اختر من مكتبة القوالب الجاهزة لدينا.',
-    icon: <Sparkles className="h-8 w-8" />,
-    enabled: false,
+    title: 'منشئ القصص',
+    description: 'أنشئ كتب قصص تلوين شخصية مع مغامرات مثيرة.',
+    icon: <BookOpen className="h-12 w-12" />,
+    buttonText: 'ابدأ الإنشاء',
+    buttonClass: 'bg-gradient-to-r from-rose-400 to-red-500 hover:from-rose-500 hover:to-red-600 text-white',
+    badge: (
+      <div className="absolute top-4 right-4 flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
+        <span>✏️</span>
+        <span>➕</span>
+        <span>📖</span>
+      </div>
+    ),
+    disabled: true,
   },
 ];
 
 export default function CreatePage() {
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-16">
-      <div className="text-center">
-        <h1 className="font-headline text-4xl font-bold text-foreground">اختر الطريقة التي تحبها للإبداع</h1>
-        <p className="mt-4 text-lg text-muted-foreground">
-          كل الطرق تؤدي إلى المرح! اختر نقطة البداية لمشروعك القادم.
-        </p>
-      </div>
+    <div className="bg-yellow-50/50">
+      <div className="container mx-auto max-w-5xl px-4 py-16 sm:py-24">
+        <div className="flex flex-col items-center text-center">
+          <div className="mb-4 flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm">
+            <Sparkles className="h-6 w-6 text-primary" />
+            <h1 className="font-headline text-3xl font-bold text-foreground">
+              مركز الإنشاء
+            </h1>
+          </div>
+          <p className="text-lg text-muted-foreground">
+            اختر كيف تريد إنشاء تحفتك التلوينية التالية!
+          </p>
+        </div>
 
-      <div className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-2">
-        {creationOptions.map((option) => (
-          <Link key={option.title} href={option.enabled ? option.href : '#'} className={!option.enabled ? 'pointer-events-none' : ''}>
-            <Card className={`h-full transition-all hover:shadow-lg hover:border-primary ${!option.enabled ? 'bg-muted/50 opacity-60' : 'hover:scale-105'}`}>
-              <CardHeader className="flex flex-row items-center gap-6">
-                <div className="text-primary">{option.icon}</div>
-                <div>
+        <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2">
+          {creationOptions.map((option) => (
+            <Link key={option.title} href={!option.disabled ? option.href : '#'} className={option.disabled ? 'pointer-events-none' : ''}>
+              <Card className={`relative h-full overflow-hidden text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-2 ${option.disabled ? 'opacity-60' : ''}`}>
+                {option.badge}
+                <CardHeader className="flex flex-col items-center pt-12">
+                  <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                    {option.icon}
+                  </div>
                   <CardTitle className="font-headline text-2xl font-bold">{option.title}</CardTitle>
-                  <CardDescription className="mt-1">{option.description}</CardDescription>
-                  {!option.enabled && (
-                    <div className="mt-2 text-xs font-bold text-accent">قريباً!</div>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="min-h-[40px]">{option.description}</CardDescription>
+                </CardContent>
+                <CardFooter className="flex justify-center p-6">
+                    <Button size="lg" className={`w-full max-w-xs font-bold rounded-full ${option.buttonClass}`}>
+                      {option.buttonText}
+                    </Button>
+                </CardFooter>
+                 {option.disabled && (
+                    <div className="absolute bottom-4 right-4 text-xs font-bold text-accent">قريباً!</div>
                   )}
-                </div>
-              </CardHeader>
-            </Card>
-          </Link>
-        ))}
+              </Card>
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );

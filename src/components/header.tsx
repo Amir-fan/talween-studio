@@ -15,7 +15,7 @@ export default function Header() {
           </Link>
         </div>
         <nav className="hidden items-center gap-6 text-sm lg:flex">
-          <Link href="#" className="font-semibold transition-colors hover:text-primary">إنشاء</Link>
+          <Link href="/create" className="font-semibold transition-colors hover:text-primary">إنشاء</Link>
           <Link href="#" className="font-semibold text-muted-foreground transition-colors hover:text-primary">القوالب</Link>
           <Link href="#" className="font-semibold text-muted-foreground transition-colors hover:text-primary">التلوين</Link>
           <Link href="#" className="font-semibold text-muted-foreground transition-colors hover:text-primary">مكتبتي</Link>
@@ -32,7 +32,9 @@ export default function Header() {
             <User />
             حسابي
           </Button>
-          <Button size="sm">أنشئ قصة</Button>
+          <Button asChild size="sm">
+            <Link href="/create">أنشئ قصة</Link>
+          </Button>
         </div>
       </div>
     </header>
