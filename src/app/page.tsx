@@ -9,7 +9,7 @@ export default function Home() {
     <div className="bg-background">
       <section className="container mx-auto px-4 py-16 sm:py-24">
         <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
-          <div className="flex items-center justify-center lg:order-last">
+          <div className="flex items-center justify-center">
             <div className="text-center lg:text-right">
               <h1 className="font-headline text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl">
                 أشعل خيال طفلك <span className="text-primary">بطل القصة</span>
@@ -24,7 +24,7 @@ export default function Home() {
                     أنشئ قصة
                   </Link>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="w-full border-2 border-accent bg-accent/10 font-bold text-accent-foreground hover:bg-accent/20 hover:text-accent-foreground sm:w-auto" style={{color: '#00AEEF'}}>
+                <Button asChild size="lg" variant="outline" className="w-full border-2 border-accent bg-accent/10 font-bold sm:w-auto" style={{color: '#00AEEF'}}>
                   <Link href="/create/word">
                     <Camera className="ml-2 h-5 w-5" />
                      صورة – تلوين
@@ -61,7 +61,7 @@ export default function Home() {
               </div>
             </div>
           </div>
-          <div className="relative flex items-center justify-center">
+          <div className="relative flex items-center justify-center lg:order-first">
             <Image
               src="https://placehold.co/600x500.png"
               alt="أطفال سعداء يلونون"
