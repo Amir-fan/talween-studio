@@ -71,8 +71,8 @@ export function ColoringSection() {
   return (
     <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-5">
       <div className="order-2 lg:order-1 lg:col-span-3">
-        <Card className="flex min-h-[600px] flex-col items-center justify-center p-4">
-           <CardContent className="flex w-full flex-col items-center justify-center">
+        <Card className="flex min-h-[600px] flex-col p-4">
+           <CardContent className="flex w-full flex-col items-center justify-center p-0 pt-6">
             <h2 className="mb-4 self-start font-headline text-xl font-bold">صورة التلوين</h2>
             {loading && (
               <div className="flex flex-col items-center gap-4 text-muted-foreground">
@@ -93,7 +93,7 @@ export function ColoringSection() {
                 </div>
             )}
             {!loading && !imageDataUri && (
-              <div className="flex h-full w-full flex-col items-center justify-center rounded-lg bg-secondary/50">
+              <div className="flex h-full min-h-[480px] w-full flex-col items-center justify-center rounded-lg bg-secondary/50">
                   <div className="text-center text-muted-foreground">
                       <Wand2 className="mx-auto h-16 w-16 opacity-50" />
                       <h2 className="mt-4 font-headline text-2xl font-semibold">ستظهر صورة التلوين هنا</h2>
@@ -163,7 +163,7 @@ export function ColoringSection() {
                         <Lightbulb className="h-5 w-5 flex-shrink-0 text-yellow-500" />
                         <h3 className="font-headline text-xl font-bold">نصائح للحصول على أفضل النتائج</h3>
                     </div>
-                    <ul className="mt-4 space-y-2 pr-8 text-sm text-muted-foreground">
+                    <ul className="mt-4 space-y-2 pr-4 text-sm text-muted-foreground">
                         <li className="flex items-start gap-3"><span className="mt-1 block h-1.5 w-1.5 rounded-full bg-primary"></span>استخدم وصفاً واضحاً ومحدداً</li>
                         <li className="flex items-start gap-3"><span className="mt-1 block h-1.5 w-1.5 rounded-full bg-primary"></span>أضف تفاصيل عن الشكل والحجم</li>
                         <li className="flex items-start gap-3"><span className="mt-1 block h-1.5 w-1.5 rounded-full bg-primary"></span>تجنب التفاصيل المعقدة للأطفال الصغار</li>
