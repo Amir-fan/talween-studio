@@ -90,17 +90,17 @@ export default function Home() {
             </p>
           </div>
           <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-3">
-             <Card className="relative flex flex-col items-center text-center p-8">
+             <Card className="relative flex flex-col items-center p-8 text-center transition-transform duration-300 ease-in-out hover:-translate-y-2">
                 <div className="absolute -top-6 flex h-12 w-12 items-center justify-center rounded-full bg-primary font-bold text-white ring-8 ring-secondary">1</div>
                 <h3 className="mt-4 font-headline text-xl font-bold">إنشاء القصة</h3>
                 <p className="mt-2 text-muted-foreground">اختر شخصياتك وأدخل أفكارك ودع الذكاء الاصطناعي يكتب لك قصة فريدة.</p>
              </Card>
-             <Card className="relative flex flex-col items-center text-center p-8">
+             <Card className="relative flex flex-col items-center p-8 text-center transition-transform duration-300 ease-in-out hover:-translate-y-2">
                 <div className="absolute -top-6 flex h-12 w-12 items-center justify-center rounded-full bg-primary font-bold text-white ring-8 ring-secondary">2</div>
                 <h3 className="mt-4 font-headline text-xl font-bold">التلوين والإبداع</h3>
                 <p className="mt-2 text-muted-foreground">استخدم أدوات التلوين الرقمية لإضفاء الحياة على صفحات قصتك.</p>
              </Card>
-             <Card className="relative flex flex-col items-center text-center p-8">
+             <Card className="relative flex flex-col items-center p-8 text-center transition-transform duration-300 ease-in-out hover:-translate-y-2">
                 <div className="absolute -top-6 flex h-12 w-12 items-center justify-center rounded-full bg-primary font-bold text-white ring-8 ring-secondary">3</div>
                 <h3 className="mt-4 font-headline text-xl font-bold">المشاركة والحفظ</h3>
                 <p className="mt-2 text-muted-foreground">احفظ إبداعاتك في مكتبتك الخاصة، شاركها مع العائلة أو اطبعها.</p>
