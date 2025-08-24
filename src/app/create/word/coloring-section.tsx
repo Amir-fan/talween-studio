@@ -6,13 +6,10 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
 import {
-  Brush,
-  Download,
-  Eraser,
   Loader2,
-  Palette,
-  Save,
   Wand2,
+  Lightbulb,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,35 +17,18 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { generateImageAction } from './actions';
-import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
-  description: z.string().min(10, {
-    message: 'الرجاء إدخال وصف لا يقل عن 10 أحرف.',
+  description: z.string().min(3, {
+    message: 'الرجاء إدخال وصف.',
   }),
 });
-
-const colors = [
-  '#FF0000', // Red
-  '#00FF00', // Green
-  '#0000FF', // Blue
-  '#FFFF00', // Yellow
-  '#FF00FF', // Magenta
-  '#00FFFF', // Cyan
-  '#FFA500', // Orange
-  '#800080', // Purple
-  '#008000', // Dark Green
-  '#FFC0CB', // Pink
-  '#A52A2A', // Brown
-  '#000000', // Black
-];
 
 export function ColoringSection() {
   const [loading, setLoading] = useState(false);
@@ -84,71 +64,25 @@ export function ColoringSection() {
     }
   }
 
-  function handleStartOver() {
-    setImageDataUri(null);
-    form.reset();
+  function useQuickIdea() {
+    form.setValue('description', 'سفينة تبحر في المحيط');
   }
 
   return (
-    <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-3">
-      <div className="lg:col-span-1">
-        <Card>
-          <CardContent className="p-6">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-lg font-semibold">
-                        صف فكرتك هنا
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="مثال: قطة لطيفة ترتدي قبعة ساحر وتطير على مكنسة"
-                          className="min-h-[120px] resize-none"
-                          {...field}
-                          disabled={loading || !!imageDataUri}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {!imageDataUri ? (
-                  <Button type="submit" className="w-full font-bold" disabled={loading}>
-                    {loading ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Wand2 className="mr-2 h-4 w-4" />
-                    )}
-                    {loading ? '...جاري الإبداع' : 'أنشئ الصورة'}
-                  </Button>
-                ) : (
-                  <Button type="button" onClick={handleStartOver} variant="outline" className="w-full font-bold">
-                    البدء من جديد
-                  </Button>
-                )}
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="lg:col-span-2">
-        <Card className="flex min-h-[500px] flex-col items-center justify-center bg-secondary/50 p-4">
-          {loading && (
-            <div className="flex flex-col items-center gap-4 text-muted-foreground">
-              <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              <p className="font-semibold">لحظات سحرية قيد الصنع...</p>
-              <p className="text-sm">يقوم الذكاء الاصطناعي برسم فكرتك.</p>
-            </div>
-          )}
-          {imageDataUri && (
-             <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-4">
-               <div className="md:col-span-3">
-                <div className="aspect-square w-full overflow-hidden rounded-lg border-4 border-white bg-white shadow-lg">
+    <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-5">
+      <div className="order-2 lg:order-1 lg:col-span-3">
+        <Card className="flex min-h-[600px] flex-col items-center justify-center p-4">
+           <CardContent className="flex w-full flex-col items-center justify-center">
+            <h2 className="mb-4 self-start font-headline text-xl font-bold">صورة التلوين</h2>
+            {loading && (
+              <div className="flex flex-col items-center gap-4 text-muted-foreground">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <p className="font-semibold">لحظات سحرية قيد الصنع...</p>
+                <p className="text-sm">يقوم الذكاء الاصطناعي برسم فكرتك.</p>
+              </div>
+            )}
+            {imageDataUri && (
+                <div className="aspect-square w-full max-w-full overflow-hidden rounded-lg border bg-white shadow-sm">
                     <Image
                     src={imageDataUri}
                     alt="Generated coloring page"
@@ -157,41 +91,87 @@ export function ColoringSection() {
                     className="h-full w-full object-contain"
                     />
                 </div>
-               </div>
-               <div className="flex flex-col gap-4 md:col-span-1">
-                <div className="rounded-lg border bg-background p-4 shadow-sm">
-                    <h3 className="mb-4 flex items-center font-headline text-lg font-bold"><Palette className="ml-2 h-5 w-5 text-accent"/> لوحة الألوان</h3>
-                    <div className="grid grid-cols-4 gap-2">
-                        {colors.map(color => (
-                            <button key={color} className="aspect-square w-full rounded-full border-2 border-transparent transition-transform hover:scale-110 hover:border-primary focus:scale-110 focus:border-primary" style={{backgroundColor: color}} aria-label={`Color ${color}`}></button>
-                        ))}
-                    </div>
-                </div>
-                <div className="rounded-lg border bg-background p-4 shadow-sm">
-                    <h3 className="mb-4 font-headline text-lg font-bold">الأدوات</h3>
-                    <div className="space-y-2">
-                        <Button variant="outline" className="w-full justify-start"><Brush className="ml-2 h-4 w-4"/> فرشاة</Button>
-                        <Button variant="outline" className="w-full justify-start"><Eraser className="ml-2 h-4 w-4"/> ممحاة</Button>
-                    </div>
-                </div>
-                <div className="rounded-lg border bg-background p-4 shadow-sm">
-                    <h3 className="mb-4 font-headline text-lg font-bold">حفظ ومشاركة</h3>
-                    <div className="space-y-2">
-                        <Button variant="secondary" className="w-full justify-start"><Save className="ml-2 h-4 w-4"/> حفظ في المكتبة</Button>
-                        <Button variant="secondary" className="w-full justify-start"><Download className="ml-2 h-4 w-4"/> تحميل</Button>
-                    </div>
-                </div>
-               </div>
-            </div>
-          )}
-          {!loading && !imageDataUri && (
-             <div className="text-center text-muted-foreground">
-                <Wand2 className="mx-auto h-16 w-16" />
-                <h2 className="mt-4 font-headline text-2xl font-semibold">مساحة إبداعك</h2>
-                <p className="mt-2">صورتك التي تم إنشاؤها ستظهر هنا.</p>
-             </div>
-          )}
+            )}
+            {!loading && !imageDataUri && (
+              <div className="flex h-full w-full flex-col items-center justify-center rounded-lg bg-secondary/50">
+                  <div className="text-center text-muted-foreground">
+                      <Wand2 className="mx-auto h-16 w-16 opacity-50" />
+                      <h2 className="mt-4 font-headline text-2xl font-semibold">ستظهر صورة التلوين هنا</h2>
+                  </div>
+              </div>
+            )}
+           </CardContent>
         </Card>
+      </div>
+
+      <div className="order-1 lg:order-2 lg:col-span-2">
+        <div className="space-y-6">
+            <Card>
+                <CardContent className="p-6 text-center">
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/20 text-3xl font-bold text-primary">
+                        T
+                    </div>
+                    <h2 className="font-headline text-2xl font-bold">اكتب فكرتك</h2>
+                    <p className="text-muted-foreground">صف ما تريد رسمه</p>
+
+                    <div className="mt-6 rounded-lg bg-yellow-100/70 p-4 text-right">
+                        <div className="flex items-start gap-3">
+                            <Lightbulb className="h-5 w-5 flex-shrink-0 text-yellow-500" />
+                            <div>
+                                <h4 className="font-bold">فكرة سريعة:</h4>
+                                <p className="text-sm text-muted-foreground">سفينة تبحر في المحيط</p>
+                                <button onClick={useQuickIdea} className="mt-1 text-sm font-bold text-primary hover:underline">استخدم هذه الفكرة</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="mt-6 space-y-4">
+                        <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormControl>
+                                <Input
+                                placeholder="اكتب فكرتك هنا..."
+                                {...field}
+                                disabled={loading}
+                                className="text-center"
+                                />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <Button type="submit" size="lg" className="w-full rounded-full bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500" disabled={loading}>
+                        {loading ? (
+                            <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Sparkles className="ml-2 h-4 w-4" />
+                        )}
+                        {loading ? '...جاري الإنشاء' : 'إنشاء الصورة'}
+                        </Button>
+                    </form>
+                    </Form>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardContent className="p-6">
+                    <div className="flex items-center gap-3">
+                        <Lightbulb className="h-5 w-5 flex-shrink-0 text-yellow-500" />
+                        <h3 className="font-headline text-xl font-bold">نصائح للحصول على أفضل النتائج</h3>
+                    </div>
+                    <ul className="mt-4 space-y-2 pr-8 text-sm text-muted-foreground">
+                        <li className="flex items-start gap-3"><span className="mt-1 block h-1.5 w-1.5 rounded-full bg-primary"></span>استخدم وصفاً واضحاً ومحدداً</li>
+                        <li className="flex items-start gap-3"><span className="mt-1 block h-1.5 w-1.5 rounded-full bg-primary"></span>أضف تفاصيل عن الشكل والحجم</li>
+                        <li className="flex items-start gap-3"><span className="mt-1 block h-1.5 w-1.5 rounded-full bg-primary"></span>تجنب التفاصيل المعقدة للأطفال الصغار</li>
+                        <li className="flex items-start gap-3"><span className="mt-1 block h-1.5 w-1.5 rounded-full bg-primary"></span>جرب كلمات مثل: "كبير"، "لطيف"، "ملون"</li>
+                    </ul>
+                </CardContent>
+            </Card>
+        </div>
       </div>
     </div>
   );
