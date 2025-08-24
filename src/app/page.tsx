@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { BookOpen, Camera, CheckCircle, ShieldCheck, Star } from 'lucide-react';
+import { BookOpen, Camera, CircleCheckBig, ShieldCheck, Star } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -51,7 +51,7 @@ export default function Home() {
                     <span>أمن وخاص للأطفال</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <CircleCheckBig className="h-4 w-4 text-green-500" />
                     <span>معتمد من المعلمين</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -63,7 +63,7 @@ export default function Home() {
           </div>
           <div className="relative flex items-center justify-center">
             <Image
-              src="https://placehold.co/600x500.png"
+              src="https://firebasestudio.googleapis.com/v0/b/studiocms-pro.appspot.com/o/projects%2FbrHbbYvV3ITsF2rdF4i1%2Fuploads%2F9b7936a2-921d-4050-a92c-15a09f874c7c?alt=media&token=8e2b8c9d-8380-49b0-96f3-8f0a1e053a99"
               alt="أطفال سعداء يلونون"
               width={600}
               height={500}
