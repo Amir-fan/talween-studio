@@ -2,15 +2,18 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   ArrowRight,
   ArrowLeft,
-  User,
   Sparkles,
   Heart,
   BookOpen,
   Image as ImageIcon,
   CheckCircle,
+  Loader2,
+  Download,
+  Save,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,6 +36,11 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/hooks/use-toast';
+import {
+  createStoryAndColoringPages,
+  CreateStoryAndColoringPagesOutput,
+} from '@/ai/flows/create-story-and-coloring-pages';
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
@@ -59,9 +67,44 @@ const artStyles = [
 
 export default function CreateStoryPage() {
   const [step, setStep] = useState(1);
+  const [heroName, setHeroName] = useState('');
+  const [location, setLocation] = useState('');
+  const [story, setStory] = useState<CreateStoryAndColoringPagesOutput | null>(null);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   const nextStep = () => setStep((prev) => (prev < steps.length ? prev + 1 : prev));
   const prevStep = () => setStep((prev) => (prev > 1 ? prev - 1 : prev));
+
+  const handleGenerateStory = async () => {
+    if (!heroName || !location) {
+         toast({
+            variant: "destructive",
+            title: "معلومات ناقصة",
+            description: "الرجاء إدخال اسم البطل واختيار مكان الأحداث.",
+        });
+        return;
+    }
+
+    setLoading(true);
+    setStep(4); // Move to the story view step
+
+    try {
+        const topic = `قصة عن طفل اسمه ${heroName} في ${location}`;
+        const result = await createStoryAndColoringPages({ topic, numPages: 3 });
+        setStory(result);
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "حدث خطأ",
+            description: "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.",
+        });
+        setStep(3); // Go back to the previous step on error
+    } finally {
+        setLoading(false);
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-yellow-50/30">
@@ -121,7 +164,7 @@ export default function CreateStoryPage() {
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
                   <Label htmlFor="hero-name" className="mb-2 block text-right font-semibold">اسم البطل</Label>
-                  <Input id="hero-name" placeholder="مثال: سارة" className="text-right" />
+                  <Input id="hero-name" placeholder="مثال: سارة" className="text-right" value={heroName} onChange={(e) => setHeroName(e.target.value)} />
                 </div>
                 <div>
                   <Label htmlFor="hero-age" className="mb-2 block text-right font-semibold">العمر</Label>
@@ -143,15 +186,15 @@ export default function CreateStoryPage() {
 
               <div>
                 <Label className="mb-4 block text-right font-semibold">مكان الأحداث</Label>
-                <RadioGroup dir="rtl" className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
-                  {locations.map((location) => (
-                      <div key={location}>
-                          <RadioGroupItem value={location} id={location} className="peer sr-only" />
+                <RadioGroup dir="rtl" className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6" value={location} onValueChange={setLocation}>
+                  {locations.map((loc) => (
+                      <div key={loc}>
+                          <RadioGroupItem value={loc} id={loc} className="peer sr-only" />
                           <Label
-                              htmlFor={location}
+                              htmlFor={loc}
                               className="flex h-12 cursor-pointer items-center justify-center rounded-full border bg-background px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-accent/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/20 peer-data-[state=checked]:text-primary"
                           >
-                              {location}
+                              {loc}
                           </Label>
                       </div>
                   ))}
@@ -235,11 +278,91 @@ export default function CreateStoryPage() {
                         <ArrowRight className="ml-2 h-5 w-5" />
                         السابق
                     </Button>
-                    <Button onClick={nextStep} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
+                    <Button onClick={handleGenerateStory} size="lg" className="bg-gradient-to-l from-rose-400 to-red-500 font-bold text-white hover:to-red-600" disabled={loading}>
+                        {loading ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Sparkles className="ml-2 h-5 w-5" />}
+                        {loading ? '...جاري إنشاء القصة' : 'أنشئ القصة الآن'}
+                    </Button>
+                </CardFooter>
+            </Card>
+        )}
+
+        {step === 4 && (
+            <Card className="mt-8">
+                 <CardHeader className="text-center">
+                    <CardTitle className="font-headline text-3xl">ها هي قصتك!</CardTitle>
+                    <CardDescription>اقرأ مغامرة {heroName} الجديدة</CardDescription>
+                </CardHeader>
+                <CardContent className="px-8">
+                    {loading && (
+                         <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-muted-foreground">
+                            <Loader2 className="h-16 w-16 animate-spin text-primary" />
+                            <p className="font-semibold">لحظات، القصة على وشك الاكتمال...</p>
+                            <p className="text-sm">يقوم الذكاء الاصطناعي بنسج الكلمات والصور معاً.</p>
+                        </div>
+                    )}
+                    {story && (
+                        <div className="space-y-8">
+                           {story.pages.map((page, index) => (
+                               <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                                   <div className='order-2 md:order-1'>
+                                        <p className="leading-loose text-lg">{page.text}</p>
+                                   </div>
+                                   <div className='order-1 md:order-2'>
+                                       <Image
+                                            src={page.imageDataUri}
+                                            alt={`Illustration for page ${index + 1}`}
+                                            width={500}
+                                            height={500}
+                                            className="rounded-lg border bg-white shadow-sm w-full object-contain aspect-square"
+                                        />
+                                   </div>
+                               </div>
+                           ))}
+                        </div>
+                    )}
+                </CardContent>
+                 <CardFooter className="justify-between p-8">
+                    <Button onClick={prevStep} size="lg" variant="outline" disabled={loading}>
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                        السابق
+                    </Button>
+                    <Button onClick={nextStep} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500" disabled={loading || !story}>
                         التالي
                         <ArrowLeft className="mr-2 h-5 w-5" />
                     </Button>
                 </CardFooter>
+            </Card>
+        )}
+
+        {step === 5 && (
+            <Card className="mt-8">
+                <CardHeader className="text-center">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600">
+                        <CheckCircle className="h-10 w-10" />
+                    </div>
+                    <CardTitle className="font-headline text-3xl mt-4">عمل رائع!</CardTitle>
+                    <CardDescription>لقد أنشأت قصة جديدة بنجاح.</CardDescription>
+                </CardHeader>
+                <CardContent className="px-8 text-center">
+                    <p className="text-muted-foreground">
+                        قصتك عن <strong>{heroName}</strong> جاهزة الآن. يمكنك حفظها في مكتبتك للوصول إليها لاحقًا، أو تحميلها كملف لمشاركتها مع الأصدقاء والعائلة.
+                    </p>
+                    <div className="mt-8 flex justify-center gap-4">
+                        <Button size="lg" variant="outline">
+                             <Save className="ml-2 h-5 w-5" />
+                            حفظ في مكتبتي
+                        </Button>
+                         <Button size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
+                            <Download className="ml-2 h-5 w-5" />
+                            تحميل القصة
+                        </Button>
+                    </div>
+                </CardContent>
+                 <CardFooter className="justify-center p-8">
+                      <Button asChild variant="link">
+                        <Link href="/create">إنشاء قصة أخرى</Link>
+                      </Button>
+                 </CardFooter>
             </Card>
         )}
       </div>
