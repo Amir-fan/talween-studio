@@ -9,7 +9,7 @@ export default function Home() {
     <div className="bg-background">
       <section className="container mx-auto px-4 py-16 sm:py-24">
         <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center lg:order-last">
             <div className="text-center lg:text-right">
               <h1 className="font-headline text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl">
                 أشعل خيال طفلك <span className="text-primary">بطل القصة</span>
@@ -61,7 +61,7 @@ export default function Home() {
               </div>
             </div>
           </div>
-          <div className="relative flex items-center justify-center lg:order-first">
+          <div className="relative flex items-center justify-center">
             <Image
               src="https://placehold.co/600x500.png"
               alt="أطفال سعداء يلونون"
@@ -89,23 +89,22 @@ export default function Home() {
               اغرس القيم الإسلامية والأخلاقية في قصص مخصصة بـ 3 خطوات بسيطة
             </p>
           </div>
-          <div className="relative mt-16 grid grid-cols-1 gap-8 md:grid-cols-3">
-             <div className="absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2 bg-border"></div>
-             <div className="relative flex flex-col items-center text-center">
-                <div className="z-10 flex h-12 w-12 items-center justify-center rounded-full bg-primary font-bold text-white">1</div>
+          <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-3">
+             <Card className="relative flex flex-col items-center text-center p-8">
+                <div className="absolute -top-6 flex h-12 w-12 items-center justify-center rounded-full bg-primary font-bold text-white ring-8 ring-secondary">1</div>
                 <h3 className="mt-4 font-headline text-xl font-bold">إنشاء القصة</h3>
                 <p className="mt-2 text-muted-foreground">اختر شخصياتك وأدخل أفكارك ودع الذكاء الاصطناعي يكتب لك قصة فريدة.</p>
-             </div>
-             <div className="relative flex flex-col items-center text-center">
-                <div className="z-10 flex h-12 w-12 items-center justify-center rounded-full bg-primary font-bold text-white">2</div>
+             </Card>
+             <Card className="relative flex flex-col items-center text-center p-8">
+                <div className="absolute -top-6 flex h-12 w-12 items-center justify-center rounded-full bg-primary font-bold text-white ring-8 ring-secondary">2</div>
                 <h3 className="mt-4 font-headline text-xl font-bold">التلوين والإبداع</h3>
                 <p className="mt-2 text-muted-foreground">استخدم أدوات التلوين الرقمية لإضفاء الحياة على صفحات قصتك.</p>
-             </div>
-             <div className="relative flex flex-col items-center text-center">
-                <div className="z-10 flex h-12 w-12 items-center justify-center rounded-full bg-primary font-bold text-white">3</div>
+             </Card>
+             <Card className="relative flex flex-col items-center text-center p-8">
+                <div className="absolute -top-6 flex h-12 w-12 items-center justify-center rounded-full bg-primary font-bold text-white ring-8 ring-secondary">3</div>
                 <h3 className="mt-4 font-headline text-xl font-bold">المشاركة والحفظ</h3>
                 <p className="mt-2 text-muted-foreground">احفظ إبداعاتك في مكتبتك الخاصة، شاركها مع العائلة أو اطبعها.</p>
-             </div>
+             </Card>
           </div>
         </div>
       </section>
