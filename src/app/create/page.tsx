@@ -19,7 +19,7 @@ const creationOptions = [
     ),
   },
   {
-    href: '#',
+    href: '/create/image',
     title: 'الصورة - التلوين',
     description: 'حوّل أي صورة إلى رسمة خطوط واضحة مثالية للتلوين.',
     icon: <ImageIcon className="h-12 w-12" />,
@@ -32,10 +32,10 @@ const creationOptions = [
         <div className="h-3 w-3 rounded-full bg-blue-500"></div>
       </div>
     ),
-    disabled: true,
+    disabled: false,
   },
   {
-    href: '#',
+    href: '/create/templates',
     title: 'القوالب الجاهزة',
     description: 'مئات القوالب الجاهزة مصنفة حسب الموضوع والصعوبة.',
     icon: <FileImage className="h-12 w-12" />,
@@ -48,10 +48,10 @@ const creationOptions = [
         <span>🦕</span>
       </div>
     ),
-    disabled: true,
+    disabled: false,
   },
   {
-    href: '#',
+    href: '/create/story',
     title: 'منشئ القصص',
     description: 'أنشئ كتب قصص تلوين شخصية مع مغامرات مثيرة.',
     icon: <BookOpen className="h-12 w-12" />,
@@ -64,7 +64,7 @@ const creationOptions = [
         <span>📖</span>
       </div>
     ),
-    disabled: true,
+    disabled: false,
   },
 ];
 
