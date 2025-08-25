@@ -144,7 +144,7 @@ export function ColoringSection() {
                             </FormItem>
                         )}
                         />
-                        <Button type="submit" size="lg" className="w-full rounded-full bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500" disabled={loading}>
+                        <Button type="submit" size="lg" className="w-full rounded-full bg-gradient-to-r from-primary to-orange-500 font-bold text-primary-foreground hover:from-primary/90 hover:to-orange-500/90" disabled={loading}>
                         {loading ? (
                             <Loader2 className="ml-2 h-4 w-4 animate-spin" />
                         ) : (
