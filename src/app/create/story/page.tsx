@@ -41,6 +41,7 @@ import {
   createStoryAndColoringPages,
   CreateStoryAndColoringPagesOutput,
 } from '@/ai/flows/create-story-and-coloring-pages';
+import React from 'react';
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
@@ -129,8 +130,8 @@ export default function CreateStoryPage() {
         <Card className="mt-8 p-6">
           <div className="flex items-center justify-between">
             {steps.map((s, index) => (
-              <>
-                <div key={index} className="flex flex-col items-center gap-2">
+              <React.Fragment key={index}>
+                <div className="flex flex-col items-center gap-2">
                   <div
                     className={cn(
                       'flex h-12 w-12 items-center justify-center rounded-full border-2 bg-secondary/50 transition-colors',
@@ -146,7 +147,7 @@ export default function CreateStoryPage() {
                 {index < steps.length - 1 && (
                    <div className={cn("h-0.5 flex-1 transition-colors", step > index + 1 ? 'bg-primary/50' : 'bg-border')}></div>
                 )}
-              </>
+              </React.Fragment>
             ))}
           </div>
           <p className="mt-4 text-center text-sm font-semibold text-muted-foreground">
