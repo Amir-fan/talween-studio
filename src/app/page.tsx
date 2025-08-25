@@ -13,7 +13,7 @@ export default function Home() {
             <div className="relative flex items-center justify-center">
               <div className="relative w-full" style={{paddingTop: '100%'}}>
                 <Image
-                  src="https://firebasestudio.googleapis.com/v0/b/studiocms-pro.appspot.com/o/projects%2FbrHbbYvV3ITsF2rdF4i1%2Fuploads%2F9b7936a2-921d-4050-a92c-15a09f874c7c?alt=media&token=8e2b8c9d-8380-49b0-96f3-8f0a1e053a99"
+                  src="https://images.unsplash.com/photo-1612539466809-8be5e4e01256?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxraWRzJTIwY29sb3Jpbmd8ZW58MHx8fHwxNzU2MTMxMzYzfDA&ixlib=rb-4.1.0&q=80&w=1080"
                   alt="أطفال سعداء يلونون"
                   fill
                   className="rounded-3xl object-cover shadow-2xl"
@@ -44,7 +44,7 @@ export default function Home() {
                   حوّل الكلمات إلى قصص جميلة وصفحات تلوين بقوة الذكاء الاصطناعي
                 </p>
                 <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
-                  <Button asChild size="lg" className="w-full font-bold sm:w-auto bg-gradient-to-r from-primary to-yellow-400 hover:from-primary/90 hover:to-yellow-400/90 text-primary-foreground">
+                  <Button asChild size="lg" className="w-full rounded-full bg-gradient-to-l from-primary to-orange-500 font-bold text-primary-foreground hover:from-primary/90 hover:to-orange-500/90 sm:w-auto">
                     <Link href="/create">
                       <BookOpen className="ml-2 h-5 w-5" />
                       أنشئ قصة
