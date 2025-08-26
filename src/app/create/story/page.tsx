@@ -63,6 +63,7 @@ const lessons = [
 export default function CreateStoryPage() {
   const [step, setStep] = useState(1);
   const [heroName, setHeroName] = useState('');
+  const [heroAge, setHeroAge] = useState('');
   const [location, setLocation] = useState('');
   const [selectedLessons, setSelectedLessons] = useState<string[]>([]);
   const [story, setStory] = useState<CreateStoryAndColoringPagesOutput | null>(null);
@@ -93,8 +94,9 @@ export default function CreateStoryPage() {
     setStep(3); // Move to the story view step
 
     try {
+        const ageText = heroAge ? ` عمره بين ${heroAge} سنوات` : '';
         const lessonText = selectedLessons.length > 0 ? ` ويتعلم عن ${selectedLessons.join(' و ')}` : '';
-        const topic = `قصة عن طفل اسمه ${heroName} في ${location}${lessonText}`;
+        const topic = `قصة عن طفل اسمه ${heroName}${ageText} في ${location}${lessonText}`;
         const result = await createStoryAndColoringPages({ topic, numPages: 3 });
         setStory(result);
     } catch (error) {
@@ -192,17 +194,14 @@ export default function CreateStoryPage() {
                 </div>
                 <div>
                   <Label htmlFor="hero-age" className="mb-2 block text-right font-semibold">العمر</Label>
-                  <Select dir="rtl">
+                  <Select dir="rtl" onValueChange={setHeroAge}>
                     <SelectTrigger id="hero-age">
-                      <SelectValue placeholder="7 سنة" />
+                      <SelectValue placeholder="اختر الفئة العمرية" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="5">5 سنوات</SelectItem>
-                      <SelectItem value="6">6 سنوات</SelectItem>
-                      <SelectItem value="7">7 سنوات</SelectItem>
-                      <SelectItem value="8">8 سنوات</SelectItem>
-                      <SelectItem value="9">9 سنوات</SelectItem>
-                      <SelectItem value="10">10 سنوات</SelectItem>
+                      <SelectItem value="3-5">3-5 سنوات</SelectItem>
+                      <SelectItem value="6-9">6-9 سنوات</SelectItem>
+                      <SelectItem value="10-13">10-13 سنة</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
