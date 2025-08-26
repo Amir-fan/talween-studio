@@ -31,15 +31,16 @@ interface Story {
 }
 
 const tabs = [
-    { name: 'مشاريعي', icon: LayoutDashboard, current: true },
-    { name: 'قصصي', icon: BookOpen, current: false },
-    { name: 'القوالب المحفوظة', icon: Star, current: false },
-    { name: 'مشترياتي', icon: Download, current: false },
+    { name: 'مشاريعي', icon: LayoutDashboard },
+    { name: 'قصصي', icon: BookOpen },
+    { name: 'القوالب المحفوظة', icon: Star },
+    { name: 'مشترياتي', icon: Download },
 ]
 
 export default function LibraryPage() {
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('قصصي');
 
   useEffect(() => {
     async function fetchStories() {
@@ -59,11 +60,109 @@ export default function LibraryPage() {
       }
     }
 
-    fetchStories();
-  }, []);
+    if(activeTab === 'قصصي') {
+        fetchStories();
+    } else {
+        setLoading(false);
+    }
+  }, [activeTab]);
+
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <Skeleton className="aspect-square w-full" />
+              <CardContent className="p-4 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )
+    }
+
+    if (activeTab === 'قصصي') {
+        if (stories.length > 0) {
+            return (
+                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                    {stories.map((story, index) => (
+                    <Card key={story.id} className="group overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-2 rounded-2xl">
+                        <CardContent className="p-0">
+                        <Link href={`/story/${story.id}`}>
+                            <div className="relative aspect-square w-full">
+                                {story.thumbnailUrl ? (
+                                    <Image
+                                        src={story.thumbnailUrl}
+                                        alt={story.title}
+                                        fill
+                                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                                        data-ai-hint="storybook cover"
+                                    />
+                                ) : (
+                                    <div className="flex h-full w-full items-center justify-center bg-secondary">
+                                        <BookOpen className="h-16 w-16 text-muted-foreground/50" />
+                                    </div>
+                                )}
+                                <div className="absolute top-3 left-3 flex gap-2">
+                                <span className="rounded-full bg-green-500/80 px-3 py-1 text-xs font-bold text-white backdrop-blur-sm">مكتمل</span>
+                                </div>
+                                <div className="absolute top-3 right-3">
+                                    <Button size="icon" className="rounded-full bg-white/20 text-white backdrop-blur-sm hover:bg-white/30">
+                                        <Heart className="h-5 w-5" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </Link>
+                        <div className="p-4">
+                            <h2 className="font-bold text-lg truncate">{story.title}</h2>
+                            <Link href={`/story/${story.id}`} className="text-sm text-primary hover:underline flex items-center gap-1 mt-2">
+                            <Eye className="h-4 w-4" />
+                            عرض القصة
+                            </Link>
+                        </div>
+                        </CardContent>
+                    </Card>
+                    ))}
+                </div>
+            )
+        } else {
+            return (
+                 <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed bg-secondary/30 p-12 text-center min-h-[400px]">
+                    <BookOpen className="h-16 w-16 text-muted-foreground/50" />
+                    <p className="mt-4 font-semibold text-muted-foreground">
+                    مكتبتك فارغة حالياً
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                    احفظ القصص التي تنشئها للوصول إليها هنا.
+                    </p>
+                    <Button asChild className="mt-6">
+                        <Link href="/create/story">
+                            أنشئ قصتك الأولى
+                        </Link>
+                    </Button>
+                </div>
+            )
+        }
+    }
+
+    return (
+        <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed bg-secondary/30 p-12 text-center min-h-[400px]">
+            <BookOpen className="h-16 w-16 text-muted-foreground/50" />
+            <p className="mt-4 font-semibold text-muted-foreground">
+                هذا القسم تحت الإنشاء
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+                ترقب الميزات الجديدة قريباً!
+            </p>
+        </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-yellow-50/30">
       <div className="container mx-auto px-4 py-12">
         <header className="mb-10 text-center flex flex-col items-center">
             <div className="flex items-center gap-4 mb-4 bg-white rounded-2xl px-6 py-3 shadow-sm">
@@ -80,8 +179,9 @@ export default function LibraryPage() {
                 {tabs.map((tab) => (
                     <Button 
                         key={tab.name} 
-                        variant={tab.current ? 'default' : 'ghost'}
-                        className={cn("rounded-full flex-1", tab.current && 'bg-primary text-primary-foreground shadow')}
+                        onClick={() => setActiveTab(tab.name)}
+                        variant={activeTab === tab.name ? 'default' : 'ghost'}
+                        className={cn("rounded-full flex-1", activeTab === tab.name && 'bg-primary text-primary-foreground shadow')}
                     >
                        <tab.icon className="ml-2 h-4 w-4" />
                         <span>{tab.name}</span>
@@ -112,92 +212,8 @@ export default function LibraryPage() {
             </Button>
         </div>
 
-
-        {loading ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i}>
-                <Skeleton className="aspect-square w-full" />
-                <CardContent className="p-4 space-y-2">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : stories.length > 0 ? (
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {stories.map((story, index) => (
-              <Card key={story.id} className="group overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-2 rounded-2xl">
-                <CardContent className="p-0">
-                  <Link href={`/story/${story.id}`}>
-                    <div className="relative aspect-square w-full">
-                        {story.thumbnailUrl ? (
-                            <Image
-                                src={story.thumbnailUrl}
-                                alt={story.title}
-                                fill
-                                className="object-cover transition-transform duration-300 group-hover:scale-105"
-                                data-ai-hint="storybook cover"
-                            />
-                        ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-secondary">
-                                <BookOpen className="h-16 w-16 text-muted-foreground/50" />
-                            </div>
-                        )}
-                        <div className="absolute top-3 left-3 flex gap-2">
-                           <span className="rounded-full bg-green-500/80 px-3 py-1 text-xs font-bold text-white backdrop-blur-sm">مكتمل</span>
-                        </div>
-                        <div className="absolute top-3 right-3">
-                            <Button size="icon" className="rounded-full bg-white/20 text-white backdrop-blur-sm hover:bg-white/30">
-                                <Heart className="h-5 w-5" />
-                            </Button>
-                        </div>
-                    </div>
-                  </Link>
-                  <div className="p-4">
-                    <h2 className="font-bold text-lg truncate">{story.title}</h2>
-                    <Link href={`/story/${story.id}`} className="text-sm text-primary hover:underline flex items-center gap-1 mt-2">
-                      <Eye className="h-4 w-4" />
-                      عرض القصة
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-             <Card className="group overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-2 rounded-2xl">
-                <CardContent className="p-0">
-                  <div className="relative aspect-square w-full">
-                        <div className="flex h-full w-full items-center justify-center bg-secondary">
-                            <BookOpen className="h-16 w-16 text-muted-foreground/50" />
-                        </div>
-                        <div className="absolute top-3 left-3 flex gap-2">
-                           <span className="rounded-full bg-orange-500/80 px-3 py-1 text-xs font-bold text-white backdrop-blur-sm">جاري العمل</span>
-                        </div>
-                  </div>
-                  <div className="p-4">
-                    <h2 className="font-bold text-lg truncate">قصة الديناصور اللطيف</h2>
-                     <p className="text-sm text-muted-foreground">اكمل الإنشاء</p>
-                  </div>
-                </CardContent>
-              </Card>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed bg-secondary/30 p-12 text-center min-h-[400px]">
-            <BookOpen className="h-16 w-16 text-muted-foreground/50" />
-            <p className="mt-4 font-semibold text-muted-foreground">
-              مكتبتك فارغة حالياً
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              احفظ القصص التي تنشئها للوصول إليها هنا.
-            </p>
-            <Button asChild className="mt-6">
-                <Link href="/create/story">
-                    أنشئ قصتك الأولى
-                </Link>
-            </Button>
-          </div>
-        )}
+        {renderContent()}
+        
       </div>
     </div>
   );
