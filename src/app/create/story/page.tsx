@@ -47,7 +47,6 @@ import { saveStoryAction } from './actions';
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
   { icon: Heart, label: 'الدرس المستفاد' },
-  { icon: ImageIcon, label: 'الصور' },
   { icon: BookOpen, label: 'القصة' },
   { icon: CheckCircle, label: 'النهاية' },
 ];
@@ -62,10 +61,6 @@ const lessons = [
     'الصلاة', 'الصدق', 'بر الوالدين', 'الصدقة', 'الرحمة', 'الصبر',
     'التعاون', 'الأمانة', 'العدل', 'حب الحيوانات', 'إدارة الوقت', 'النمو والتعلم'
 ];
-
-const artStyles = [
-    'صور فوتوغرافية', 'رسم كرتوني', 'فن رقمي', 'فن تجريدي', 'ألوان مائية'
-]
 
 export default function CreateStoryPage() {
   const [step, setStep] = useState(1);
@@ -90,7 +85,7 @@ export default function CreateStoryPage() {
     }
 
     setLoading(true);
-    setStep(4); // Move to the story view step
+    setStep(3); // Move to the story view step
 
     try {
         const topic = `قصة عن طفل اسمه ${heroName} في ${location}`;
@@ -102,7 +97,7 @@ export default function CreateStoryPage() {
             title: "حدث خطأ",
             description: "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.",
         });
-        setStep(3); // Go back to the previous step on error
+        setStep(2); // Go back to the previous step on error
     } finally {
         setLoading(false);
     }
@@ -254,53 +249,6 @@ export default function CreateStoryPage() {
                         <ArrowRight className="ml-2 h-5 w-5" />
                         السابق
                     </Button>
-                    <Button onClick={nextStep} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
-                        التالي
-                        <ArrowLeft className="mr-2 h-5 w-5" />
-                    </Button>
-                </CardFooter>
-            </Card>
-        )}
-
-        {step === 3 && (
-            <Card className="mt-8">
-                <CardHeader className="text-center">
-                    <CardTitle className="font-headline text-3xl">اختر النمط البصري</CardTitle>
-                    <CardDescription>اختر كيف ستبدو الصور في قصتك</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-8 px-8">
-                   <div>
-                        <Label htmlFor="art-style" className="mb-2 block text-right font-semibold">نمط فني</Label>
-                        <Select dir="rtl">
-                            <SelectTrigger id="art-style">
-                                <SelectValue placeholder="اختر نمطاً" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {artStyles.map(style => (
-                                    <SelectItem key={style} value={style}>{style}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                   </div>
-                   <div>
-                       <Label className="mb-4 block text-right font-semibold">اختر نوع الرسوم</Label>
-                       <RadioGroup dir="rtl" defaultValue="bw" className="flex gap-4">
-                           <div className="flex items-center gap-2">
-                               <RadioGroupItem value="bw" id="bw"/>
-                               <Label htmlFor="bw">أبيض وأسود (للتلوين)</Label>
-                           </div>
-                           <div className="flex items-center gap-2">
-                               <RadioGroupItem value="color" id="color" />
-                               <Label htmlFor="color">ملون</Label>
-                           </div>
-                       </RadioGroup>
-                   </div>
-                </CardContent>
-                <CardFooter className="justify-between p-8">
-                    <Button onClick={prevStep} size="lg" variant="outline">
-                        <ArrowRight className="ml-2 h-5 w-5" />
-                        السابق
-                    </Button>
                     <Button onClick={handleGenerateStory} size="lg" className="bg-gradient-to-l from-rose-400 to-red-500 font-bold text-white hover:to-red-600" disabled={loading}>
                         {loading ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Sparkles className="ml-2 h-5 w-5" />}
                         {loading ? '...جاري إنشاء القصة' : 'أنشئ القصة الآن'}
@@ -309,7 +257,7 @@ export default function CreateStoryPage() {
             </Card>
         )}
 
-        {step === 4 && (
+        {step === 3 && (
             <Card className="mt-8">
                  <CardHeader className="text-center">
                     <CardTitle className="font-headline text-3xl">ها هي قصتك!</CardTitle>
@@ -357,7 +305,7 @@ export default function CreateStoryPage() {
             </Card>
         )}
 
-        {step === 5 && (
+        {step === 4 && (
             <Card className="mt-8">
                 <CardHeader className="text-center">
                     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600">
