@@ -96,11 +96,14 @@ export default function LibraryPage() {
             </div>
              <Select defaultValue='latest'>
                 <SelectTrigger className="w-[180px] rounded-full bg-white py-6 shadow-sm">
-                    <SelectValue placeholder="الأحدث" />
+                    <SelectValue placeholder="الترتيب حسب" />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="latest">الأحدث</SelectItem>
                     <SelectItem value="oldest">الأقدم</SelectItem>
+                    <SelectItem value="most-liked">الأكثر إعجاباً</SelectItem>
+                    <SelectItem value="alpha-asc">أبجدي (أ-ي)</SelectItem>
+                    <SelectItem value="alpha-desc">أبجدي (ي-أ)</SelectItem>
                 </SelectContent>
             </Select>
             <Button variant="outline" size="lg" className="rounded-full bg-white shadow-sm">
