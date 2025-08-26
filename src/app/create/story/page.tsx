@@ -13,7 +13,6 @@ import {
   Loader2,
   Download,
   Save,
-  Image as ImageIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,7 +32,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -112,17 +110,19 @@ export default function CreateStoryPage() {
         });
         setStoryContent(result);
 
-        const pages: StoryPage[] = [];
-        for (const chapter of result.chapters) {
-          const imageResult = await generateColoringPageFromDescription({
-            description: chapter.illustrationDescription,
-            childName: heroName,
-          });
-          pages.push({
+        // Generate images in parallel for faster loading
+        const imagePromises = result.chapters.map(chapter => 
+            generateColoringPageFromDescription({
+                description: chapter.illustrationDescription,
+                childName: heroName,
+            })
+        );
+        const imageResults = await Promise.all(imagePromises);
+        
+        const pages: StoryPage[] = result.chapters.map((chapter, index) => ({
             text: chapter.narrative,
-            imageDataUri: imageResult.coloringPageDataUri,
-          });
-        }
+            imageDataUri: imageResults[index].coloringPageDataUri,
+        }));
         setStoryPages(pages);
 
     } catch (error) {
@@ -297,7 +297,7 @@ export default function CreateStoryPage() {
         {step === 3 && (
             <Card className="mt-8">
                  <CardHeader className="text-center">
-                    <CardTitle className="font-headline text-3xl">{loading ? "لحظات..." : (storyContent?.storyTitle || "ها هي قصتك!")}</CardTitle>
+                    <CardTitle className="font-headline text-3xl">{loading && !storyContent ? "لحظات..." : (storyContent?.storyTitle || "ها هي قصتك!")}</CardTitle>
                     <CardDescription>اقرأ مغامرة {heroName} الجديدة</CardDescription>
                 </CardHeader>
                 <CardContent className="px-8">
@@ -308,25 +308,36 @@ export default function CreateStoryPage() {
                             <p className="text-sm">يقوم الذكاء الاصطناعي بنسج الكلمات والصور معاً.</p>
                         </div>
                     )}
-                    {storyPages.length > 0 && (
+                    {(storyContent && storyPages.length > 0) ? (
                         <div className="space-y-8">
-                           {storyPages.map((page, index) => (
+                           {storyContent.chapters.map((chapter, index) => (
                                <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                                    <div className='order-2 md:order-1'>
-                                        <h3 className="font-bold text-xl mb-2">{storyContent?.chapters[index].chapterTitle}</h3>
-                                        <p className="leading-loose text-lg">{page.text}</p>
+                                        <h3 className="font-bold text-xl mb-2">{chapter.chapterTitle}</h3>
+                                        <p className="leading-loose text-lg">{chapter.narrative}</p>
                                    </div>
                                    <div className='order-1 md:order-2'>
-                                       <Image
-                                            src={page.imageDataUri}
-                                            alt={`Illustration for page ${index + 1}`}
-                                            width={500}
-                                            height={500}
-                                            className="rounded-lg border bg-white shadow-sm w-full object-contain aspect-square"
-                                        />
+                                       {storyPages[index] ? (
+                                            <Image
+                                                src={storyPages[index].imageDataUri}
+                                                alt={`Illustration for page ${index + 1}`}
+                                                width={500}
+                                                height={500}
+                                                className="rounded-lg border bg-white shadow-sm w-full object-contain aspect-square"
+                                            />
+                                       ): (
+                                            <div className="rounded-lg border bg-gray-200 w-full aspect-square flex items-center justify-center">
+                                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                                            </div>
+                                       )}
                                    </div>
                                </div>
                            ))}
+                        </div>
+                    ): (
+                        storyContent && <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-muted-foreground">
+                            <Loader2 className="h-16 w-16 animate-spin text-primary" />
+                            <p className="font-semibold">جاري رسم الصور...</p>
                         </div>
                     )}
                 </CardContent>
