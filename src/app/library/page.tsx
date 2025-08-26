@@ -9,6 +9,7 @@ import Image from 'next/image';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 
 interface Story {
   id: string;
