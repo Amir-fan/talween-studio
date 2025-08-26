@@ -13,6 +13,7 @@ import {
   Loader2,
   Download,
   Save,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,11 +37,17 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
-  createStoryAndColoringPages,
-  CreateStoryAndColoringPagesOutput,
-} from '@/ai/flows/create-story-and-coloring-pages';
+  generateStory,
+  GenerateStoryOutput,
+} from '@/ai/flows/generate-story';
+import { generateColoringPageFromDescription } from '@/ai/flows/generate-coloring-page-from-description';
 import React from 'react';
 import { saveStoryAction } from './actions';
+
+interface StoryPage {
+  text: string;
+  imageDataUri: string;
+}
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
@@ -66,7 +73,8 @@ export default function CreateStoryPage() {
   const [heroAge, setHeroAge] = useState('');
   const [location, setLocation] = useState('');
   const [selectedLessons, setSelectedLessons] = useState<string[]>([]);
-  const [story, setStory] = useState<CreateStoryAndColoringPagesOutput | null>(null);
+  const [storyContent, setStoryContent] = useState<GenerateStoryOutput | null>(null);
+  const [storyPages, setStoryPages] = useState<StoryPage[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -81,24 +89,42 @@ export default function CreateStoryPage() {
   };
 
   const handleGenerateStory = async () => {
-    if (!heroName || !location) {
+    if (!heroName || !location || !heroAge) {
          toast({
             variant: "destructive",
             title: "معلومات ناقصة",
-            description: "الرجاء إدخال اسم البطل واختيار مكان الأحداث.",
+            description: "الرجاء إدخال اسم البطل وعمره واختيار مكان الأحداث.",
         });
         return;
     }
 
     setLoading(true);
-    setStep(3); // Move to the story view step
+    setStoryContent(null);
+    setStoryPages([]);
+    setStep(3); 
 
     try {
-        const ageText = heroAge ? ` عمره بين ${heroAge} سنوات` : '';
-        const lessonText = selectedLessons.length > 0 ? ` ويتعلم عن ${selectedLessons.join(' و ')}` : '';
-        const topic = `قصة عن طفل اسمه ${heroName}${ageText} في ${location}${lessonText}`;
-        const result = await createStoryAndColoringPages({ topic, numPages: 3 });
-        setStory(result);
+        const result = await generateStory({
+            childName: heroName,
+            age: heroAge,
+            place: location,
+            lesson: selectedLessons.join(', ') || 'any good moral',
+        });
+        setStoryContent(result);
+
+        const pages: StoryPage[] = [];
+        for (const chapter of result.chapters) {
+          const imageResult = await generateColoringPageFromDescription({
+            description: chapter.illustrationDescription,
+            childName: heroName,
+          });
+          pages.push({
+            text: chapter.narrative,
+            imageDataUri: imageResult.coloringPageDataUri,
+          });
+        }
+        setStoryPages(pages);
+
     } catch (error) {
         toast({
             variant: "destructive",
@@ -112,9 +138,11 @@ export default function CreateStoryPage() {
   };
 
   const handleSaveStory = async () => {
-    if (!story) return;
+    if (!storyPages.length) return;
     setSaving(true);
-    const result = await saveStoryAction(story, heroName, location);
+    // The save action expects a different structure, so we adapt our state to it.
+    const storyToSave = { pages: storyPages };
+    const result = await saveStoryAction(storyToSave, heroName, location);
     setSaving(false);
 
     if (result.success) {
@@ -194,7 +222,7 @@ export default function CreateStoryPage() {
                 </div>
                 <div>
                   <Label htmlFor="hero-age" className="mb-2 block text-right font-semibold">العمر</Label>
-                  <Select dir="rtl" onValueChange={setHeroAge}>
+                  <Select dir="rtl" onValueChange={setHeroAge} value={heroAge}>
                     <SelectTrigger id="hero-age">
                       <SelectValue placeholder="اختر الفئة العمرية" />
                     </SelectTrigger>
@@ -269,22 +297,23 @@ export default function CreateStoryPage() {
         {step === 3 && (
             <Card className="mt-8">
                  <CardHeader className="text-center">
-                    <CardTitle className="font-headline text-3xl">ها هي قصتك!</CardTitle>
+                    <CardTitle className="font-headline text-3xl">{loading ? "لحظات..." : (storyContent?.storyTitle || "ها هي قصتك!")}</CardTitle>
                     <CardDescription>اقرأ مغامرة {heroName} الجديدة</CardDescription>
                 </CardHeader>
                 <CardContent className="px-8">
-                    {loading && (
+                    {loading && !storyPages.length && (
                          <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-muted-foreground">
                             <Loader2 className="h-16 w-16 animate-spin text-primary" />
                             <p className="font-semibold">لحظات، القصة على وشك الاكتمال...</p>
                             <p className="text-sm">يقوم الذكاء الاصطناعي بنسج الكلمات والصور معاً.</p>
                         </div>
                     )}
-                    {story && (
+                    {storyPages.length > 0 && (
                         <div className="space-y-8">
-                           {story.pages.map((page, index) => (
+                           {storyPages.map((page, index) => (
                                <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                                    <div className='order-2 md:order-1'>
+                                        <h3 className="font-bold text-xl mb-2">{storyContent?.chapters[index].chapterTitle}</h3>
                                         <p className="leading-loose text-lg">{page.text}</p>
                                    </div>
                                    <div className='order-1 md:order-2'>
@@ -306,7 +335,7 @@ export default function CreateStoryPage() {
                         <ArrowRight className="ml-2 h-5 w-5" />
                         السابق
                     </Button>
-                    <Button onClick={nextStep} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500" disabled={loading || !story}>
+                    <Button onClick={nextStep} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500" disabled={loading || !storyPages.length}>
                         التالي
                         <ArrowLeft className="mr-2 h-5 w-5" />
                     </Button>
