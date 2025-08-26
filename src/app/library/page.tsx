@@ -40,10 +40,11 @@ const tabs = [
 export default function LibraryPage() {
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('قصصي');
+  const [activeTab, setActiveTab] = useState('مشاريعي');
 
   useEffect(() => {
     async function fetchStories() {
+      setLoading(true);
       try {
         const storiesCollection = collection(db, 'stories');
         const storySnapshot = await getDocs(storiesCollection);
@@ -64,6 +65,7 @@ export default function LibraryPage() {
         fetchStories();
     } else {
         setLoading(false);
+        setStories([]); // Clear stories for other tabs
     }
   }, [activeTab]);
 
@@ -148,6 +150,7 @@ export default function LibraryPage() {
         }
     }
 
+    // Placeholder for other tabs
     return (
         <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed bg-secondary/30 p-12 text-center min-h-[400px]">
             <BookOpen className="h-16 w-16 text-muted-foreground/50" />
