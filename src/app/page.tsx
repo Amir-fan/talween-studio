@@ -12,7 +12,8 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
             <div className="relative flex items-center justify-center">
-              <div className="relative w-full max-w-md lg:max-w-none mx-auto">
+              <div className="relative w-full max-w-md lg:max-w-lg mx-auto animate-float">
+                 <div className="absolute inset-0 bg-primary/20 rounded-3xl blur-2xl -z-10"></div>
                 <Image
                   src="https://images.unsplash.com/photo-1612539466809-8be5e4e01256?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxraWRzJTIwY29sb3Jpbmd8ZW58MHx8fHwxNzU2MTMxMzYzfDA&ixlib=rb-4.1.0&q=80&w=1080"
                   alt="أطفال سعداء يلونون"
