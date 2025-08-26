@@ -24,8 +24,8 @@
     --input: 40 12% 90%;
     --ring: 44 94% 59%;
     --radius: 0.8rem;
-    --background-start: 45 100% 98%; /* Light Off-White: #FAF9F6 */
-    --background-end: 44 94% 85%; /* Lighter yellow */
+    --background-start: 330 80% 98%; /* Light pink */
+    --background-end: 200 100% 97%; /* Light blue */
   }
 
   .dark {
@@ -48,8 +48,8 @@
     --border: 20 14% 15%;
     --input: 20 14% 15%;
     --ring: 44 94% 59%;
-    --background-start: 20 14% 8%;
-    --background-end: 20 14% 4%;
+    --background-start: 330 80% 10%;
+    --background-end: 200 100% 10%;
   }
 }
 
@@ -58,8 +58,12 @@
     @apply border-border;
   }
   body {
-    @apply text-foreground;
-    background-image: linear-gradient(to bottom, hsl(var(--background-start)), hsl(var(--background-end)));
+    @apply bg-background text-foreground;
+    background-image: 
+        radial-gradient(circle at 15% 50%, hsl(var(--background-start)), rgba(255,255,255,0) 25%),
+        radial-gradient(circle at 85% 30%, hsl(var(--background-end)), rgba(255,255,255,0) 25%),
+        radial-gradient(circle at 60% 80%, hsl(var(--primary) / 0.2), rgba(255,255,255,0) 30%);
+    background-color: hsl(var(--background));
     @apply bg-no-repeat;
   }
 }
