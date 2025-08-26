@@ -1,3 +1,4 @@
+
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { BookOpen, Camera, ShieldCheck, Star, CircleCheckBig } from 'lucide-react';
@@ -7,16 +8,17 @@ import Link from 'next/link';
 export default function Home() {
   return (
     <div className="bg-background">
-      <section className="bg-gradient-to-b from-yellow-50 via-white to-white py-16 sm:py-24">
+      <section className="bg-gradient-to-b from-yellow-50/0 via-white/0 to-white/0 py-16 sm:py-24">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
             <div className="relative flex items-center justify-center">
-              <div className="relative w-full" style={{paddingTop: '100%'}}>
+              <div className="relative w-full max-w-md lg:max-w-none mx-auto">
                 <Image
                   src="https://images.unsplash.com/photo-1612539466809-8be5e4e01256?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxraWRzJTIwY29sb3Jpbmd8ZW58MHx8fHwxNzU2MTMxMzYzfDA&ixlib=rb-4.1.0&q=80&w=1080"
                   alt="أطفال سعداء يلونون"
-                  fill
-                  className="rounded-3xl object-cover shadow-2xl"
+                  width={600}
+                  height={600}
+                  className="rounded-3xl object-cover shadow-2xl aspect-square"
                   data-ai-hint="happy children coloring cartoon"
                 />
               </div>
@@ -98,7 +100,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="bg-secondary py-20 sm:py-28">
+      <section className="bg-secondary/50 py-20 sm:py-28">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="font-headline text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
@@ -109,8 +111,8 @@ export default function Home() {
             </p>
           </div>
           <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-3">
-            <Card className="relative flex flex-col items-center p-8 text-center transition-transform duration-300 ease-in-out hover:-translate-y-2">
-              <div className="absolute -top-6 flex h-12 w-12 items-center justify-center rounded-full bg-primary font-bold text-white ring-8 ring-secondary">
+            <Card className="relative flex flex-col items-center p-8 text-center transition-transform duration-300 ease-in-out hover:-translate-y-2 bg-white/50">
+              <div className="absolute -top-6 flex h-12 w-12 items-center justify-center rounded-full bg-primary font-bold text-white ring-8 ring-secondary/50">
                 1
               </div>
               <h3 className="mt-4 font-headline text-xl font-bold">
@@ -121,8 +123,8 @@ export default function Home() {
                 فريدة.
               </p>
             </Card>
-            <Card className="relative flex flex-col items-center p-8 text-center transition-transform duration-300 ease-in-out hover:-translate-y-2">
-              <div className="absolute -top-6 flex h-12 w-12 items-center justify-center rounded-full bg-primary font-bold text-white ring-8 ring-secondary">
+            <Card className="relative flex flex-col items-center p-8 text-center transition-transform duration-300 ease-in-out hover:-translate-y-2 bg-white/50">
+              <div className="absolute -top-6 flex h-12 w-12 items-center justify-center rounded-full bg-primary font-bold text-white ring-8 ring-secondary/50">
                 2
               </div>
               <h3 className="mt-4 font-headline text-xl font-bold">
@@ -132,8 +134,8 @@ export default function Home() {
                 استخدم أدوات التلوين الرقمية لإضفاء الحياة على صفحات قصتك.
               </p>
             </Card>
-            <Card className="relative flex flex-col items-center p-8 text-center transition-transform duration-300 ease-in-out hover:-translate-y-2">
-              <div className="absolute -top-6 flex h-12 w-12 items-center justify-center rounded-full bg-primary font-bold text-white ring-8 ring-secondary">
+            <Card className="relative flex flex-col items-center p-8 text-center transition-transform duration-300 ease-in-out hover:-translate-y-2 bg-white/50">
+              <div className="absolute -top-6 flex h-12 w-12 items-center justify-center rounded-full bg-primary font-bold text-white ring-8 ring-secondary/50">
                 3
               </div>
               <h3 className="mt-4 font-headline text-xl font-bold">
