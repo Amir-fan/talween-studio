@@ -3,8 +3,8 @@
 
 import Link from 'next/link';
 import { Button } from './ui/button';
-import { User, Globe, Library, Menu, BookOpen, School, Settings, ShoppingCart } from 'lucide-react';
-import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
+import { User, Globe, Library, Menu, BookOpen, School, ShoppingCart } from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 
 const navLinks = [
     { href: "/create", label: "إنشاء", icon: BookOpen },
@@ -51,6 +51,12 @@ export default function Header() {
                         </Button>
                     </SheetTrigger>
                     <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                        <SheetHeader>
+                            <SheetTitle className="sr-only">Menu</SheetTitle>
+                            <SheetDescription className="sr-only">
+                                Main navigation menu for Talween Studio.
+                            </SheetDescription>
+                        </SheetHeader>
                          <nav className="flex flex-col gap-4 mt-8">
                             {navLinks.map((link) => (
                                 <SheetClose asChild key={link.label}>
