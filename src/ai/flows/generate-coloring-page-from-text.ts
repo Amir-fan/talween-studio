@@ -24,34 +24,19 @@ export async function generateColoringPageFromText(input: GenerateColoringPageFr
   return generateColoringPageFromTextFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'generateColoringPageFromTextPrompt',
-  input: {schema: GenerateColoringPageFromTextInputSchema},
-  output: {schema: GenerateColoringPageFromTextOutputSchema},
-  prompt: `Generate a coloring page based on the following description: {{{description}}}. The coloring page should be a black and white line drawing.
+const illustrationPrompt = `You are an illustrator that creates black-and-white line art images for children’s coloring books.
 
-{{media url=coloringPageDataUri}}`,
-  config: {
-    safetySettings: [
-      {
-        category: 'HARM_CATEGORY_HATE_SPEECH',
-        threshold: 'BLOCK_ONLY_HIGH',
-      },
-      {
-        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-        threshold: 'BLOCK_NONE',
-      },
-      {
-        category: 'HARM_CATEGORY_HARASSMENT',
-        threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-      },
-      {
-        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-        threshold: 'BLOCK_LOW_AND_ABOVE',
-      },
-    ],
-  },
-});
+Input: {{{description}}}
+
+Instructions:
+- Create a black-and-white line art illustration only.
+- Style: Simple, bold outlines, cartoon-like.
+- No colors, no shading, no gray areas.
+- Keep the drawing uncluttered with large empty spaces for coloring.
+- Avoid small details or complex textures that are difficult for children to color.
+- Objects and characters must be easy to recognize and cute, child-friendly.
+- The composition should be fun and inviting, suitable for children ages 4–10.`;
+
 
 const generateColoringPageFromTextFlow = ai.defineFlow(
   {
@@ -62,7 +47,7 @@ const generateColoringPageFromTextFlow = ai.defineFlow(
   async input => {
     const {media} = await ai.generate({
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
-      prompt: input.description,
+      prompt: illustrationPrompt.replace('{{{description}}}', input.description),
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
       },
