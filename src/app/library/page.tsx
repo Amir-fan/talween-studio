@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -62,7 +63,7 @@ export default function LibraryPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-yellow-50/30">
+    <div className="min-h-screen">
       <div className="container mx-auto px-4 py-12">
         <header className="mb-10 text-center flex flex-col items-center">
             <div className="flex items-center gap-4 mb-4 bg-white rounded-2xl px-6 py-3 shadow-sm">
