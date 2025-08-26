@@ -27,7 +27,7 @@ export default function Header() {
             </Link>
              <nav className="hidden items-center gap-6 text-sm lg:flex">
                 {navLinks.map(link => (
-                    <Link key={link.href} href={link.href} className="font-semibold text-muted-foreground transition-colors hover:text-primary">{link.label}</Link>
+                    <Link key={link.label} href={link.href} className="font-semibold text-muted-foreground transition-colors hover:text-primary">{link.label}</Link>
                 ))}
             </nav>
         </div>
