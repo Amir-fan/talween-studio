@@ -9,7 +9,6 @@ import {
   Sparkles,
   Heart,
   BookOpen,
-  Image as ImageIcon,
   CheckCircle,
   Loader2,
   Download,
@@ -35,7 +34,6 @@ import {
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import {
   createStoryAndColoringPages,
@@ -66,6 +64,7 @@ export default function CreateStoryPage() {
   const [step, setStep] = useState(1);
   const [heroName, setHeroName] = useState('');
   const [location, setLocation] = useState('');
+  const [selectedLessons, setSelectedLessons] = useState<string[]>([]);
   const [story, setStory] = useState<CreateStoryAndColoringPagesOutput | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -73,6 +72,12 @@ export default function CreateStoryPage() {
 
   const nextStep = () => setStep((prev) => (prev < steps.length ? prev + 1 : prev));
   const prevStep = () => setStep((prev) => (prev > 1 ? prev - 1 : prev));
+
+  const toggleLesson = (lesson: string) => {
+    setSelectedLessons(prev => 
+      prev.includes(lesson) ? prev.filter(l => l !== lesson) : [...prev, lesson]
+    );
+  };
 
   const handleGenerateStory = async () => {
     if (!heroName || !location) {
@@ -88,7 +93,8 @@ export default function CreateStoryPage() {
     setStep(3); // Move to the story view step
 
     try {
-        const topic = `قصة عن طفل اسمه ${heroName} في ${location}`;
+        const lessonText = selectedLessons.length > 0 ? ` ويتعلم عن ${selectedLessons.join(' و ')}` : '';
+        const topic = `قصة عن طفل اسمه ${heroName} في ${location}${lessonText}`;
         const result = await createStoryAndColoringPages({ topic, numPages: 3 });
         setStory(result);
     } catch (error) {
@@ -232,15 +238,19 @@ export default function CreateStoryPage() {
              <Card className="mt-8">
                 <CardHeader className="text-center">
                     <CardTitle className="font-headline text-3xl">الدرس المستفاد</CardTitle>
-                    <CardDescription>اختر القيم التي تريد غرسها في القصة</CardDescription>
+                    <CardDescription>اختر القيم التي تريد غرسها في القصة (اختياري)</CardDescription>
                 </CardHeader>
                 <CardContent className="px-8">
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-4 md:grid-cols-3 lg:grid-cols-4">
+                    <div className="flex flex-wrap justify-center gap-3">
                         {lessons.map((lesson) => (
-                            <div key={lesson} className="flex items-center justify-end gap-3">
-                               <Label htmlFor={lesson} className="cursor-pointer font-medium hover:text-primary">{lesson}</Label>
-                                <Checkbox id={lesson} dir='rtl' />
-                            </div>
+                            <Button 
+                                key={lesson}
+                                variant={selectedLessons.includes(lesson) ? "default" : "outline"}
+                                onClick={() => toggleLesson(lesson)}
+                                className={cn("rounded-full", selectedLessons.includes(lesson) && "bg-primary text-primary-foreground")}
+                            >
+                                {lesson}
+                            </Button>
                         ))}
                     </div>
                 </CardContent>
