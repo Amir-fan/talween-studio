@@ -42,6 +42,7 @@ import {
   CreateStoryAndColoringPagesOutput,
 } from '@/ai/flows/create-story-and-coloring-pages';
 import React from 'react';
+import { saveStoryAction } from './actions';
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
@@ -72,6 +73,7 @@ export default function CreateStoryPage() {
   const [location, setLocation] = useState('');
   const [story, setStory] = useState<CreateStoryAndColoringPagesOutput | null>(null);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
   const nextStep = () => setStep((prev) => (prev < steps.length ? prev + 1 : prev));
@@ -106,6 +108,26 @@ export default function CreateStoryPage() {
     }
   };
 
+  const handleSaveStory = async () => {
+    if (!story) return;
+    setSaving(true);
+    const result = await saveStoryAction(story, heroName, location);
+    setSaving(false);
+
+    if (result.success) {
+      toast({
+        title: "تم الحفظ بنجاح!",
+        description: "تم حفظ قصتك في مكتبتك.",
+      });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "خطأ في الحفظ",
+        description: result.error,
+      });
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-yellow-50/30">
@@ -130,7 +152,7 @@ export default function CreateStoryPage() {
         <Card className="mt-8 p-6">
           <div className="flex items-center justify-between">
             {steps.map((s, index) => (
-              <React.Fragment key={index}>
+              <React.Fragment key={s.label}>
                 <div className="flex flex-col items-center gap-2">
                   <div
                     className={cn(
@@ -349,9 +371,9 @@ export default function CreateStoryPage() {
                         قصتك عن <strong>{heroName}</strong> جاهزة الآن. يمكنك حفظها في مكتبتك للوصول إليها لاحقًا، أو تحميلها كملف لمشاركتها مع الأصدقاء والعائلة.
                     </p>
                     <div className="mt-8 flex justify-center gap-4">
-                        <Button size="lg" variant="outline">
-                             <Save className="ml-2 h-5 w-5" />
-                            حفظ في مكتبتي
+                        <Button onClick={handleSaveStory} size="lg" variant="outline" disabled={saving}>
+                             {saving ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Save className="ml-2 h-5 w-5" />}
+                            {saving ? 'جاري الحفظ...' : 'حفظ في مكتبتي'}
                         </Button>
                          <Button size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
                             <Download className="ml-2 h-5 w-5" />

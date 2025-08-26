@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Button } from './ui/button';
-import { User, Globe } from 'lucide-react';
+import { User, Globe, Library } from 'lucide-react';
 
 export default function Header() {
   return (
@@ -16,9 +16,7 @@ export default function Header() {
         </div>
         <nav className="hidden items-center gap-6 text-sm lg:flex">
           <Link href="/create" className="font-semibold transition-colors hover:text-primary">إنشاء</Link>
-          <Link href="#" className="font-semibold text-muted-foreground transition-colors hover:text-primary">القوالب</Link>
-          <Link href="#" className="font-semibold text-muted-foreground transition-colors hover:text-primary">التلوين</Link>
-          <Link href="#" className="font-semibold text-muted-foreground transition-colors hover:text-primary">مكتبتي</Link>
+          <Link href="/library" className="font-semibold text-muted-foreground transition-colors hover:text-primary">مكتبتي</Link>
           <Link href="#" className="font-semibold text-muted-foreground transition-colors hover:text-primary">المدارس</Link>
           <Link href="/account" className="font-semibold text-muted-foreground transition-colors hover:text-primary">حسابي</Link>
           <Link href="#" className="font-semibold text-muted-foreground transition-colors hover:text-primary">الاشتراك</Link>
