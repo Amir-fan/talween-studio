@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -42,6 +42,8 @@ import {
 import { generateColoringPageFromDescription } from '@/ai/flows/generate-coloring-page-from-description';
 import React from 'react';
 import { saveStoryAction } from './actions';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface StoryPage {
   text: string;
@@ -77,6 +79,8 @@ export default function CreateStoryPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const storyContainerRef = useRef<HTMLDivElement>(null);
+
 
   const nextStep = () => setStep((prev) => (prev < steps.length ? prev + 1 : prev));
   const prevStep = () => setStep((prev) => (prev > 1 ? prev - 1 : prev));
@@ -111,7 +115,6 @@ export default function CreateStoryPage() {
         });
         setStoryContent(result);
 
-        // Generate images in parallel for faster loading
         const imagePromises = result.chapters.map(chapter => 
             generateColoringPageFromDescription({
                 description: chapter.illustrationDescription,
@@ -132,7 +135,7 @@ export default function CreateStoryPage() {
             title: "حدث خطأ",
             description: "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.",
         });
-        setStep(2); // Go back to the previous step on error
+        setStep(2); 
     } finally {
         setLoading(false);
     }
@@ -141,7 +144,6 @@ export default function CreateStoryPage() {
   const handleSaveStory = async () => {
     if (!storyPages.length) return;
     setSaving(true);
-    // The save action expects a different structure, so we adapt our state to it.
     const storyToSave = { pages: storyPages };
     const result = await saveStoryAction(storyToSave, heroName, location);
     setSaving(false);
@@ -157,6 +159,38 @@ export default function CreateStoryPage() {
         title: "خطأ في الحفظ",
         description: result.error,
       });
+    }
+  };
+
+  const handleDownload = async () => {
+    const container = storyContainerRef.current;
+    if (!container) return;
+
+    toast({ title: 'جاري تحضير التحميل...', description: 'قد تستغرق هذه العملية بضع لحظات.' });
+
+    try {
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pageElements = container.querySelectorAll('.story-page-container');
+        
+        for (let i = 0; i < pageElements.length; i++) {
+            const pageEl = pageElements[i] as HTMLElement;
+            const canvas = await html2canvas(pageEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+            const imgData = canvas.toDataURL('image/png');
+
+            if (i > 0) {
+                pdf.addPage();
+            }
+            pdf.addImage(imgData, 'PNG', 0, 0, 210, 297); // A4 dimensions in mm
+        }
+        
+        pdf.save(`${storyContent?.storyTitle || 'story'}.pdf`);
+    } catch (error) {
+        console.error("Failed to download PDF:", error);
+        toast({
+            variant: "destructive",
+            title: "فشل التحميل",
+            description: "حدث خطأ أثناء إنشاء ملف PDF.",
+        });
     }
   };
 
@@ -309,38 +343,38 @@ export default function CreateStoryPage() {
                             <p className="text-sm">يقوم الذكاء الاصطناعي بنسج الكلمات والصور معاً.</p>
                         </div>
                     )}
-                    {(storyContent && storyPages.length > 0) ? (
-                        <div className="space-y-8">
-                           {storyContent.chapters.map((chapter, index) => (
-                               <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                                   <div className='order-2 md:order-1'>
+                     <div ref={storyContainerRef} className="space-y-8">
+                        {(storyContent && storyPages.length > 0) ? (
+                            storyContent.chapters.map((chapter, index) => (
+                                <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center story-page-container bg-white p-4 rounded-lg">
+                                    <div className='order-2 md:order-1'>
                                         <h3 className="font-bold text-xl mb-2">{chapter.chapterTitle}</h3>
                                         <p className="leading-loose text-lg">{chapter.narrative}</p>
-                                   </div>
-                                   <div className='order-1 md:order-2'>
-                                       {storyPages[index] ? (
-                                            <Image
-                                                src={storyPages[index].imageDataUri}
-                                                alt={`Illustration for page ${index + 1}`}
-                                                width={500}
-                                                height={500}
-                                                className="rounded-lg border bg-white shadow-sm w-full object-contain aspect-square"
-                                            />
-                                       ): (
-                                            <div className="rounded-lg border bg-gray-200 w-full aspect-square flex items-center justify-center">
-                                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                                            </div>
-                                       )}
-                                   </div>
-                               </div>
-                           ))}
-                        </div>
-                    ): (
-                        storyContent && <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-muted-foreground">
-                            <Loader2 className="h-16 w-16 animate-spin text-primary" />
-                            <p className="font-semibold">جاري رسم الصور...</p>
-                        </div>
-                    )}
+                                    </div>
+                                    <div className='order-1 md:order-2'>
+                                        {storyPages[index] ? (
+                                                <Image
+                                                    src={storyPages[index].imageDataUri}
+                                                    alt={`Illustration for page ${index + 1}`}
+                                                    width={500}
+                                                    height={500}
+                                                    className="rounded-lg border bg-white shadow-sm w-full object-contain aspect-square"
+                                                />
+                                        ): (
+                                                <div className="rounded-lg border bg-gray-200 w-full aspect-square flex items-center justify-center">
+                                                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                                                </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                        ): (
+                            storyContent && <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-muted-foreground">
+                                <Loader2 className="h-16 w-16 animate-spin text-primary" />
+                                <p className="font-semibold">جاري رسم الصور...</p>
+                            </div>
+                        )}
+                    </div>
                 </CardContent>
                  <CardFooter className="justify-between p-8">
                     <Button onClick={prevStep} size="lg" variant="outline" disabled={loading}>
@@ -373,7 +407,7 @@ export default function CreateStoryPage() {
                              {saving ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Save className="ml-2 h-5 w-5" />}
                             {saving ? 'جاري الحفظ...' : 'حفظ في مكتبتي'}
                         </Button>
-                         <Button size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
+                         <Button onClick={handleDownload} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
                             <Download className="ml-2 h-5 w-5" />
                             تحميل القصة
                         </Button>

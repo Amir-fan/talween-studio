@@ -1,40 +1,42 @@
 'use server';
 
 import { db, storage } from '@/lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { CreateStoryAndColoringPagesOutput } from '@/ai/flows/create-story-and-coloring-pages';
+
+// This is a helper type and does not need to be exported
+interface StoryPageForSave {
+  text: string;
+  imageDataUri: string;
+}
+
+// This is a helper type and does not need to be exported
+interface StoryDataForSave {
+    pages: StoryPageForSave[];
+}
+
 
 async function uploadImage(imageDataUri: string, storyId: string, pageIndex: number): Promise<string> {
   const storageRef = ref(storage, `stories/${storyId}/page_${pageIndex + 1}.png`);
-  // The data URI needs to be stripped of its prefix before uploading
   const uploadResult = await uploadString(storageRef, imageDataUri.split(',')[1], 'base64', {
       contentType: 'image/png'
   });
-  const downloadUrl = await getDownloadURL(uploadResult.ref);
-  return downloadUrl;
+  return await getDownloadURL(uploadResult.ref);
 }
 
 export async function saveStoryAction(
-  storyData: CreateStoryAndColoringPagesOutput,
+  storyData: StoryDataForSave,
   heroName: string,
   location: string,
 ): Promise<{ success: boolean; error?: string; storyId?: string }> {
   try {
     const storyTitle = `مغامرة ${heroName} في ${location}`;
 
-    // First, create a document in Firestore to get a story ID
-    const storyRef = await addDoc(collection(db, 'stories'), {
-      title: storyTitle,
-      heroName,
-      location,
-      createdAt: new Date(),
-      pages: [], // Will be populated later
-    });
-
+    // 1. Create a document reference with a new ID in the 'stories' collection
+    const storyRef = doc(collection(db, 'stories'));
     const storyId = storyRef.id;
 
-    // Now, upload images to Storage and collect their URLs
+    // 2. Upload images and collect their public URLs
     const pagesWithImageUrls = await Promise.all(
       storyData.pages.map(async (page, index) => {
         const imageUrl = await uploadImage(page.imageDataUri, storyId, index);
@@ -44,9 +46,23 @@ export async function saveStoryAction(
         };
       })
     );
+    
+    const firstImageUrl = pagesWithImageUrls.length > 0 ? pagesWithImageUrls[0].imageUrl : '';
 
-    // Update the Firestore document with the final page data
-    await addDoc(collection(db, `stories/${storyId}/pages`), ...pagesWithImageUrls.map(p => ({text: p.text, imageUrl: p.imageUrl})))
+    // 3. Set the main story document data
+    await setDoc(storyRef, {
+      title: storyTitle,
+      heroName,
+      location,
+      thumbnailUrl: firstImageUrl,
+      createdAt: new Date(),
+    });
+
+    // 4. Add each page as a separate document in the 'pages' subcollection
+    const pagesCollectionRef = collection(db, 'stories', storyId, 'pages');
+    for (const page of pagesWithImageUrls) {
+        await addDoc(pagesCollectionRef, page);
+    }
 
     return { success: true, storyId: storyId };
   } catch (error) {
