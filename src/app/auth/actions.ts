@@ -5,11 +5,9 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, se
 import { app, db } from '@/lib/firebase';
 import { setCookie } from '@/lib/cookies';
 import type { AuthError } from 'firebase/auth';
-import { dbAdmin } from '@/lib/firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { createUserDocument } from '@/ai/flows/create-user-document';
 
-// Use client auth for auth operations
 const auth = getAuth(app);
 
 const authSchema = z.object({
@@ -47,20 +45,6 @@ function getFirebaseAuthErrorMessage(error: AuthError): string {
   }
 }
 
-// Helper function to create user document using Admin SDK
-async function createUserDocument(uid: string, email: string, name?: string) {
-  const userRef = dbAdmin.collection('users').doc(uid);
-  await userRef.set({
-    uid,
-    email,
-    name: name || '',
-    credits: 50, // Give 50 credits on signup
-    createdAt: FieldValue.serverTimestamp(),
-    lastLogin: FieldValue.serverTimestamp(),
-    status: 'active'
-  });
-}
-
 export async function signUpUser(
   values: AuthInput
 ): Promise<{ success: boolean; error?: string; userId?: string }> {
@@ -70,8 +54,12 @@ export async function signUpUser(
     const idToken = await user.getIdToken();
     await setCookie('auth-token', idToken);
     
-    // Call the server-side helper to create the user document
-    await createUserDocument(user.uid, values.email, values.name);
+    // Call the server-side flow to create the user document in Firestore
+    await createUserDocument({ 
+        uid: user.uid, 
+        email: values.email, 
+        name: values.name || '' 
+    });
 
     return { success: true, userId: user.uid };
   } catch (error) {

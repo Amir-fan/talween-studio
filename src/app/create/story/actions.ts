@@ -1,8 +1,7 @@
 'use server';
 
-import { dbAdmin } from '@/lib/firebase-admin';
+import { dbAdmin, storageAdmin } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { getStorage } from 'firebase-admin/storage';
 
 // This is a helper type and does not need to be exported
 interface StoryPageForSave {
@@ -18,7 +17,7 @@ interface StoryDataForSave {
 
 
 async function uploadImage(imageDataUri: string, storyId: string, pageIndex: number): Promise<string> {
-  const bucket = getStorage().bucket();
+  const bucket = storageAdmin.bucket();
   const file = bucket.file(`stories/${storyId}/page_${pageIndex + 1}.png`);
   
   const base64Data = imageDataUri.split(',')[1];
