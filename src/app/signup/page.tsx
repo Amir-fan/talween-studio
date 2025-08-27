@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -25,10 +26,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { signUpUser } from '@/app/auth/client-actions';
-import { setCookie } from '@/lib/cookies';
-import { getAuth, onIdTokenChanged } from 'firebase/auth';
-import { app } from '@/lib/firebase';
+import { signUpUser } from '@/app/auth/actions';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'الرجاء إدخال اسم.' }),
@@ -40,7 +38,6 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
-  const auth = getAuth(app);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -56,19 +53,12 @@ export default function SignUpPage() {
     try {
       const result = await signUpUser(values);
       if (result.success) {
-         // Wait for the token and set the cookie before navigating
-        const unsubscribe = onIdTokenChanged(auth, async (user) => {
-            if (user) {
-                const token = await user.getIdToken();
-                await setCookie('auth-token', token);
-                unsubscribe(); // Unsubscribe after getting the token
-                toast({
-                    title: 'تم إنشاء الحساب بنجاح!',
-                    description: 'أهلاً بك في عالم الإبداع. لقد حصلت على 50 نقطة مجانية للبدء!',
-                });
-                router.push('/account');
-            }
+        toast({
+            title: 'تم إنشاء الحساب بنجاح!',
+            description: 'أهلاً بك في عالم الإبداع. لقد حصلت على 50 نقطة مجانية للبدء!',
         });
+        // Reload the page to let AuthProvider pick up the new auth state
+        window.location.href = '/account';
       } else {
         throw new Error(result.error || 'فشلت عملية إنشاء الحساب.');
       }

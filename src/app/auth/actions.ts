@@ -1,7 +1,8 @@
+
 'use server';
 
 import { z } from 'zod';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { db } from '@/lib/firebase';
 import { setCookie } from '@/lib/cookies';
@@ -52,9 +53,25 @@ function getFirebaseAuthErrorMessage(error: AuthError): string {
 export async function signUpUser(
   values: AuthInput
 ): Promise<{ success: boolean; error?: string; userId?: string }> {
-    // This function still needs to be run from the client, so we will keep it in client-actions.
-    // This file is now purely for server-side auth actions.
-    return { success: false, error: 'Signup must be called from the client.' };
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+        const user = userCredential.user;
+
+        // Call the server-side flow to create the user document in Firestore
+        await createUserDocument({ 
+            uid: user.uid, 
+            email: values.email, 
+            name: values.name || '' 
+        });
+
+        // Set auth cookie
+        const idToken = await user.getIdToken();
+        await setCookie('auth-token', idToken);
+
+        return { success: true, userId: user.uid };
+    } catch (error) {
+        return { success: false, error: getFirebaseAuthErrorMessage(error as AuthError) };
+    }
 }
 
 export async function signInUser(
@@ -68,7 +85,8 @@ export async function signInUser(
     // Set the cookie on the server-side
     await setCookie('auth-token', idToken);
 
-    // Update last login time using the client SDK instance
+    // Update last login time using the client SDK instance from a client file
+    // This is safe because `db` is from a client-safe file, but this action runs on the server.
     const userRef = doc(db, 'users', user.uid);
     await updateDoc(userRef, {
         lastLogin: serverTimestamp()

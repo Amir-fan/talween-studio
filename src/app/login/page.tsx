@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -54,8 +55,8 @@ export default function LoginPage() {
           title: 'تم تسجيل الدخول بنجاح!',
           description: 'مرحباً بعودتك.',
         });
-        router.push('/account');
-        router.refresh(); // This helps ensure the auth context updates correctly
+        // Instead of router.push, we reload the page to allow AuthProvider to pick up the new state
+        window.location.href = '/account';
       } else {
         throw new Error(result.error || 'فشلت عملية تسجيل الدخول.');
       }
