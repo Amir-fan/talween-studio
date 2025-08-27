@@ -35,12 +35,16 @@ import {
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import {
   createStoryAndColoringPages,
   CreateStoryAndColoringPagesOutput,
 } from '@/ai/flows/create-story-and-coloring-pages';
 import React from 'react';
+import { saveStoryAction } from './actions';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
@@ -71,10 +75,66 @@ export default function CreateStoryPage() {
   const [location, setLocation] = useState('');
   const [story, setStory] = useState<CreateStoryAndColoringPagesOutput | null>(null);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const storyContainerRef = React.useRef<HTMLDivElement>(null);
+
 
   const nextStep = () => setStep((prev) => (prev < steps.length ? prev + 1 : prev));
   const prevStep = () => setStep((prev) => (prev > 1 ? prev - 1 : prev));
+
+  const handleDownload = async () => {
+    const container = storyContainerRef.current;
+    if (!container) return;
+
+    const pdf = new jsPDF('p', 'pt', 'a4');
+    const pageElements = container.querySelectorAll('.story-page-container');
+    
+    for (let i = 0; i < pageElements.length; i++) {
+        const canvas = await html2canvas(pageElements[i] as HTMLElement, { scale: 2 });
+        const imgData = canvas.toDataURL('image/png');
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+        if (i > 0) {
+            pdf.addPage();
+        }
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    }
+    
+    pdf.save(`${story?.title || 'story'}.pdf`);
+  };
+
+  const handleSave = async () => {
+    if (!story) return;
+    setSaving(true);
+    try {
+      const result = await saveStoryAction(
+        story,
+        heroName,
+        location,
+      );
+
+      if (result.success) {
+        toast({
+          title: 'تم الحفظ بنجاح',
+          description: 'تم حفظ قصتك في مكتبتك.',
+        });
+      } else {
+        throw new Error(result.error || 'فشل حفظ القصة.');
+      }
+    } catch (error) {
+       toast({
+        variant: 'destructive',
+        title: 'حدث خطأ',
+        description:
+          error instanceof Error ? error.message : 'An unknown error occurred.',
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const handleGenerateStory = async () => {
     if (!heroName || !location) {
@@ -300,10 +360,10 @@ export default function CreateStoryPage() {
         {step === 4 && (
             <Card className="mt-8">
                  <CardHeader className="text-center">
-                    <CardTitle className="font-headline text-3xl">ها هي قصتك!</CardTitle>
+                    <CardTitle className="font-headline text-3xl">{story?.title || 'ها هي قصتك!'}</CardTitle>
                     <CardDescription>اقرأ مغامرة {heroName} الجديدة</CardDescription>
                 </CardHeader>
-                <CardContent className="px-8">
+                <CardContent className="px-8" ref={storyContainerRef}>
                     {loading && (
                          <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-muted-foreground">
                             <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -314,7 +374,7 @@ export default function CreateStoryPage() {
                     {story && (
                         <div className="space-y-8">
                            {story.pages.map((page, index) => (
-                               <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                               <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center story-page-container bg-white p-4 rounded-lg">
                                    <div className='order-2 md:order-1'>
                                         <p className="leading-loose text-lg">{page.text}</p>
                                    </div>
@@ -359,11 +419,11 @@ export default function CreateStoryPage() {
                         قصتك عن <strong>{heroName}</strong> جاهزة الآن. يمكنك حفظها في مكتبتك للوصول إليها لاحقًا، أو تحميلها كملف لمشاركتها مع الأصدقاء والعائلة.
                     </p>
                     <div className="mt-8 flex justify-center gap-4">
-                        <Button size="lg" variant="outline">
-                             <Save className="ml-2 h-5 w-5" />
-                            حفظ في مكتبتي
+                        <Button onClick={handleSave} size="lg" variant="outline" disabled={saving}>
+                             {saving ? <Loader2 className="animate-spin" /> : <Save />}
+                             {saving ? 'جاري الحفظ...' : 'حفظ في مكتبتي'}
                         </Button>
-                         <Button size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
+                         <Button onClick={handleDownload} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
                             <Download className="ml-2 h-5 w-5" />
                             تحميل القصة
                         </Button>
