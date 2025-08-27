@@ -80,7 +80,7 @@ const createStoryAndColoringPagesFlow = ai.defineFlow(
     } catch (error) {
         console.error("Failed to generate title:", error);
     }
-
+    
     const pagePromises = Array.from({ length: input.numPages }, (_, i) => {
         const pageNumber = i + 1;
         return pagePrompt({

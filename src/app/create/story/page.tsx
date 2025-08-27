@@ -34,30 +34,12 @@ import {
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import {
-  generateStory,
-  GenerateStoryOutput,
-} from '@/ai/flows/generate-story';
-import {
-    generateColoringPageFromDescription,
-    GenerateColoringPageFromDescriptionOutput,
-} from '@/ai/flows/generate-coloring-page-from-description';
 import React from 'react';
 import { saveStoryAction } from './actions';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-
-interface FinalStoryPage {
-  text: string;
-  imageDataUri: string;
-}
-
-interface FinalStory {
-  title: string;
-  pages: FinalStoryPage[];
-}
+import { createStoryAndColoringPages, CreateStoryAndColoringPagesOutput, StoryPage } from '@/ai/flows/create-story-and-coloring-pages';
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
@@ -81,10 +63,11 @@ export default function CreateStoryPage() {
   const [step, setStep] = useState(1);
   const [heroName, setHeroName] = useState('');
   const [heroAge, setHeroAge] = useState('6-9');
+  const [numPages, setNumPages] = useState(3);
   const [location, setLocation] = useState('');
   const [selectedLesson, setSelectedLesson] = useState('');
 
-  const [story, setStory] = useState<FinalStory | null>(null);
+  const [story, setStory] = useState<CreateStoryAndColoringPagesOutput | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [saving, setSaving] = useState(false);
@@ -177,47 +160,15 @@ export default function CreateStoryPage() {
 
     try {
         setLoadingMessage("يتم الآن كتابة قصة شيقة...");
-        const storyResult = await generateStory({
-            childName: heroName,
-            age: heroAge,
-            place: location,
-            lesson: selectedLesson,
-        });
+        
+        const topic = `قصة عن طفل اسمه ${heroName} عمره ${heroAge} في ${location} ويتعلم عن ${selectedLesson}`;
+        const result = await createStoryAndColoringPages({ topic, numPages });
 
-        if (!storyResult || !storyResult.chapters?.length) {
-            throw new Error("لم نتمكن من إنشاء نص القصة. حاول مرة أخرى.");
+        if (!result || !result.pages || result.pages.length === 0) {
+          throw new Error("فشل إنشاء القصة. لم يتم إرجاع أي صفحات.");
         }
         
-        const finalPages: FinalStoryPage[] = [];
-
-        for (let i = 0; i < storyResult.chapters.length; i++) {
-            const chapter = storyResult.chapters[i];
-            setLoadingMessage(`يتم الآن رسم الصور... (${i+1}/${storyResult.chapters.length})`);
-            
-            const imageResult = await generateColoringPageFromDescription({
-                description: chapter.illustrationDescription,
-                childName: heroName,
-            });
-
-            if (!imageResult?.coloringPageDataUri) {
-                 console.warn(`Could not generate image for chapter ${i+1}. Skipping.`);
-                 continue; // Skip this page if image generation fails
-            }
-
-            finalPages.push({
-                text: `${chapter.chapterTitle}\n\n${chapter.narrative}`,
-                imageDataUri: imageResult.coloringPageDataUri
-            });
-        }
-        
-        if (finalPages.length === 0) {
-            throw new Error("فشل إنشاء الصور لكل الصفحات. الرجاء المحاولة مرة أخرى.");
-        }
-
-        setStory({
-            title: storyResult.storyTitle,
-            pages: finalPages
-        });
+        setStory(result);
 
     } catch (error) {
         toast({
@@ -225,7 +176,7 @@ export default function CreateStoryPage() {
             title: "حدث خطأ",
             description: error instanceof Error ? error.message : "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.",
         });
-        setStep(2); // Go back to the previous step on error
+        setStep(2);
     } finally {
         setLoading(false);
         setLoadingMessage('');
@@ -288,7 +239,7 @@ export default function CreateStoryPage() {
               <CardDescription>أخبرنا عن الشخصية الرئيسية</CardDescription>
             </CardHeader>
             <CardContent className="space-y-8 px-8">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                 <div>
                   <Label htmlFor="hero-name" className="mb-2 block text-right font-semibold">اسم البطل</Label>
                   <Input id="hero-name" placeholder="مثال: سارة" className="text-right" value={heroName} onChange={(e) => setHeroName(e.target.value)} />
@@ -303,6 +254,19 @@ export default function CreateStoryPage() {
                       <SelectItem value="3-5">3-5 سنوات</SelectItem>
                       <SelectItem value="6-9">6-9 سنوات</SelectItem>
                       <SelectItem value="10-13">10-13 سنوات</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                 <div>
+                  <Label htmlFor="num-pages" className="mb-2 block text-right font-semibold">عدد الصفحات</Label>
+                  <Select dir="rtl" value={String(numPages)} onValueChange={(val) => setNumPages(Number(val))}>
+                    <SelectTrigger id="num-pages">
+                      <SelectValue placeholder="اختر عدد الصفحات" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="3">3 صفحات</SelectItem>
+                      <SelectItem value="4">4 صفحات</SelectItem>
+                      <SelectItem value="5">5 صفحات</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
