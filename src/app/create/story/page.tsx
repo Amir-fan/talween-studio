@@ -85,25 +85,38 @@ export default function CreateStoryPage() {
 
   const handleDownload = async () => {
     const container = storyContainerRef.current;
-    if (!container) return;
+    if (!container || !story) return;
 
     const pdf = new jsPDF('p', 'pt', 'a4');
-    const pageElements = container.querySelectorAll('.story-page-container');
+    const pageElements = Array.from(container.querySelectorAll('.story-page-container'));
     
     for (let i = 0; i < pageElements.length; i++) {
-        const canvas = await html2canvas(pageElements[i] as HTMLElement, { scale: 2 });
+        const canvas = await html2canvas(pageElements[i] as HTMLElement, { 
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff'
+        });
         const imgData = canvas.toDataURL('image/png');
-        const imgProps = pdf.getImageProperties(imgData);
         const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgProps = pdf.getImageProperties(imgData);
+        const ratio = imgProps.height / imgProps.width;
+        let imgHeight = pdfWidth * ratio;
+        let y = 0;
+
+        if (imgHeight > pdfHeight) {
+            imgHeight = pdfHeight; // it's not going to fit, so just make it page height
+        }
+        y = (pdfHeight - imgHeight) / 2;
+
 
         if (i > 0) {
             pdf.addPage();
         }
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.addImage(imgData, 'PNG', 0, y, pdfWidth, imgHeight);
     }
     
-    pdf.save(`${story?.title || 'story'}.pdf`);
+    pdf.save(`${story.title.replace(/ /g, '_') || 'story'}.pdf`);
   };
 
   const handleSave = async () => {
@@ -241,15 +254,12 @@ export default function CreateStoryPage() {
                   <Label htmlFor="hero-age" className="mb-2 block text-right font-semibold">العمر</Label>
                   <Select dir="rtl">
                     <SelectTrigger id="hero-age">
-                      <SelectValue placeholder="7 سنة" />
+                      <SelectValue placeholder="اختر الفئة العمرية" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="5">5 سنوات</SelectItem>
-                      <SelectItem value="6">6 سنوات</SelectItem>
-                      <SelectItem value="7">7 سنوات</SelectItem>
-                      <SelectItem value="8">8 سنوات</SelectItem>
-                      <SelectItem value="9">9 سنوات</SelectItem>
-                      <SelectItem value="10">10 سنوات</SelectItem>
+                      <SelectItem value="3-5">3-5 سنوات</SelectItem>
+                      <SelectItem value="6-9">6-9 سنوات</SelectItem>
+                      <SelectItem value="10-13">10-13 سنوات</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -363,7 +373,7 @@ export default function CreateStoryPage() {
                     <CardTitle className="font-headline text-3xl">{story?.title || 'ها هي قصتك!'}</CardTitle>
                     <CardDescription>اقرأ مغامرة {heroName} الجديدة</CardDescription>
                 </CardHeader>
-                <CardContent className="px-8" ref={storyContainerRef}>
+                <CardContent className="px-8" >
                     {loading && (
                          <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-muted-foreground">
                             <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -372,7 +382,7 @@ export default function CreateStoryPage() {
                         </div>
                     )}
                     {story && (
-                        <div className="space-y-8">
+                        <div className="space-y-8" ref={storyContainerRef}>
                            {story.pages.map((page, index) => (
                                <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center story-page-container bg-white p-4 rounded-lg">
                                    <div className='order-2 md:order-1'>
