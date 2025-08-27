@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { app } from '@/lib/firebase'; // Ensure firebase is initialized
+import { app } from '@/lib/firebase-config'; // Import from the new server-safe config
 import { setCookie } from '@/lib/cookies';
 import { AuthError } from 'firebase/auth';
 
