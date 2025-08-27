@@ -63,7 +63,7 @@ export default function CreateStoryPage() {
   const [step, setStep] = useState(1);
   const [heroName, setHeroName] = useState('');
   const [heroAge, setHeroAge] = useState('6-9');
-  const [numPages, setNumPages] = useState(3);
+  const [numPages, setNumPages] = useState(4);
   const [location, setLocation] = useState('');
   const [selectedLesson, setSelectedLesson] = useState('');
 
@@ -258,15 +258,15 @@ export default function CreateStoryPage() {
                   </Select>
                 </div>
                  <div>
-                  <Label htmlFor="num-pages" className="mb-2 block text-right font-semibold">عدد الصفحات</Label>
+                  <Label htmlFor="num-pages" className="mb-2 block text-right font-semibold">كم عدد الصفحات التي تريدها؟</Label>
                   <Select dir="rtl" value={String(numPages)} onValueChange={(val) => setNumPages(Number(val))}>
                     <SelectTrigger id="num-pages">
                       <SelectValue placeholder="اختر عدد الصفحات" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="3">3 صفحات</SelectItem>
                       <SelectItem value="4">4 صفحات</SelectItem>
-                      <SelectItem value="5">5 صفحات</SelectItem>
+                      <SelectItem value="8">8 صفحات</SelectItem>
+                      <SelectItem value="12">12 صفحة</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
