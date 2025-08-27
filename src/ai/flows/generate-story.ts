@@ -43,6 +43,8 @@ The goal is to create a short, engaging, and wholesome story for a child.
 
 Follow these rules:
 
+**IMPORTANT: The entire output (story title, chapter titles, and narrative) MUST be in Arabic.**
+
 1. Story Elements:
    - Main Character: {{{childName}}}
    - Age of the Child: {{{age}}}
@@ -55,7 +57,7 @@ Follow these rules:
    - Each chapter should have:
      • Chapter title (2–4 words).
      • Narrative (150–200 words) in simple, age-appropriate language.
-     • A short "illustration description" that describes a single scene to be drawn in coloring-book style.
+     • A short "illustration description" that describes a single scene to be drawn in coloring-book style. The illustration description must be in English.
 
 3. Writing Style:
    - Fun, imaginative, and positive tone.
