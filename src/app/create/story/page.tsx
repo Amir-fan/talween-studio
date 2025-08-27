@@ -33,6 +33,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { createStoryAndColoringPages, CreateStoryAndColoringPagesOutput, StoryPage } from '@/ai/flows/create-story-and-coloring-pages';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
