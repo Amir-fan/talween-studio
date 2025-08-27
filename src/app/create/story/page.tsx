@@ -25,7 +25,6 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import React from 'react';
@@ -71,6 +70,9 @@ export default function CreateStoryPage() {
 
   const nextStep = () => setStep((prev) => (prev < steps.length ? prev + 1 : prev));
   const prevStep = () => setStep((prev) => (prev > 1 ? prev - 1 : prev));
+
+  const isStep1Complete = heroName.trim() !== '' && location !== '';
+  const isStep2Complete = selectedLesson !== '';
 
   const handleDownload = async () => {
     const container = storyContainerRef.current;
@@ -139,7 +141,7 @@ export default function CreateStoryPage() {
   }
 
   const handleGenerateStory = async () => {
-    if (!heroName || !location || !selectedLesson) {
+    if (!isStep1Complete || !isStep2Complete) {
          toast({
             variant: "destructive",
             title: "معلومات ناقصة",
@@ -287,7 +289,7 @@ export default function CreateStoryPage() {
               </div>
             </CardContent>
             <CardFooter className="justify-end p-8">
-                <Button onClick={nextStep} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
+                <Button onClick={nextStep} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500" disabled={!isStep1Complete}>
                     التالي
                     <ArrowLeft className="mr-2 h-5 w-5" />
                 </Button>
@@ -320,7 +322,7 @@ export default function CreateStoryPage() {
                         <ArrowRight className="ml-2 h-5 w-5" />
                         السابق
                     </Button>
-                    <Button onClick={handleGenerateStory} size="lg" className="bg-gradient-to-l from-rose-400 to-red-500 font-bold text-white hover:to-red-600" disabled={loading}>
+                    <Button onClick={handleGenerateStory} size="lg" className="bg-gradient-to-l from-rose-400 to-red-500 font-bold text-white hover:to-red-600" disabled={loading || !isStep2Complete}>
                         {loading ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Sparkles className="ml-2 h-5 w-5" />}
                         {loading ? '...جاري إنشاء القصة' : 'أنشئ القصة الآن'}
                     </Button>
