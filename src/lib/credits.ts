@@ -1,6 +1,6 @@
 'use server';
 
-import { adminDb } from './firebase-admin';
+import { dbAdmin } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 
 export async function checkAndDeductCredits(userId: string, amount: number): Promise<{ success: boolean; error?: string }> {
@@ -8,7 +8,7 @@ export async function checkAndDeductCredits(userId: string, amount: number): Pro
     return { success: false, error: 'User not authenticated.' };
   }
 
-  const userRef = adminDb.collection('users').doc(userId);
+  const userRef = dbAdmin.collection('users').doc(userId);
 
   try {
     const userDoc = await userRef.get();
