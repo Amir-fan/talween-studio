@@ -9,6 +9,8 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { generateColoringPageFromDescription } from './generate-coloring-page-from-description';
+
 
 const CreateStoryAndColoringPagesInputSchema = z.object({
   topic: z.string().describe('The topic of the story.'),
@@ -36,32 +38,36 @@ export async function createStoryAndColoringPages(
   return createStoryAndColoringPagesFlow(input);
 }
 
-const pagePrompt = ai.definePrompt({
-  name: 'pagePrompt',
-  input: {schema: z.object({topic: z.string(), pageNumber: z.number(), totalPages: z.number()})},
-  output: {schema: StoryPageSchema},
-  prompt: `You are creating page {{pageNumber}} of a {{totalPages}}-page children's story book. Each page will have text and an illustration suitable for a coloring book.
-
-The story is about: {{topic}}.
-
-The entire story must be in Arabic.
-
-Your output for this page must include:
-- text: the Arabic text for this specific page of the story.
-- imageDataUri: a black-and-white, line-art illustration for the coloring book, returned as a base64 encoded data URI.
-
-Make the illustration simple, cute, and suitable for coloring.
-Ensure imageDataUri is a valid data URI with proper MIME type and base64 encoding.
-
-Output in JSON format.
-`,
+const StoryContentSchema = z.object({
+    chapterTitle: z.string().describe('The title of the chapter (2-4 words).'),
+    narrative: z.string().describe('The narrative of the chapter (150-200 words).'),
+    illustrationDescription: z.string().describe('A description for a coloring book illustration for this chapter.'),
 });
 
-const titlePrompt = ai.definePrompt({
-    name: 'titlePrompt',
-    input: { schema: z.object({ topic: z.string() }) },
-    output: { schema: z.object({ title: z.string() }) },
-    prompt: `Generate a short, creative story title in Arabic for a children's story about: {{topic}}. The title should be 3-5 words long.`,
+const StoryGenerationOutputSchema = z.object({
+  storyTitle: z.string().describe('The creative title of the story (3-5 words).'),
+  chapters: z.array(StoryContentSchema).describe('An array of story chapters.'),
+});
+
+const storyPrompt = ai.definePrompt({
+    name: 'storyStructurePrompt',
+    input: {schema: z.object({topic: z.string(), numPages: z.number()})},
+    output: {schema: StoryGenerationOutputSchema},
+    prompt: `You are a children’s story generator. Create a wholesome story in Arabic.
+
+Follow these rules:
+1.  **Language:** The entire output (story title, chapter titles, narrative) MUST be in Arabic. The ONLY exception is 'illustrationDescription', which must be in English.
+2.  **Story Elements:** The story should be about: {{{topic}}}.
+3.  **Structure:**
+    *   Generate a creative story title (3-5 words).
+    *   Divide the story into exactly {{numPages}} chapters.
+    *   Each chapter must have:
+        *   chapterTitle: 2–4 words in Arabic.
+        *   narrative: 100-150 words in simple, age-appropriate Arabic.
+        *   illustrationDescription: A simple, clear description in English for a coloring book illustration (e.g., "A happy boy holding a red balloon in a sunny park").
+
+Output in a valid JSON format.
+`,
 });
 
 const createStoryAndColoringPagesFlow = ai.defineFlow(
@@ -71,39 +77,40 @@ const createStoryAndColoringPagesFlow = ai.defineFlow(
     outputSchema: CreateStoryAndColoringPagesOutputSchema,
   },
   async (input): Promise<CreateStoryAndColoringPagesOutput> => {
-    let title = 'قصة جميلة';
-    try {
-        const titleResult = await titlePrompt({ topic: input.topic });
-        if (titleResult.output?.title) {
-            title = titleResult.output.title;
-        }
-    } catch (error) {
-        console.error("Failed to generate title:", error);
+    // Step 1: Generate the story text content (titles, narratives, illustration descriptions)
+    const { output: storyContent } = await storyPrompt(input);
+
+    if (!storyContent?.chapters?.length) {
+        throw new Error("Failed to generate story content.");
     }
     
-    const pagePromises = Array.from({ length: input.numPages }, (_, i) => {
-        const pageNumber = i + 1;
-        return pagePrompt({
-            topic: input.topic,
-            pageNumber: pageNumber,
-            totalPages: input.numPages,
-        }).then(result => {
-            if (result.output?.text && result.output?.imageDataUri) {
-                // Clean up the imageDataUri to ensure it's a valid data URI
-                const imageDataUri = result.output.imageDataUri.split(' ')[0].trim();
-                return { text: result.output.text, imageDataUri };
-            }
-            console.warn(`Invalid output for page ${pageNumber}. Skipping.`);
-            return null;
-        }).catch(error => {
-            console.error(`Failed to generate page ${pageNumber}:`, error);
-            return null;
-        });
+    // Extract the main character's name from the topic for image consistency.
+    // This is a simple heuristic and might need refinement.
+    const childName = input.topic.split(' ').find(word => word.length > 2) || 'child';
+
+    // Step 2: Generate images for each chapter in parallel
+    const imagePromises = storyContent.chapters.map(chapter => 
+        generateColoringPageFromDescription({
+            description: chapter.illustrationDescription,
+            childName: childName,
+        })
+    );
+    
+    const imageResults = await Promise.all(imagePromises);
+    
+    // Step 3: Combine text and images
+    const pages: StoryPage[] = storyContent.chapters.map((chapter, index) => {
+        const imageResult = imageResults[index];
+        return {
+            text: chapter.narrative,
+            // Fallback to a placeholder if image generation failed for a page
+            imageDataUri: imageResult?.coloringPageDataUri || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+        };
     });
 
-    const resolvedPages = await Promise.all(pagePromises);
-    const validPages = resolvedPages.filter((page): page is StoryPage => page !== null && page.imageDataUri.startsWith('data:image'));
-
-    return { title, pages: validPages };
+    return {
+        title: storyContent.storyTitle,
+        pages: pages,
+    };
   }
 );
