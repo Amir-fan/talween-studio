@@ -8,12 +8,10 @@
  */
 
 import {ai} from '@/ai/genkit';
-import { checkAndDeductCredits } from '@/lib/credits';
 import {z} from 'genkit';
 
 const GenerateColoringPageFromTextInputSchema = z.object({
   description: z.string().describe('The description of the coloring page to generate.'),
-  userId: z.string().describe('The ID of the user requesting the image.'),
 });
 export type GenerateColoringPageFromTextInput = z.infer<typeof GenerateColoringPageFromTextInputSchema>;
 
@@ -39,7 +37,6 @@ Instructions:
 - Objects and characters must be easy to recognize and cute, child-friendly.
 - The composition should be fun and inviting, suitable for children ages 4–10.`;
 
-
 const generateColoringPageFromTextFlow = ai.defineFlow(
   {
     name: 'generateColoringPageFromTextFlow',
@@ -47,14 +44,6 @@ const generateColoringPageFromTextFlow = ai.defineFlow(
     outputSchema: GenerateColoringPageFromTextOutputSchema,
   },
   async input => {
-    // Cost for a single image generation
-    const cost = 1; 
-    const creditCheck = await checkAndDeductCredits(input.userId, cost);
-
-    if (!creditCheck.success) {
-      throw new Error(creditCheck.error || 'Failed to deduct credits.');
-    }
-    
     const {media} = await ai.generate({
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
       prompt: illustrationPrompt.replace('{{{description}}}', input.description),
