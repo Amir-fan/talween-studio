@@ -1,7 +1,7 @@
 'use server';
 
-import { adminDb } from '@/lib/firebase-admin';
-import { collection, doc, setDoc, addDoc, FieldValue } from 'firebase-admin/firestore';
+import { dbAdmin } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 
 // This is a helper type and does not need to be exported
@@ -49,7 +49,7 @@ export async function saveStoryAction(
     const storyTitle = storyData.title || `مغامرة ${heroName} في ${location}`;
 
     // 1. Create a document reference with a new ID in the 'stories' collection
-    const storyRef = adminDb.collection('stories').doc();
+    const storyRef = dbAdmin.collection('stories').doc();
     const storyId = storyRef.id;
 
     // 2. Upload images and collect their public URLs
@@ -77,7 +77,7 @@ export async function saveStoryAction(
 
     // 4. Add each page as a separate document in the 'pages' subcollection
     const pagesCollectionRef = storyRef.collection('pages');
-    const batch = adminDb.batch();
+    const batch = dbAdmin.batch();
     pagesWithImageUrls.forEach((page, index) => {
       const pageRef = pagesCollectionRef.doc(`page_${index + 1}`);
       batch.set(pageRef, {

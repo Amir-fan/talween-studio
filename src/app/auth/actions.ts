@@ -5,7 +5,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, se
 import { app } from '@/lib/firebase-config';
 import { setCookie } from '@/lib/cookies';
 import { AuthError } from 'firebase/auth';
-import { adminDb } from '@/lib/firebase-admin';
+import { dbAdmin } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 
 const auth = getAuth(app);
@@ -55,7 +55,7 @@ export async function signUpUser(
     await setCookie('auth-token', idToken);
     
     // Create user document in Firestore
-    const userRef = adminDb.collection('users').doc(user.uid);
+    const userRef = dbAdmin.collection('users').doc(user.uid);
     await userRef.set({
       uid: user.uid,
       email: user.email,
@@ -82,7 +82,7 @@ export async function signInUser(
     await setCookie('auth-token', idToken);
 
     // Update lastLogin timestamp
-    const userRef = adminDb.collection('users').doc(user.uid);
+    const userRef = dbAdmin.collection('users').doc(user.uid);
     await userRef.update({
       lastLogin: FieldValue.serverTimestamp(),
     });
