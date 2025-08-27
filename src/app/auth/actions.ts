@@ -2,13 +2,13 @@
 
 import { z } from 'zod';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { app, db } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { setCookie } from '@/lib/cookies';
 import type { AuthError } from 'firebase/auth';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { createUserDocument } from '@/ai/flows/create-user-document';
 
-const auth = getAuth(app);
+const auth = getAuth();
 
 const authSchema = z.object({
   email: z.string().email(),
