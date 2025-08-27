@@ -259,7 +259,7 @@ export default function CreateStoryPage() {
                   </Select>
                 </div>
                  <div>
-                  <Label htmlFor="num-pages" className="mb-2 block text-right font-semibold">كم عدد الصفحات التي تريدها؟ (حد أقصى 30)</Label>
+                  <Label htmlFor="num-pages" className="mb-2 block text-right font-semibold">عدد الصفحات و الحد الاقصى 30</Label>
                    <Input 
                     id="num-pages" 
                     type="number" 
