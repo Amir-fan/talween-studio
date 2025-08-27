@@ -81,22 +81,20 @@ const createStoryAndColoringPagesFlow = ai.defineFlow(
         console.error("Failed to generate title:", error);
     }
 
-    const pagePromises: Promise<StoryPage | null>[] = Array.from({ length: input.numPages }, (_, i) => {
+    const pagePromises = Array.from({ length: input.numPages }, (_, i) => {
         const pageNumber = i + 1;
         return pagePrompt({
             topic: input.topic,
             pageNumber: pageNumber,
             totalPages: input.numPages,
         }).then(result => {
-             // Validate the output to ensure it's a valid StoryPage
-            if (result.output && typeof result.output.text === 'string' && typeof result.output.imageDataUri === 'string') {
-                return result.output;
+            if (result.output?.text && result.output?.imageDataUri) {
+                return result.output as StoryPage;
             }
             console.warn(`Invalid output for page ${pageNumber}. Skipping.`);
             return null;
         }).catch(error => {
             console.error(`Failed to generate page ${pageNumber}:`, error);
-            // Return null if a specific page generation fails
             return null;
         });
     });

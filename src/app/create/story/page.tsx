@@ -9,7 +9,6 @@ import {
   Sparkles,
   Heart,
   BookOpen,
-  Image as ImageIcon,
   CheckCircle,
   Loader2,
   Download,
@@ -38,13 +37,27 @@ import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import {
-  createStoryAndColoringPages,
-  CreateStoryAndColoringPagesOutput,
-} from '@/ai/flows/create-story-and-coloring-pages';
+  generateStory,
+  GenerateStoryOutput,
+} from '@/ai/flows/generate-story';
+import {
+    generateColoringPageFromDescription,
+    GenerateColoringPageFromDescriptionOutput,
+} from '@/ai/flows/generate-coloring-page-from-description';
 import React from 'react';
 import { saveStoryAction } from './actions';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+
+interface FinalStoryPage {
+  text: string;
+  imageDataUri: string;
+}
+
+interface FinalStory {
+  title: string;
+  pages: FinalStoryPage[];
+}
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
@@ -67,9 +80,13 @@ const lessons = [
 export default function CreateStoryPage() {
   const [step, setStep] = useState(1);
   const [heroName, setHeroName] = useState('');
+  const [heroAge, setHeroAge] = useState('6-9');
   const [location, setLocation] = useState('');
-  const [story, setStory] = useState<CreateStoryAndColoringPagesOutput | null>(null);
+  const [selectedLesson, setSelectedLesson] = useState('');
+
+  const [story, setStory] = useState<FinalStory | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const storyContainerRef = React.useRef<HTMLDivElement>(null);
@@ -100,7 +117,7 @@ export default function CreateStoryPage() {
         let y = 0;
 
         if (imgHeight > pdfHeight) {
-            imgHeight = pdfHeight; // it's not going to fit, so just make it page height
+            imgHeight = pdfHeight;
         }
         y = (pdfHeight - imgHeight) / 2;
 
@@ -145,42 +162,73 @@ export default function CreateStoryPage() {
   }
 
   const handleGenerateStory = async () => {
-    if (!heroName || !location) {
+    if (!heroName || !location || !selectedLesson) {
          toast({
             variant: "destructive",
             title: "معلومات ناقصة",
-            description: "الرجاء إدخال اسم البطل واختيار مكان الأحداث.",
+            description: "الرجاء إكمال جميع الحقول لإنشاء القصة.",
         });
         return;
     }
 
     setLoading(true);
     setStory(null);
-    setStep(3); // Move to the story view step
+    setStep(3);
 
     try {
-        const topic = `قصة عن طفل اسمه ${heroName} في ${location}`;
-        const result = await createStoryAndColoringPages({ topic, numPages: 3 });
-        
-        if (result && result.pages.length > 0) {
-            setStory(result);
-        } else {
-             toast({
-                variant: "destructive",
-                title: "حدث خطأ في إنشاء القصة",
-                description: "لم نتمكن من إنشاء القصة. قد يكون هناك ضغط على الخدمة. الرجاء المحاولة مرة أخرى.",
-            });
-            setStep(2); // Go back to the previous step on error
+        setLoadingMessage("يتم الآن كتابة قصة شيقة...");
+        const storyResult = await generateStory({
+            childName: heroName,
+            age: heroAge,
+            place: location,
+            lesson: selectedLesson,
+        });
+
+        if (!storyResult || !storyResult.chapters?.length) {
+            throw new Error("لم نتمكن من إنشاء نص القصة. حاول مرة أخرى.");
         }
+        
+        const finalPages: FinalStoryPage[] = [];
+
+        for (let i = 0; i < storyResult.chapters.length; i++) {
+            const chapter = storyResult.chapters[i];
+            setLoadingMessage(`يتم الآن رسم الصور... (${i+1}/${storyResult.chapters.length})`);
+            
+            const imageResult = await generateColoringPageFromDescription({
+                description: chapter.illustrationDescription,
+                childName: heroName,
+            });
+
+            if (!imageResult?.coloringPageDataUri) {
+                 console.warn(`Could not generate image for chapter ${i+1}. Skipping.`);
+                 continue; // Skip this page if image generation fails
+            }
+
+            finalPages.push({
+                text: `${chapter.chapterTitle}\n\n${chapter.narrative}`,
+                imageDataUri: imageResult.coloringPageDataUri
+            });
+        }
+        
+        if (finalPages.length === 0) {
+            throw new Error("فشل إنشاء الصور لكل الصفحات. الرجاء المحاولة مرة أخرى.");
+        }
+
+        setStory({
+            title: storyResult.storyTitle,
+            pages: finalPages
+        });
+
     } catch (error) {
         toast({
             variant: "destructive",
             title: "حدث خطأ",
-            description: "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.",
+            description: error instanceof Error ? error.message : "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.",
         });
         setStep(2); // Go back to the previous step on error
     } finally {
         setLoading(false);
+        setLoadingMessage('');
     }
   };
 
@@ -247,7 +295,7 @@ export default function CreateStoryPage() {
                 </div>
                 <div>
                   <Label htmlFor="hero-age" className="mb-2 block text-right font-semibold">العمر</Label>
-                  <Select dir="rtl">
+                  <Select dir="rtl" value={heroAge} onValueChange={setHeroAge}>
                     <SelectTrigger id="hero-age">
                       <SelectValue placeholder="اختر الفئة العمرية" />
                     </SelectTrigger>
@@ -293,14 +341,14 @@ export default function CreateStoryPage() {
                     <CardDescription>اختر القيم التي تريد غرسها في القصة</CardDescription>
                 </CardHeader>
                 <CardContent className="px-8">
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-4 md:grid-cols-3 lg:grid-cols-4">
+                    <RadioGroup dir="rtl" className="grid grid-cols-2 gap-4 md:grid-cols-4" value={selectedLesson} onValueChange={setSelectedLesson}>
                         {lessons.map((lesson) => (
                             <div key={lesson} className="flex items-center justify-end gap-3">
+                               <RadioGroupItem value={lesson} id={lesson} />
                                <Label htmlFor={lesson} className="cursor-pointer font-medium hover:text-primary">{lesson}</Label>
-                                <Checkbox id={lesson} dir='rtl' />
                             </div>
                         ))}
-                    </div>
+                    </RadioGroup>
                 </CardContent>
                 <CardFooter className="justify-between p-8">
                     <Button onClick={prevStep} size="lg" variant="outline">
@@ -325,7 +373,7 @@ export default function CreateStoryPage() {
                     {loading && (
                          <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-muted-foreground">
                             <Loader2 className="h-16 w-16 animate-spin text-primary" />
-                            <p className="font-semibold">لحظات، القصة على وشك الاكتمال...</p>
+                            <p className="font-semibold">{loadingMessage || 'لحظات، القصة على وشك الاكتمال...'}</p>
                             <p className="text-sm">يقوم الذكاء الاصطناعي بنسج الكلمات والصور معاً.</p>
                         </div>
                     )}
@@ -334,7 +382,7 @@ export default function CreateStoryPage() {
                            {story.pages.map((page, index) => (
                                <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center story-page-container bg-white p-4 rounded-lg">
                                    <div className='order-2 md:order-1'>
-                                        <p className="leading-loose text-lg">{page.text}</p>
+                                        <p className="leading-loose text-lg whitespace-pre-wrap">{page.text}</p>
                                    </div>
                                    <div className='order-1 md:order-2'>
                                        <Image
