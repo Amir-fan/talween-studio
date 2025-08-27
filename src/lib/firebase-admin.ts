@@ -7,9 +7,9 @@ import { getAuth, Auth } from 'firebase-admin/auth';
 import { getStorage, Bucket } from 'firebase-admin/storage';
 
 let adminApp: App | undefined;
-let adminDb: Firestore | undefined;
-let adminAuth: Auth | undefined;
-let adminStorage: Bucket | undefined;
+let dbAdmin: Firestore | undefined;
+let authAdmin: Auth | undefined;
+let bucketAdmin: Bucket | undefined;
 
 const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
@@ -26,9 +26,9 @@ if (serviceAccountKey) {
     }
 
     if (adminApp) {
-        adminDb = getFirestore(adminApp);
-        adminAuth = getAuth(adminApp);
-        adminStorage = getStorage(adminApp).bucket();
+        dbAdmin = getFirestore(adminApp);
+        authAdmin = getAuth(adminApp);
+        bucketAdmin = getStorage(adminApp).bucket();
     }
 
   } catch (e) {
@@ -48,6 +48,13 @@ if (serviceAccountKey) {
 const
   err =
     'Firebase Admin SDK not initialized. Please set FIREBASE_SERVICE_ACCOUNT_KEY in your .env file.';
-export const dbAdmin = adminDb || new Proxy({}, { get: () => { throw new Error(err); } }) as Firestore;
-export const authAdmin = adminAuth || new Proxy({}, { get: () => { throw new Error(err); } }) as Auth;
-export const bucketAdmin = adminStorage || new Proxy({}, { get: () => { throw new Error(err); } }) as Bucket;
+const proxyHandler = {
+    get: (target: any, prop: any) => {
+        throw new Error(err);
+    }
+};
+
+export { adminApp };
+export const dbAdmin: Firestore = dbAdmin || new Proxy({}, proxyHandler);
+export const authAdmin: Auth = authAdmin || new Proxy({}, proxyHandler);
+export const bucketAdmin: Bucket = bucketAdmin || new Proxy({}, proxyHandler);

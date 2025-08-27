@@ -55,13 +55,12 @@ export async function signUpUser(
     const idToken = await user.getIdToken();
     await setCookie('auth-token', idToken);
     
-    // Create user document in Firestore using Admin SDK
     const userRef = dbAdmin.collection('users').doc(user.uid);
     await userRef.set({
       uid: user.uid,
       email: user.email,
       name: values.name || '',
-      credits: 50, // Welcome gift
+      credits: 50,
       createdAt: FieldValue.serverTimestamp(),
       lastLogin: FieldValue.serverTimestamp(),
       status: 'active'
@@ -82,7 +81,6 @@ export async function signInUser(
     const idToken = await user.getIdToken();
     await setCookie('auth-token', idToken);
 
-    // Update lastLogin timestamp using the CLIENT SDK
     const userRef = doc(db, 'users', user.uid);
     await updateDoc(userRef, {
         lastLogin: serverTimestamp()
