@@ -10,6 +10,8 @@ import {
   Wand2,
   Lightbulb,
   Sparkles,
+  Download,
+  Save,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,7 +24,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { generateImageAction } from './actions';
+import { generateImageAction, saveImageToLibraryAction } from './actions';
 
 const formSchema = z.object({
   description: z.string().min(3, {
@@ -32,6 +34,7 @@ const formSchema = z.object({
 
 export function ColoringSection() {
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [imageDataUri, setImageDataUri] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -68,6 +71,45 @@ export function ColoringSection() {
     form.setValue('description', 'سفينة تبحر في المحيط');
   }
 
+  function handleDownload() {
+    if (!imageDataUri) return;
+    const link = document.createElement('a');
+    link.href = imageDataUri;
+    link.download = `${form.getValues('description') || 'coloring-page'}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  async function handleSave() {
+    if (!imageDataUri) return;
+    setSaving(true);
+    try {
+      const result = await saveImageToLibraryAction({
+        imageDataUri: imageDataUri,
+        description: form.getValues('description'),
+      });
+
+      if (result.success) {
+        toast({
+          title: 'تم الحفظ بنجاح',
+          description: 'تم حفظ الصورة في مكتبتك.',
+        });
+      } else {
+        throw new Error(result.error || 'فشل حفظ الصورة.');
+      }
+    } catch (error) {
+       toast({
+        variant: 'destructive',
+        title: 'حدث خطأ',
+        description:
+          error instanceof Error ? error.message : 'An unknown error occurred.',
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-5">
       <div className="order-2 lg:order-1 lg:col-span-3">
@@ -82,14 +124,26 @@ export function ColoringSection() {
               </div>
             )}
             {imageDataUri && (
-                <div className="aspect-square w-full max-w-full overflow-hidden rounded-lg border bg-white shadow-sm">
-                    <Image
-                    src={imageDataUri}
-                    alt="Generated coloring page"
-                    width={800}
-                    height={800}
-                    className="h-full w-full object-contain"
-                    />
+                <div className="w-full">
+                    <div className="aspect-square w-full max-w-full overflow-hidden rounded-lg border bg-white shadow-sm">
+                        <Image
+                        src={imageDataUri}
+                        alt="Generated coloring page"
+                        width={800}
+                        height={800}
+                        className="h-full w-full object-contain"
+                        />
+                    </div>
+                     <div className="mt-4 flex justify-center gap-4">
+                        <Button onClick={handleDownload} variant="outline">
+                            <Download />
+                            تحميل
+                        </Button>
+                        <Button onClick={handleSave} disabled={saving}>
+                            {saving ? <Loader2 className="animate-spin" /> : <Save />}
+                            {saving ? 'جاري الحفظ...' : 'حفظ في المكتبة'}
+                        </Button>
+                    </div>
                 </div>
             )}
             {!loading && !imageDataUri && (

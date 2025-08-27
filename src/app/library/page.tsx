@@ -12,12 +12,13 @@ import {
   Star,
   Download,
   Heart,
-  LayoutDashboard
+  LayoutDashboard,
+  Palette,
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { collection, getDocs, QueryDocumentSnapshot, DocumentData, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,8 +31,14 @@ interface Story {
   thumbnailUrl: string;
 }
 
+interface Creation {
+  id: string;
+  description: string;
+  imageUrl: string;
+}
+
 const tabs = [
-    { name: 'مشاريعي', icon: LayoutDashboard },
+    { name: 'إبداعاتي', icon: Palette },
     { name: 'قصصي', icon: BookOpen },
     { name: 'القوالب المحفوظة', icon: Star },
     { name: 'مشترياتي', icon: Download },
@@ -39,15 +46,17 @@ const tabs = [
 
 export default function LibraryPage() {
   const [stories, setStories] = useState<Story[]>([]);
+  const [creations, setCreations] = useState<Creation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('مشاريعي');
+  const [activeTab, setActiveTab] = useState('إبداعاتي');
 
   useEffect(() => {
     async function fetchStories() {
       setLoading(true);
       try {
         const storiesCollection = collection(db, 'stories');
-        const storySnapshot = await getDocs(storiesCollection);
+        const q = query(storiesCollection, orderBy('createdAt', 'desc'));
+        const storySnapshot = await getDocs(q);
         const storiesList = storySnapshot.docs.map((doc: QueryDocumentSnapshot<DocumentData>) => ({
           id: doc.id,
           ...(doc.data() as Omit<Story, 'id'>),
@@ -55,17 +64,38 @@ export default function LibraryPage() {
         setStories(storiesList);
       } catch (error) {
         console.error("Failed to fetch stories:", error);
-        // Optionally, show a toast notification for the error
       } finally {
         setLoading(false);
       }
     }
 
+    async function fetchCreations() {
+      setLoading(true);
+      try {
+        const creationsCollection = collection(db, 'creations');
+        const q = query(creationsCollection, orderBy('createdAt', 'desc'));
+        const creationSnapshot = await getDocs(q);
+        const creationsList = creationSnapshot.docs.map((doc: QueryDocumentSnapshot<DocumentData>) => ({
+          id: doc.id,
+          ...(doc.data() as Omit<Creation, 'id'>),
+        }));
+        setCreations(creationsList);
+      } catch (error) {
+        console.error("Failed to fetch creations:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    setStories([]);
+    setCreations([]);
+
     if(activeTab === 'قصصي') {
         fetchStories();
+    } else if (activeTab === 'إبداعاتي') {
+        fetchCreations();
     } else {
         setLoading(false);
-        setStories([]); // Clear stories for other tabs
     }
   }, [activeTab]);
 
@@ -90,7 +120,7 @@ export default function LibraryPage() {
         if (stories.length > 0) {
             return (
                 <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                    {stories.map((story, index) => (
+                    {stories.map((story) => (
                     <Card key={story.id} className="group overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-2 rounded-2xl">
                         <CardContent className="p-0">
                         <Link href={`/story/${story.id}`}>
@@ -135,7 +165,7 @@ export default function LibraryPage() {
                  <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed bg-secondary/30 p-12 text-center min-h-[400px]">
                     <BookOpen className="h-16 w-16 text-muted-foreground/50" />
                     <p className="mt-4 font-semibold text-muted-foreground">
-                    مكتبتك فارغة حالياً
+                    مكتبة قصصك فارغة حالياً
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
                     احفظ القصص التي تنشئها للوصول إليها هنا.
@@ -143,6 +173,49 @@ export default function LibraryPage() {
                     <Button asChild className="mt-6">
                         <Link href="/create/story">
                             أنشئ قصتك الأولى
+                        </Link>
+                    </Button>
+                </div>
+            )
+        }
+    }
+    
+    if (activeTab === 'إبداعاتي') {
+        if (creations.length > 0) {
+            return (
+                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                    {creations.map((creation) => (
+                    <Card key={creation.id} className="group overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-2 rounded-2xl">
+                        <CardContent className="p-0">
+                             <div className="relative aspect-square w-full">
+                                <Image
+                                    src={creation.imageUrl}
+                                    alt={creation.description}
+                                    fill
+                                    className="object-contain transition-transform duration-300 group-hover:scale-105 p-4"
+                                />
+                            </div>
+                        <div className="p-4 pt-0">
+                            <p className="text-sm text-muted-foreground truncate">{creation.description}</p>
+                        </div>
+                        </CardContent>
+                    </Card>
+                    ))}
+                </div>
+            )
+        } else {
+            return (
+                 <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed bg-secondary/30 p-12 text-center min-h-[400px]">
+                    <Palette className="h-16 w-16 text-muted-foreground/50" />
+                    <p className="mt-4 font-semibold text-muted-foreground">
+                        لم تقم بإنشاء أي صورة بعد
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                       اذهب إلى صفحة الإنشاء لتبدأ.
+                    </p>
+                    <Button asChild className="mt-6">
+                        <Link href="/create/word">
+                            إنشاء صورة من نص
                         </Link>
                     </Button>
                 </div>
@@ -165,11 +238,11 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-yellow-50/30">
+    <div className="min-h-screen bg-transparent">
       <div className="container mx-auto px-4 py-12">
         <header className="mb-10 text-center flex flex-col items-center">
             <div className="flex items-center gap-4 mb-4 bg-white rounded-2xl px-6 py-3 shadow-sm">
-                 <BookOpen className="h-10 w-10 text-primary" />
+                 <Library className="h-10 w-10 text-primary" />
                  <h1 className="font-headline text-5xl font-bold text-foreground">مكتبتي</h1>
             </div>
             <p className="mt-2 text-lg text-muted-foreground">

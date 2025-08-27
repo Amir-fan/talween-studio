@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { Button } from './ui/button';
-import { User, Globe, Library, Menu, BookOpen, School, ShoppingCart } from 'lucide-react';
+import { User, Globe, Library, Menu, BookOpen, School, ShoppingCart, Palette } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 
 const navLinks = [
