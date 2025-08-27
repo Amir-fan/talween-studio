@@ -77,13 +77,18 @@ const createStoryAndColoringPagesFlow = ai.defineFlow(
     // Generate pages sequentially
     const pages = [];
     for (let i = 1; i <= input.numPages; i++) {
-      const pageResult = await pagePrompt({
-        topic: input.topic,
-        pageNumber: i,
-        totalPages: input.numPages,
-      });
-      if (pageResult.output) {
-        pages.push(pageResult.output);
+      try {
+        const pageResult = await pagePrompt({
+          topic: input.topic,
+          pageNumber: i,
+          totalPages: input.numPages,
+        });
+        if (pageResult.output) {
+          pages.push(pageResult.output);
+        }
+      } catch (error) {
+        console.error(`Failed to generate page ${i}:`, error);
+        // Skip the failed page and continue
       }
     }
 
