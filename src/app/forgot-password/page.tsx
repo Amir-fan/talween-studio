@@ -5,8 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Loader2, UserPlus } from 'lucide-react';
+import { Loader2, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -25,43 +24,38 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { signUpUser } from '@/app/auth/actions';
+import { sendResetPasswordEmail } from '@/app/auth/actions';
 
 const formSchema = z.object({
-  name: z.string().min(2, { message: 'الرجاء إدخال اسم.' }),
   email: z.string().email({ message: 'الرجاء إدخال بريد إلكتروني صالح.' }),
-  password: z.string().min(6, { message: 'يجب أن تكون كلمة المرور 6 أحرف على الأقل.' }),
 });
 
-export default function SignUpPage() {
+export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: '',
       email: '',
-      password: '',
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     try {
-      const result = await signUpUser(values);
+      const result = await sendResetPasswordEmail(values);
       if (result.success) {
         toast({
-          title: 'تم إنشاء الحساب بنجاح!',
-          description: 'أهلاً بك في عالم الإبداع. لقد حصلت على 50 نقطة مجانية للبدء!',
+          title: 'تم إرسال البريد الإلكتروني',
+          description: 'تحقق من بريدك الإلكتروني للحصول على إرشادات إعادة تعيين كلمة المرور.',
         });
-        router.push('/account');
+        form.reset();
       } else {
-        throw new Error(result.error || 'فشلت عملية إنشاء الحساب.');
+        throw new Error(result.error || 'فشلت عملية إرسال البريد الإلكتروني.');
       }
     } catch (error) {
-       toast({
+      toast({
         variant: 'destructive',
         title: 'حدث خطأ',
         description: error instanceof Error ? error.message : 'An unknown error occurred.',
@@ -75,25 +69,12 @@ export default function SignUpPage() {
     <div className="flex min-h-[calc(100vh-140px)] items-center justify-center bg-gray-50/50 px-4 py-12">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="font-headline text-3xl">إنشاء حساب جديد</CardTitle>
-          <CardDescription>انضم إلينا وابدأ رحلة الإبداع</CardDescription>
+          <CardTitle className="font-headline text-3xl">نسيت كلمة المرور؟</CardTitle>
+          <CardDescription>لا تقلق! أدخل بريدك الإلكتروني وسنرسل لك رابطًا لإعادة تعيينها.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>الاسم</FormLabel>
-                    <FormControl>
-                      <Input placeholder="اسمك" {...field} disabled={loading} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={form.control}
                 name="email"
@@ -107,27 +88,14 @@ export default function SignUpPage() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>كلمة المرور</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} disabled={loading} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? <Loader2 className="animate-spin" /> : <UserPlus />}
-                {loading ? 'جاري الإنشاء...' : 'إنشاء حساب'}
+                {loading ? <Loader2 className="animate-spin" /> : <Mail />}
+                {loading ? '...جاري الإرسال' : 'إرسال رابط إعادة التعيين'}
               </Button>
             </form>
           </Form>
           <div className="mt-4 text-center text-sm">
-            لديك حساب بالفعل؟{' '}
+            تذكرت كلمة المرور؟{' '}
             <Link href="/login" className="text-primary hover:underline">
               تسجيل الدخول
             </Link>

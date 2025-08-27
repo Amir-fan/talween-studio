@@ -1,8 +1,8 @@
 'use server';
 
-import { db, storage } from '@/lib/firebase';
-import { collection, doc, setDoc, addDoc } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { adminDb } from '@/lib/firebase-admin';
+import { collection, doc, setDoc, addDoc, FieldValue } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 
 // This is a helper type and does not need to be exported
 interface StoryPageForSave {
@@ -18,25 +18,38 @@ interface StoryDataForSave {
 
 
 async function uploadImage(imageDataUri: string, storyId: string, pageIndex: number): Promise<string> {
-  const storageRef = ref(storage, `stories/${storyId}/page_${pageIndex + 1}.png`);
-  // Ensure we are passing only the base64 part of the data URI
-  const base64Data = imageDataUri.includes(',') ? imageDataUri.split(',')[1] : imageDataUri;
-  const uploadResult = await uploadString(storageRef, base64Data, 'base64', {
-      contentType: 'image/png'
+  const bucket = getStorage().bucket();
+  const file = bucket.file(`stories/${storyId}/page_${pageIndex + 1}.png`);
+  
+  const base64Data = imageDataUri.split(',')[1];
+  const buffer = Buffer.from(base64Data, 'base64');
+
+  await file.save(buffer, {
+    metadata: {
+      contentType: 'image/png',
+    },
   });
-  return await getDownloadURL(uploadResult.ref);
+
+  // Make the file public and get the URL
+  await file.makePublic();
+  return file.publicUrl();
 }
 
 export async function saveStoryAction(
   storyData: StoryDataForSave,
   heroName: string,
   location: string,
+  userId: string,
 ): Promise<{ success: boolean; error?: string; storyId?: string }> {
+  if (!userId) {
+    return { success: false, error: 'User not authenticated.' };
+  }
+  
   try {
     const storyTitle = storyData.title || `مغامرة ${heroName} في ${location}`;
 
     // 1. Create a document reference with a new ID in the 'stories' collection
-    const storyRef = doc(collection(db, 'stories'));
+    const storyRef = adminDb.collection('stories').doc();
     const storyId = storyRef.id;
 
     // 2. Upload images and collect their public URLs
@@ -53,19 +66,26 @@ export async function saveStoryAction(
     const firstImageUrl = pagesWithImageUrls.length > 0 ? pagesWithImageUrls[0].imageUrl : '';
 
     // 3. Set the main story document data
-    await setDoc(storyRef, {
+    await storyRef.set({
       title: storyTitle,
       heroName,
       location,
       thumbnailUrl: firstImageUrl,
-      createdAt: new Date(),
+      createdAt: FieldValue.serverTimestamp(),
+      userId: userId, // Associate story with the user
     });
 
     // 4. Add each page as a separate document in the 'pages' subcollection
-    const pagesCollectionRef = collection(db, 'stories', storyId, 'pages');
-    for (const page of pagesWithImageUrls) {
-        await addDoc(pagesCollectionRef, page);
-    }
+    const pagesCollectionRef = storyRef.collection('pages');
+    const batch = adminDb.batch();
+    pagesWithImageUrls.forEach((page, index) => {
+      const pageRef = pagesCollectionRef.doc(`page_${index + 1}`);
+      batch.set(pageRef, {
+          ...page,
+          pageNumber: index + 1
+      });
+    });
+    await batch.commit();
 
     return { success: true, storyId: storyId };
   } catch (error) {

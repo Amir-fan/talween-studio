@@ -1,13 +1,25 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User, signOut, IdTokenResult } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import { deleteCookie, getCookie, setCookie } from '@/lib/cookies';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { onAuthStateChanged, User, signOut } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import { doc, onSnapshot, DocumentData } from 'firebase/firestore';
+import { deleteCookie, setCookie } from '@/lib/cookies';
 import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+interface UserData {
+  uid: string;
+  email: string;
+  name: string;
+  credits: number;
+  status: string;
+  // Add other user profile fields here
+}
 
 interface AuthContextType {
   user: User | null;
+  userData: UserData | null;
   loading: boolean;
   logout: () => void;
 }
@@ -16,26 +28,52 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      setLoading(false);
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        const token: string = await user.getIdToken();
+        setUser(user);
+        const token = await user.getIdToken();
         setCookie('auth-token', token);
+
+        // Listen for user data changes
+        const userDocRef = doc(db, 'users', user.uid);
+        const unsubscribeFirestore = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setUserData(docSnap.data() as UserData);
+          } else {
+            // This case might happen if the Firestore doc isn't created yet
+            // or was deleted.
+            setUserData(null);
+          }
+          setLoading(false);
+        }, (error) => {
+            console.error("Error listening to user document:", error);
+            setUserData(null);
+            setLoading(false);
+        });
+
+        return () => unsubscribeFirestore();
       } else {
+        setUser(null);
+        setUserData(null);
+        setLoading(false);
         deleteCookie('auth-token');
       }
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, []);
 
   const logout = async () => {
     await signOut(auth);
     setUser(null);
+    setUserData(null);
+    deleteCookie('auth-token');
+    router.push('/'); // Redirect to home page after logout
   };
 
   if (loading) {
@@ -46,7 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   }
 
-  return <AuthContext.Provider value={{ user, loading, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, userData, loading, logout }}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = (): AuthContextType => {

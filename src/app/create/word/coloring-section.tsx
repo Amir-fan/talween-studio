@@ -25,6 +25,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { generateImageAction, saveImageToLibraryAction } from './actions';
+import { useAuth } from '@/context/auth-context';
+import { InsufficientCreditsPopup } from '@/components/popups/insufficient-credits-popup';
 
 const formSchema = z.object({
   description: z.string().min(3, {
@@ -36,7 +38,10 @@ export function ColoringSection() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [imageDataUri, setImageDataUri] = useState<string | null>(null);
+  const [showCreditPopup, setShowCreditPopup] = useState(false);
   const { toast } = useToast();
+  const { user, userData } = useAuth();
+
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -46,14 +51,27 @@ export function ColoringSection() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!user) {
+       toast({
+        variant: 'destructive',
+        title: 'الرجاء تسجيل الدخول',
+        description: 'يجب عليك تسجيل الدخول لإنشاء صور.',
+      });
+      return;
+    }
+    
     setLoading(true);
     setImageDataUri(null);
     try {
-      const result = await generateImageAction(values);
+      const result = await generateImageAction({ ...values, userId: user.uid });
       if (result.success && result.data) {
         setImageDataUri(result.data.coloringPageDataUri);
       } else {
-        throw new Error(result.error || 'فشلت عملية إنشاء الصورة.');
+        if (result.error?.includes('Not enough credits')) {
+            setShowCreditPopup(true);
+        } else {
+             throw new Error(result.error || 'فشلت عملية إنشاء الصورة.');
+        }
       }
     } catch (error) {
       toast({
@@ -111,11 +129,16 @@ export function ColoringSection() {
   }
 
   return (
+    <>
+    <InsufficientCreditsPopup open={showCreditPopup} onOpenChange={setShowCreditPopup} />
     <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-5">
       <div className="order-2 lg:order-1 lg:col-span-3">
         <Card className="flex min-h-[600px] flex-col p-4">
            <CardContent className="flex w-full flex-col items-center justify-center p-0 pt-6">
-            <h2 className="mb-4 self-start font-headline text-xl font-bold">صورة التلوين</h2>
+            <div className="mb-4 self-start flex justify-between w-full items-center">
+              <h2 className="font-headline text-xl font-bold">صورة التلوين</h2>
+              <span className="text-sm font-bold text-primary">التكلفة: 1 نقطة</span>
+            </div>
             {loading && (
               <div className="flex flex-col items-center gap-4 text-muted-foreground">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -139,7 +162,7 @@ export function ColoringSection() {
                             <Download />
                             تحميل
                         </Button>
-                        <Button onClick={handleSave} disabled={saving}>
+                        <Button onClick={handleSave} disabled={saving || !user}>
                             {saving ? <Loader2 className="animate-spin" /> : <Save />}
                             {saving ? 'جاري الحفظ...' : 'حفظ في المكتبة'}
                         </Button>
@@ -198,7 +221,7 @@ export function ColoringSection() {
                             </FormItem>
                         )}
                         />
-                        <Button type="submit" size="lg" className="w-full rounded-full bg-gradient-to-r from-primary to-orange-500 font-bold text-primary-foreground hover:from-primary/90 hover:to-orange-500/90" disabled={loading}>
+                        <Button type="submit" size="lg" className="w-full rounded-full bg-gradient-to-r from-primary to-orange-500 font-bold text-primary-foreground hover:from-primary/90 hover:to-orange-500/90" disabled={loading || !user}>
                         {loading ? (
                             <Loader2 className="ml-2 h-4 w-4 animate-spin" />
                         ) : (
@@ -228,5 +251,6 @@ export function ColoringSection() {
         </div>
       </div>
     </div>
+    </>
   );
 }

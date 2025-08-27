@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -33,7 +33,8 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { createStoryAndColoringPages, CreateStoryAndColoringPagesOutput, StoryPage } from '@/ai/flows/create-story-and-coloring-pages';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useAuth } from '@/context/auth-context';
+import { InsufficientCreditsPopup } from '@/components/popups/insufficient-credits-popup';
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
@@ -53,6 +54,10 @@ const lessons = [
     'التعاون', 'الأمانة', 'العدل', 'حب الحيوانات', 'إدارة الوقت', 'النمو والتعلم'
 ];
 
+function calculateCost(numPages: number): number {
+    return Math.ceil(numPages * 1.25);
+}
+
 export default function CreateStoryPage() {
   const [step, setStep] = useState(1);
   const [heroName, setHeroName] = useState('');
@@ -65,9 +70,13 @@ export default function CreateStoryPage() {
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showCreditPopup, setShowCreditPopup] = useState(false);
+
   const { toast } = useToast();
+  const { user, userData } = useAuth();
   const storyContainerRef = React.useRef<HTMLDivElement>(null);
 
+  const storyCost = useMemo(() => calculateCost(numPages), [numPages]);
 
   const nextStep = () => setStep((prev) => (prev < steps.length ? prev + 1 : prev));
   const prevStep = () => setStep((prev) => (prev > 1 ? prev - 1 : prev));
@@ -112,13 +121,14 @@ export default function CreateStoryPage() {
   };
 
   const handleSave = async () => {
-    if (!story) return;
+    if (!story || !user) return;
     setSaving(true);
     try {
       const result = await saveStoryAction(
         story,
         heroName,
         location,
+        user.uid,
       );
 
       if (result.success) {
@@ -142,6 +152,14 @@ export default function CreateStoryPage() {
   }
 
   const handleGenerateStory = async () => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "الرجاء تسجيل الدخول",
+        description: "يجب عليك تسجيل الدخول لإنشاء قصة.",
+      });
+      return;
+    }
     if (!isStep1Complete || !isStep2Complete) {
          toast({
             variant: "destructive",
@@ -159,7 +177,7 @@ export default function CreateStoryPage() {
         setLoadingMessage("يتم الآن كتابة قصة شيقة...");
         
         const topic = `قصة عن طفل اسمه ${heroName} عمره ${heroAge} في ${location} ويتعلم عن ${selectedLesson}`;
-        const result = await createStoryAndColoringPages({ topic, numPages });
+        const result = await createStoryAndColoringPages({ topic, numPages, userId: user.uid });
 
         if (!result || !result.pages || result.pages.length === 0) {
           throw new Error("فشل إنشاء القصة. لم يتم إرجاع أي صفحات.");
@@ -168,11 +186,16 @@ export default function CreateStoryPage() {
         setStory(result);
 
     } catch (error) {
-        toast({
-            variant: "destructive",
-            title: "حدث خطأ",
-            description: error instanceof Error ? error.message : "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.",
-        });
+        const errorMessage = error instanceof Error ? error.message : "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.";
+        if (errorMessage.includes('Not enough credits')) {
+            setShowCreditPopup(true);
+        } else {
+            toast({
+                variant: "destructive",
+                title: "حدث خطأ",
+                description: errorMessage,
+            });
+        }
         setStep(2);
     } finally {
         setLoading(false);
@@ -182,6 +205,8 @@ export default function CreateStoryPage() {
 
 
   return (
+    <>
+    <InsufficientCreditsPopup open={showCreditPopup} onOpenChange={setShowCreditPopup} />
     <div className="min-h-screen bg-yellow-50/30">
       <div className="container mx-auto px-4 py-8">
         <header className="flex items-center justify-between">
@@ -255,14 +280,14 @@ export default function CreateStoryPage() {
                   </Select>
                 </div>
                  <div>
-                  <Label htmlFor="num-pages" className="mb-2 block text-right font-semibold">عدد الصفحات و الحد الاقصى 30</Label>
+                  <Label htmlFor="num-pages" className="mb-2 block text-right font-semibold">عدد الصفحات (حد أقصى 30)</Label>
                    <Input 
                     id="num-pages" 
                     type="number" 
                     value={numPages} 
                     onChange={(e) => {
-                        const val = Math.min(30, Number(e.target.value));
-                        setNumPages(val > 0 ? val : 1);
+                        const val = Math.max(1, Math.min(30, Number(e.target.value)));
+                        setNumPages(val);
                     }}
                     min="1"
                     max="30"
@@ -274,19 +299,18 @@ export default function CreateStoryPage() {
 
               <div>
                 <Label className="mb-4 block text-right font-semibold">مكان الأحداث</Label>
-                <RadioGroup dir="rtl" className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6" value={location} onValueChange={setLocation}>
+                <div dir="rtl" className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
                   {locations.map((loc) => (
-                      <div key={loc}>
-                          <RadioGroupItem value={loc} id={loc} className="peer sr-only" />
-                          <Label
-                              htmlFor={loc}
-                              className="flex h-12 cursor-pointer items-center justify-center rounded-full border bg-background px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-accent/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/20 peer-data-[state=checked]:text-primary"
-                          >
-                              {loc}
-                          </Label>
-                      </div>
+                      <Button
+                        key={loc}
+                        variant={location === loc ? 'default' : 'outline'}
+                        onClick={() => setLocation(loc)}
+                        className="h-12 rounded-full text-sm font-medium"
+                      >
+                          {loc}
+                      </Button>
                   ))}
-                </RadioGroup>
+                </div>
               </div>
             </CardContent>
             <CardFooter className="justify-end p-8">
@@ -318,14 +342,14 @@ export default function CreateStoryPage() {
                         ))}
                     </div>
                 </CardContent>
-                <CardFooter className="justify-between p-8">
+                <CardFooter className="flex justify-between p-8">
                     <Button onClick={prevStep} size="lg" variant="outline">
                         <ArrowRight className="ml-2 h-5 w-5" />
                         السابق
                     </Button>
-                    <Button onClick={handleGenerateStory} size="lg" className="bg-gradient-to-l from-rose-400 to-red-500 font-bold text-white hover:to-red-600" disabled={loading || !isStep2Complete}>
+                    <Button onClick={handleGenerateStory} size="lg" className="bg-gradient-to-l from-rose-400 to-red-500 font-bold text-white hover:to-red-600" disabled={loading || !isStep2Complete || !user}>
                         {loading ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Sparkles className="ml-2 h-5 w-5" />}
-                        {loading ? '...جاري إنشاء القصة' : 'أنشئ القصة الآن'}
+                        {loading ? '...جاري إنشاء القصة' : `أنشئ القصة الآن (${storyCost} نقطة)`}
                     </Button>
                 </CardFooter>
             </Card>
@@ -393,7 +417,7 @@ export default function CreateStoryPage() {
                         قصتك عن <strong>{heroName}</strong> جاهزة الآن. يمكنك حفظها في مكتبتك للوصول إليها لاحقًا، أو تحميلها كملف لمشاركتها مع الأصدقاء والعائلة.
                     </p>
                     <div className="mt-8 flex justify-center gap-4">
-                        <Button onClick={handleSave} size="lg" variant="outline" disabled={saving}>
+                        <Button onClick={handleSave} size="lg" variant="outline" disabled={saving || !user}>
                              {saving ? <Loader2 className="animate-spin" /> : <Save />}
                              {saving ? 'جاري الحفظ...' : 'حفظ في مكتبتي'}
                         </Button>
@@ -412,5 +436,6 @@ export default function CreateStoryPage() {
         )}
       </div>
     </div>
+    </>
   );
 }

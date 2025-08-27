@@ -105,6 +105,11 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
+               <div className="text-right text-sm">
+                <Link href="/forgot-password" className="text-primary hover:underline">
+                  نسيت كلمة المرور؟
+                </Link>
+              </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? <Loader2 className="animate-spin" /> : <LogIn />}
                 {loading ? 'جاري الدخول...' : 'تسجيل الدخول'}

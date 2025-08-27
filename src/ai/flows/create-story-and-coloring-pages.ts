@@ -10,11 +10,14 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { generateColoringPageFromDescription } from './generate-coloring-page-from-description';
-
+import { checkAndDeductCredits } from '@/lib/credits';
+import { getAuth } from 'firebase-admin/auth';
+import { adminAuth } from '@/lib/firebase-admin';
 
 const CreateStoryAndColoringPagesInputSchema = z.object({
   topic: z.string().describe('The topic of the story.'),
   numPages: z.number().describe('The number of pages for the story.').default(3),
+  userId: z.string().describe('The ID of the user requesting the story.'),
 });
 export type CreateStoryAndColoringPagesInput = z.infer<typeof CreateStoryAndColoringPagesInputSchema>;
 
@@ -70,6 +73,15 @@ Output in a valid JSON format.
 `,
 });
 
+function calculateCost(numPages: number): number {
+    // 4 pages = 5 points
+    // 8 pages = 10 points
+    // 12 pages = 15 points
+    // 16 pages = 20 points
+    // This is 1.25 points per page.
+    return Math.ceil(numPages * 1.25);
+}
+
 const createStoryAndColoringPagesFlow = ai.defineFlow(
   {
     name: 'createStoryAndColoringPagesFlow',
@@ -77,15 +89,22 @@ const createStoryAndColoringPagesFlow = ai.defineFlow(
     outputSchema: CreateStoryAndColoringPagesOutputSchema,
   },
   async (input): Promise<CreateStoryAndColoringPagesOutput> => {
+    // Step 0: Check credits
+    const cost = calculateCost(input.numPages);
+    const creditCheck = await checkAndDeductCredits(input.userId, cost);
+
+    if (!creditCheck.success) {
+        throw new Error(creditCheck.error || 'Failed to deduct credits.');
+    }
+
     // Step 1: Generate the story text content (titles, narratives, illustration descriptions)
-    const { output: storyContent } = await storyPrompt(input);
+    const { output: storyContent } = await storyPrompt({topic: input.topic, numPages: input.numPages});
 
     if (!storyContent?.chapters?.length) {
         throw new Error("Failed to generate story content.");
     }
     
     // Extract the main character's name from the topic for image consistency.
-    // This is a simple heuristic and might need refinement.
     const childName = input.topic.split(' ').find(word => word.length > 2) || 'child';
 
     // Step 2: Generate images for each chapter in parallel

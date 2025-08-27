@@ -1,19 +1,26 @@
 'use server';
 
 import { z } from 'zod';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { app } from '@/lib/firebase-config'; // Import from the new server-safe config
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { app } from '@/lib/firebase-config';
 import { setCookie } from '@/lib/cookies';
 import { AuthError } from 'firebase/auth';
+import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const auth = getAuth(app);
 
 const authSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
+  name: z.string().optional(),
 });
 
 type AuthInput = z.infer<typeof authSchema>;
+
+const resetPasswordSchema = z.object({
+  email: z.string().email({ message: 'الرجاء إدخال بريد إلكتروني صالح.' }),
+});
 
 function getFirebaseAuthErrorMessage(error: AuthError): string {
   switch (error.code) {
@@ -38,31 +45,61 @@ function getFirebaseAuthErrorMessage(error: AuthError): string {
   }
 }
 
-
 export async function signUpUser(
   values: AuthInput
 ): Promise<{ success: boolean; error?: string; userId?: string }> {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-    const idToken = await userCredential.user.getIdToken();
+    const user = userCredential.user;
+    const idToken = await user.getIdToken();
     await setCookie('auth-token', idToken);
     
-    return { success: true, userId: userCredential.user.uid };
+    // Create user document in Firestore
+    const userRef = adminDb.collection('users').doc(user.uid);
+    await userRef.set({
+      uid: user.uid,
+      email: user.email,
+      name: values.name || '',
+      credits: 50, // Welcome gift: 5 books * 10 points/book
+      createdAt: FieldValue.serverTimestamp(),
+      lastLogin: FieldValue.serverTimestamp(),
+      status: 'active'
+    });
+
+    return { success: true, userId: user.uid };
   } catch (error) {
     return { success: false, error: getFirebaseAuthErrorMessage(error as AuthError) };
   }
 }
 
 export async function signInUser(
-  values: AuthInput
+  values: Pick<AuthInput, 'email' | 'password'>
 ): Promise<{ success: boolean; error?: string; userId?: string }> {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-    const idToken = await userCredential.user.getIdToken();
+    const user = userCredential.user;
+    const idToken = await user.getIdToken();
     await setCookie('auth-token', idToken);
 
-    return { success: true, userId: userCredential.user.uid };
+    // Update lastLogin timestamp
+    const userRef = adminDb.collection('users').doc(user.uid);
+    await userRef.update({
+      lastLogin: FieldValue.serverTimestamp(),
+    });
+
+    return { success: true, userId: user.uid };
   } catch (error) {
     return { success: false, error: getFirebaseAuthErrorMessage(error as AuthError) };
+  }
+}
+
+export async function sendResetPasswordEmail(
+  values: z.infer<typeof resetPasswordSchema>
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await sendPasswordResetEmail(auth, values.email);
+    return { success: true };
+  } catch (error) {
+     return { success: false, error: getFirebaseAuthErrorMessage(error as AuthError) };
   }
 }
