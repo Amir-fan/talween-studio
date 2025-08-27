@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -9,6 +9,7 @@ import {
   Sparkles,
   Heart,
   BookOpen,
+  Image as ImageIcon,
   CheckCircle,
   Loader2,
   Download,
@@ -40,13 +41,11 @@ import {
   CreateStoryAndColoringPagesOutput,
 } from '@/ai/flows/create-story-and-coloring-pages';
 import React from 'react';
-import { saveStoryAction } from './actions';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
   { icon: Heart, label: 'الدرس المستفاد' },
+  { icon: ImageIcon, label: 'الصور' },
   { icon: BookOpen, label: 'القصة' },
   { icon: CheckCircle, label: 'النهاية' },
 ];
@@ -62,108 +61,58 @@ const lessons = [
     'التعاون', 'الأمانة', 'العدل', 'حب الحيوانات', 'إدارة الوقت', 'النمو والتعلم'
 ];
 
+const artStyles = [
+    'صور فوتوغرافية', 'رسم كرتوني', 'فن رقمي', 'فن تجريدي', 'ألوان مائية'
+]
+
 export default function CreateStoryPage() {
   const [step, setStep] = useState(1);
   const [heroName, setHeroName] = useState('');
-  const [heroAge, setHeroAge] = useState('');
   const [location, setLocation] = useState('');
-  const [selectedLessons, setSelectedLessons] = useState<string[]>([]);
   const [story, setStory] = useState<CreateStoryAndColoringPagesOutput | null>(null);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
-  const storyContainerRef = useRef<HTMLDivElement>(null);
-
 
   const nextStep = () => setStep((prev) => (prev < steps.length ? prev + 1 : prev));
   const prevStep = () => setStep((prev) => (prev > 1 ? prev - 1 : prev));
 
-  const toggleLesson = (lesson: string) => {
-    setSelectedLessons(prev => 
-      prev.includes(lesson) ? prev.filter(l => l !== lesson) : [...prev, lesson]
-    );
-  };
-
   const handleGenerateStory = async () => {
-    if (!heroName || !location || !heroAge) {
+    if (!heroName || !location) {
          toast({
             variant: "destructive",
             title: "معلومات ناقصة",
-            description: "الرجاء إدخال اسم البطل وعمره واختيار مكان الأحداث.",
+            description: "الرجاء إدخال اسم البطل واختيار مكان الأحداث.",
         });
         return;
     }
 
     setLoading(true);
     setStory(null);
-    setStep(3); 
+    setStep(4); // Move to the story view step
 
     try {
-        const topic = `قصة عن طفل اسمه ${heroName} عمره ${heroAge} في ${location}. ${selectedLessons.length > 0 ? 'الدرس المستفاد من القصة هو ' + selectedLessons.join(', ') : ''}`;
+        const topic = `قصة عن طفل اسمه ${heroName} في ${location}`;
         const result = await createStoryAndColoringPages({ topic, numPages: 3 });
-        setStory(result);
+        
+        if (result && result.pages.length > 0) {
+            setStory(result);
+        } else {
+             toast({
+                variant: "destructive",
+                title: "حدث خطأ في إنشاء القصة",
+                description: "لم نتمكن من إنشاء القصة. قد يكون هناك ضغط على الخدمة. الرجاء المحاولة مرة أخرى.",
+            });
+            setStep(3); // Go back to the previous step on error
+        }
     } catch (error) {
-        console.error(error);
         toast({
             variant: "destructive",
             title: "حدث خطأ",
             description: "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.",
         });
-        setStep(2); // Go back to the previous step on error
+        setStep(3); // Go back to the previous step on error
     } finally {
         setLoading(false);
-    }
-  };
-
-  const handleSaveStory = async () => {
-    if (!story || !story.pages.length) return;
-    setSaving(true);
-    const result = await saveStoryAction({ pages: story.pages, title: story.title }, heroName, location);
-    setSaving(false);
-
-    if (result.success) {
-      toast({
-        title: "تم الحفظ بنجاح!",
-        description: "تم حفظ قصتك في مكتبتك.",
-      });
-    } else {
-      toast({
-        variant: "destructive",
-        title: "خطأ في الحفظ",
-        description: result.error,
-      });
-    }
-  };
-
-  const handleDownload = async () => {
-    const container = storyContainerRef.current;
-    if (!container) return;
-
-    toast({ title: 'جاري تحضير التحميل...', description: 'قد تستغرق هذه العملية بضع لحظات.' });
-
-    try {
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pageElements = container.querySelectorAll('.story-page-container');
-        
-        for (let i = 0; i < pageElements.length; i++) {
-            const pageEl = pageElements[i] as HTMLElement;
-            const canvas = await html2canvas(pageEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-            const imgData = canvas.toDataURL('image/png');
-
-            if (i > 0) {
-                pdf.addPage();
-            }
-            pdf.addImage(imgData, 'PNG', 0, 0, 210, 297); // A4 dimensions in mm
-        }
-        
-        pdf.save(`${story?.title || 'story'}.pdf`);
-    } catch (error) {
-        console.error("Failed to download PDF:", error);
-        toast({
-            variant: "destructive",
-            title: "فشل التحميل",
-            description: "حدث خطأ أثناء إنشاء ملف PDF.",
-        });
     }
   };
 
@@ -230,14 +179,17 @@ export default function CreateStoryPage() {
                 </div>
                 <div>
                   <Label htmlFor="hero-age" className="mb-2 block text-right font-semibold">العمر</Label>
-                  <Select dir="rtl" onValueChange={setHeroAge} value={heroAge}>
+                  <Select dir="rtl">
                     <SelectTrigger id="hero-age">
-                      <SelectValue placeholder="اختر الفئة العمرية" />
+                      <SelectValue placeholder="7 سنة" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="3-5">3-5 سنوات</SelectItem>
-                      <SelectItem value="6-9">6-9 سنوات</SelectItem>
-                      <SelectItem value="10-13">10-13 سنة</SelectItem>
+                      <SelectItem value="5">5 سنوات</SelectItem>
+                      <SelectItem value="6">6 سنوات</SelectItem>
+                      <SelectItem value="7">7 سنوات</SelectItem>
+                      <SelectItem value="8">8 سنوات</SelectItem>
+                      <SelectItem value="9">9 سنوات</SelectItem>
+                      <SelectItem value="10">10 سنوات</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -273,21 +225,64 @@ export default function CreateStoryPage() {
              <Card className="mt-8">
                 <CardHeader className="text-center">
                     <CardTitle className="font-headline text-3xl">الدرس المستفاد</CardTitle>
-                    <CardDescription>اختر القيم التي تريد غرسها في القصة (اختياري)</CardDescription>
+                    <CardDescription>اختر القيم التي تريد غرسها في القصة</CardDescription>
                 </CardHeader>
                 <CardContent className="px-8">
-                    <div className="flex flex-wrap justify-center gap-3">
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-4 md:grid-cols-3 lg:grid-cols-4">
                         {lessons.map((lesson) => (
-                            <Button 
-                                key={lesson}
-                                variant={selectedLessons.includes(lesson) ? "default" : "outline"}
-                                onClick={() => toggleLesson(lesson)}
-                                className={cn("rounded-full", selectedLessons.includes(lesson) && "bg-primary text-primary-foreground")}
-                            >
-                                {lesson}
-                            </Button>
+                            <div key={lesson} className="flex items-center justify-end gap-3">
+                               <Label htmlFor={lesson} className="cursor-pointer font-medium hover:text-primary">{lesson}</Label>
+                                <Checkbox id={lesson} dir='rtl' />
+                            </div>
                         ))}
                     </div>
+                </CardContent>
+                <CardFooter className="justify-between p-8">
+                    <Button onClick={prevStep} size="lg" variant="outline">
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                        السابق
+                    </Button>
+                    <Button onClick={nextStep} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
+                        التالي
+                        <ArrowLeft className="mr-2 h-5 w-5" />
+                    </Button>
+                </CardFooter>
+            </Card>
+        )}
+
+        {step === 3 && (
+            <Card className="mt-8">
+                <CardHeader className="text-center">
+                    <CardTitle className="font-headline text-3xl">اختر النمط البصري</CardTitle>
+                    <CardDescription>اختر كيف ستبدو الصور في قصتك</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-8 px-8">
+                   <div>
+                        <Label htmlFor="art-style" className="mb-2 block text-right font-semibold">نمط فني</Label>
+                        <Select dir="rtl">
+                            <SelectTrigger id="art-style">
+                                <SelectValue placeholder="اختر نمطاً" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {artStyles.map(style => (
+                                    <SelectItem key={style} value={style}>{style}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                   </div>
+                   <div>
+                       <Label className="mb-4 block text-right font-semibold">اختر نوع الرسوم</Label>
+                       <RadioGroup dir="rtl" defaultValue="bw" className="flex gap-4">
+                           <div className="flex items-center gap-2">
+                               <RadioGroupItem value="bw" id="bw"/>
+                               <Label htmlFor="bw">أبيض وأسود (للتلوين)</Label>
+                           </div>
+                           <div className="flex items-center gap-2">
+                               <RadioGroupItem value="color" id="color" />
+                               <Label htmlFor="color">ملون</Label>
+                           </div>
+                       </RadioGroup>
+                   </div>
                 </CardContent>
                 <CardFooter className="justify-between p-8">
                     <Button onClick={prevStep} size="lg" variant="outline">
@@ -302,10 +297,10 @@ export default function CreateStoryPage() {
             </Card>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
             <Card className="mt-8">
                  <CardHeader className="text-center">
-                    <CardTitle className="font-headline text-3xl">{loading ? "لحظات..." : (story?.title || "ها هي قصتك!")}</CardTitle>
+                    <CardTitle className="font-headline text-3xl">ها هي قصتك!</CardTitle>
                     <CardDescription>اقرأ مغامرة {heroName} الجديدة</CardDescription>
                 </CardHeader>
                 <CardContent className="px-8">
@@ -316,24 +311,26 @@ export default function CreateStoryPage() {
                             <p className="text-sm">يقوم الذكاء الاصطناعي بنسج الكلمات والصور معاً.</p>
                         </div>
                     )}
-                     <div ref={storyContainerRef} className="space-y-8">
-                        {story && story.pages.map((page, index) => (
-                            <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center story-page-container bg-white p-4 rounded-lg">
-                                <div className='order-2 md:order-1'>
-                                    <p className="leading-loose text-lg">{page.text}</p>
-                                </div>
-                                <div className='order-1 md:order-2'>
-                                    <Image
-                                        src={page.imageDataUri}
-                                        alt={`Illustration for page ${index + 1}`}
-                                        width={500}
-                                        height={500}
-                                        className="rounded-lg border bg-white shadow-sm w-full object-contain aspect-square"
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    {story && (
+                        <div className="space-y-8">
+                           {story.pages.map((page, index) => (
+                               <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                                   <div className='order-2 md:order-1'>
+                                        <p className="leading-loose text-lg">{page.text}</p>
+                                   </div>
+                                   <div className='order-1 md:order-2'>
+                                       <Image
+                                            src={page.imageDataUri}
+                                            alt={`Illustration for page ${index + 1}`}
+                                            width={500}
+                                            height={500}
+                                            className="rounded-lg border bg-white shadow-sm w-full object-contain aspect-square"
+                                        />
+                                   </div>
+                               </div>
+                           ))}
+                        </div>
+                    )}
                 </CardContent>
                  <CardFooter className="justify-between p-8">
                     <Button onClick={prevStep} size="lg" variant="outline" disabled={loading}>
@@ -348,7 +345,7 @@ export default function CreateStoryPage() {
             </Card>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
             <Card className="mt-8">
                 <CardHeader className="text-center">
                     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600">
@@ -362,11 +359,11 @@ export default function CreateStoryPage() {
                         قصتك عن <strong>{heroName}</strong> جاهزة الآن. يمكنك حفظها في مكتبتك للوصول إليها لاحقًا، أو تحميلها كملف لمشاركتها مع الأصدقاء والعائلة.
                     </p>
                     <div className="mt-8 flex justify-center gap-4">
-                        <Button onClick={handleSaveStory} size="lg" variant="outline" disabled={saving}>
-                             {saving ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Save className="ml-2 h-5 w-5" />}
-                            {saving ? 'جاري الحفظ...' : 'حفظ في مكتبتي'}
+                        <Button size="lg" variant="outline">
+                             <Save className="ml-2 h-5 w-5" />
+                            حفظ في مكتبتي
                         </Button>
-                         <Button onClick={handleDownload} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
+                         <Button size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
                             <Download className="ml-2 h-5 w-5" />
                             تحميل القصة
                         </Button>
