@@ -25,7 +25,10 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { signUpUser } from '@/app/auth/actions';
+import { signUpUser } from '@/app/auth/client-actions';
+import { setCookie } from '@/lib/cookies';
+import { getAuth, onIdTokenChanged } from 'firebase/auth';
+import { app } from '@/lib/firebase';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'الرجاء إدخال اسم.' }),
@@ -37,6 +40,7 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const auth = getAuth(app);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -52,11 +56,19 @@ export default function SignUpPage() {
     try {
       const result = await signUpUser(values);
       if (result.success) {
-        toast({
-          title: 'تم إنشاء الحساب بنجاح!',
-          description: 'أهلاً بك في عالم الإبداع. لقد حصلت على 50 نقطة مجانية للبدء!',
+         // Wait for the token and set the cookie before navigating
+        const unsubscribe = onIdTokenChanged(auth, async (user) => {
+            if (user) {
+                const token = await user.getIdToken();
+                await setCookie('auth-token', token);
+                unsubscribe(); // Unsubscribe after getting the token
+                toast({
+                    title: 'تم إنشاء الحساب بنجاح!',
+                    description: 'أهلاً بك في عالم الإبداع. لقد حصلت على 50 نقطة مجانية للبدء!',
+                });
+                router.push('/account');
+            }
         });
-        router.push('/account');
       } else {
         throw new Error(result.error || 'فشلت عملية إنشاء الحساب.');
       }
@@ -66,7 +78,6 @@ export default function SignUpPage() {
         title: 'حدث خطأ',
         description: error instanceof Error ? error.message : 'An unknown error occurred.',
       });
-    } finally {
       setLoading(false);
     }
   }
