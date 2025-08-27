@@ -40,6 +40,7 @@ import { saveStoryAction } from './actions';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { createStoryAndColoringPages, CreateStoryAndColoringPagesOutput, StoryPage } from '@/ai/flows/create-story-and-coloring-pages';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
@@ -258,17 +259,20 @@ export default function CreateStoryPage() {
                   </Select>
                 </div>
                  <div>
-                  <Label htmlFor="num-pages" className="mb-2 block text-right font-semibold">كم عدد الصفحات التي تريدها؟</Label>
-                  <Select dir="rtl" value={String(numPages)} onValueChange={(val) => setNumPages(Number(val))}>
-                    <SelectTrigger id="num-pages">
-                      <SelectValue placeholder="اختر عدد الصفحات" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="4">4 صفحات</SelectItem>
-                      <SelectItem value="8">8 صفحات</SelectItem>
-                      <SelectItem value="12">12 صفحة</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="num-pages" className="mb-2 block text-right font-semibold">كم عدد الصفحات التي تريدها؟ (حد أقصى 30)</Label>
+                   <Input 
+                    id="num-pages" 
+                    type="number" 
+                    value={numPages} 
+                    onChange={(e) => {
+                        const val = Math.min(30, Number(e.target.value));
+                        setNumPages(val > 0 ? val : 1);
+                    }}
+                    min="1"
+                    max="30"
+                    className="text-right"
+                    placeholder="ادخل عدد الصفحات"
+                  />
                 </div>
               </div>
 
@@ -305,7 +309,7 @@ export default function CreateStoryPage() {
                     <CardDescription>اختر القيم التي تريد غرسها في القصة</CardDescription>
                 </CardHeader>
                 <CardContent className="px-8">
-                    <RadioGroup dir="rtl" className="grid grid-cols-2 gap-4 md:grid-cols-4" value={selectedLesson} onValueChange={setSelectedLesson}>
+                     <RadioGroup dir="rtl" className="grid grid-cols-2 gap-x-8 gap-y-4 md:grid-cols-3 lg:grid-cols-4" value={selectedLesson} onValueChange={setSelectedLesson}>
                         {lessons.map((lesson) => (
                             <div key={lesson} className="flex items-center justify-end gap-3">
                                <RadioGroupItem value={lesson} id={lesson} />
