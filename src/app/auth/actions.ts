@@ -1,14 +1,18 @@
 'use server';
 
 import { z } from 'zod';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { db, app } from '@/lib/firebase';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { getApp, getApps, initializeApp } from 'firebase/app';
+import { db } from '@/lib/firebase';
 import { setCookie } from '@/lib/cookies';
 import type { AuthError } from 'firebase/auth';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { createUserDocument } from '@/ai/flows/create-user-document';
+import { firebaseConfig } from '@/lib/firebase-config';
 
-const auth = getAuth(app);
+// Initialize a new app instance for server-side use or get the existing one.
+const serverApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+const auth = getAuth(serverApp);
 
 const authSchema = z.object({
   email: z.string().email(),
@@ -48,23 +52,9 @@ function getFirebaseAuthErrorMessage(error: AuthError): string {
 export async function signUpUser(
   values: AuthInput
 ): Promise<{ success: boolean; error?: string; userId?: string }> {
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-    const user = userCredential.user;
-    const idToken = await user.getIdToken();
-    await setCookie('auth-token', idToken);
-    
-    // Call the server-side flow to create the user document in Firestore
-    await createUserDocument({ 
-        uid: user.uid, 
-        email: values.email, 
-        name: values.name || '' 
-    });
-
-    return { success: true, userId: user.uid };
-  } catch (error) {
-    return { success: false, error: getFirebaseAuthErrorMessage(error as AuthError) };
-  }
+    // This function still needs to be run from the client, so we will keep it in client-actions.
+    // This file is now purely for server-side auth actions.
+    return { success: false, error: 'Signup must be called from the client.' };
 }
 
 export async function signInUser(
@@ -74,8 +64,11 @@ export async function signInUser(
     const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
     const user = userCredential.user;
     const idToken = await user.getIdToken();
+    
+    // Set the cookie on the server-side
     await setCookie('auth-token', idToken);
 
+    // Update last login time using the client SDK instance
     const userRef = doc(db, 'users', user.uid);
     await updateDoc(userRef, {
         lastLogin: serverTimestamp()
@@ -84,16 +77,5 @@ export async function signInUser(
     return { success: true, userId: user.uid };
   } catch (error) {
     return { success: false, error: getFirebaseAuthErrorMessage(error as AuthError) };
-  }
-}
-
-export async function sendResetPasswordEmail(
-  values: z.infer<typeof resetPasswordSchema>
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    await sendPasswordResetEmail(auth, values.email);
-    return { success: true };
-  } catch (error) {
-     return { success: false, error: getFirebaseAuthErrorMessage(error as AuthError) };
   }
 }

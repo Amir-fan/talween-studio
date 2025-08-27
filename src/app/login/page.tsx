@@ -25,10 +25,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { signInUser } from '@/app/auth/client-actions';
-import { setCookie } from '@/lib/cookies';
-import { getAuth, onIdTokenChanged } from 'firebase/auth';
-import { app } from '@/lib/firebase';
+import { signInUser } from '@/app/auth/actions';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'الرجاء إدخال بريد إلكتروني صالح.' }),
@@ -39,7 +36,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
-  const auth = getAuth(app);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -53,20 +49,13 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const result = await signInUser(values);
-      if (result.success && result.userId) {
-        // Wait for the token and set the cookie before navigating
-        const unsubscribe = onIdTokenChanged(auth, async (user) => {
-          if (user) {
-            const token = await user.getIdToken();
-            await setCookie('auth-token', token);
-            unsubscribe(); // Unsubscribe after getting the token
-            toast({
-              title: 'تم تسجيل الدخول بنجاح!',
-              description: 'مرحباً بعودتك.',
-            });
-            router.push('/account');
-          }
+      if (result.success) {
+        toast({
+          title: 'تم تسجيل الدخول بنجاح!',
+          description: 'مرحباً بعودتك.',
         });
+        router.push('/account');
+        router.refresh(); // This helps ensure the auth context updates correctly
       } else {
         throw new Error(result.error || 'فشلت عملية تسجيل الدخول.');
       }
@@ -76,7 +65,8 @@ export default function LoginPage() {
         title: 'حدث خطأ',
         description: error instanceof Error ? error.message : 'An unknown error occurred.',
       });
-      setLoading(false);
+    } finally {
+        setLoading(false);
     }
   }
 
