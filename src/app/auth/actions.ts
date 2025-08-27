@@ -2,13 +2,13 @@
 
 import { z } from 'zod';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { db } from '@/lib/firebase';
+import { db, app } from '@/lib/firebase';
 import { setCookie } from '@/lib/cookies';
 import type { AuthError } from 'firebase/auth';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { createUserDocument } from '@/ai/flows/create-user-document';
 
-const auth = getAuth();
+const auth = getAuth(app);
 
 const authSchema = z.object({
   email: z.string().email(),
@@ -76,7 +76,6 @@ export async function signInUser(
     const idToken = await user.getIdToken();
     await setCookie('auth-token', idToken);
 
-    // Use client db for this client-context write
     const userRef = doc(db, 'users', user.uid);
     await updateDoc(userRef, {
         lastLogin: serverTimestamp()
