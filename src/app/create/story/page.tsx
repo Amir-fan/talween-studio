@@ -24,13 +24,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
@@ -40,7 +33,7 @@ import { saveStoryAction } from './actions';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { createStoryAndColoringPages, CreateStoryAndColoringPagesOutput, StoryPage } from '@/ai/flows/create-story-and-coloring-pages';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
@@ -309,14 +302,18 @@ export default function CreateStoryPage() {
                     <CardDescription>اختر القيم التي تريد غرسها في القصة</CardDescription>
                 </CardHeader>
                 <CardContent className="px-8">
-                     <RadioGroup dir="rtl" className="grid grid-cols-2 gap-x-8 gap-y-4 md:grid-cols-3 lg:grid-cols-4" value={selectedLesson} onValueChange={setSelectedLesson}>
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
                         {lessons.map((lesson) => (
-                            <div key={lesson} className="flex items-center justify-end gap-3">
-                               <RadioGroupItem value={lesson} id={lesson} />
-                               <Label htmlFor={lesson} className="cursor-pointer font-medium hover:text-primary">{lesson}</Label>
-                            </div>
+                            <Button
+                                key={lesson}
+                                variant={selectedLesson === lesson ? 'default' : 'outline'}
+                                onClick={() => setSelectedLesson(lesson)}
+                                className="h-12 rounded-full text-sm font-medium"
+                            >
+                                {lesson}
+                            </Button>
                         ))}
-                    </RadioGroup>
+                    </div>
                 </CardContent>
                 <CardFooter className="justify-between p-8">
                     <Button onClick={prevStep} size="lg" variant="outline">
