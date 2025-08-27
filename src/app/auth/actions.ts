@@ -4,11 +4,12 @@ import { z } from 'zod';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { app, db } from '@/lib/firebase';
 import { setCookie } from '@/lib/cookies';
-import { AuthError } from 'firebase/auth';
+import type { AuthError } from 'firebase/auth';
 import { dbAdmin } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
+// Use client auth for auth operations
 const auth = getAuth(app);
 
 const authSchema = z.object({
@@ -46,6 +47,20 @@ function getFirebaseAuthErrorMessage(error: AuthError): string {
   }
 }
 
+// Helper function to create user document using Admin SDK
+async function createUserDocument(uid: string, email: string, name?: string) {
+  const userRef = dbAdmin.collection('users').doc(uid);
+  await userRef.set({
+    uid,
+    email,
+    name: name || '',
+    credits: 50, // Give 50 credits on signup
+    createdAt: FieldValue.serverTimestamp(),
+    lastLogin: FieldValue.serverTimestamp(),
+    status: 'active'
+  });
+}
+
 export async function signUpUser(
   values: AuthInput
 ): Promise<{ success: boolean; error?: string; userId?: string }> {
@@ -55,16 +70,8 @@ export async function signUpUser(
     const idToken = await user.getIdToken();
     await setCookie('auth-token', idToken);
     
-    const userRef = dbAdmin.collection('users').doc(user.uid);
-    await userRef.set({
-      uid: user.uid,
-      email: user.email,
-      name: values.name || '',
-      credits: 50,
-      createdAt: FieldValue.serverTimestamp(),
-      lastLogin: FieldValue.serverTimestamp(),
-      status: 'active'
-    });
+    // Call the server-side helper to create the user document
+    await createUserDocument(user.uid, values.email, values.name);
 
     return { success: true, userId: user.uid };
   } catch (error) {
@@ -81,6 +88,7 @@ export async function signInUser(
     const idToken = await user.getIdToken();
     await setCookie('auth-token', idToken);
 
+    // Use client db for this client-context write
     const userRef = doc(db, 'users', user.uid);
     await updateDoc(userRef, {
         lastLogin: serverTimestamp()
