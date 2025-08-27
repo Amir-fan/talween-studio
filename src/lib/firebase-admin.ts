@@ -6,40 +6,40 @@ import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getAuth, Auth } from 'firebase-admin/auth';
 import { getStorage, Storage } from 'firebase-admin/storage';
 
-let adminApp: App;
+let adminApp: App | undefined;
+let dbAdmin: Firestore | undefined;
+let authAdmin: Auth | undefined;
+let storageAdmin: Storage | undefined;
 
-if (!getApps().length) {
-  const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
-  if (!serviceAccountKey) {
-    throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY is not set in .env file.');
-  }
-   if (serviceAccountKey === 'YOUR_SERVICE_ACCOUNT_KEY_HERE') {
-    throw new Error(
-      'Using default placeholder for FIREBASE_SERVICE_ACCOUNT_KEY. Please set your actual service account key in the .env file.'
-    );
+if (serviceAccountKey && serviceAccountKey !== 'YOUR_SERVICE_ACCOUNT_KEY_HERE') {
+  if (!getApps().length) {
+    try {
+      const serviceAccount = JSON.parse(serviceAccountKey);
+      adminApp = initializeApp({
+        credential: cert(serviceAccount),
+        storageBucket: 'talween-studio.appspot.com',
+      });
+    } catch (e) {
+      console.error(
+        'Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY. ' +
+          'Please ensure it is a valid, un-escaped JSON string in your .env file.',
+        e
+      );
+      throw new Error('Firebase Admin SDK initialization failed.');
+    }
+  } else {
+    adminApp = getApps()[0];
   }
 
-  try {
-    const serviceAccount = JSON.parse(serviceAccountKey);
-    adminApp = initializeApp({
-      credential: cert(serviceAccount),
-      storageBucket: 'talween-studio.appspot.com',
-    });
-  } catch (e) {
-    console.error(
-      'Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY. ' +
-        'Please ensure it is a valid, un-escaped JSON string in your .env file.',
-      e
-    );
-    throw new Error('Firebase Admin SDK initialization failed.');
-  }
+  dbAdmin = getFirestore(adminApp);
+  authAdmin = getAuth(adminApp);
+  storageAdmin = getStorage(adminApp);
 } else {
-  adminApp = getApps()[0];
+  console.warn(
+    'FIREBASE_SERVICE_ACCOUNT_KEY is not set or is using the default placeholder. Firebase Admin SDK is not initialized. Server-side Firebase features will not work.'
+  );
 }
-
-const dbAdmin: Firestore = getFirestore(adminApp);
-const authAdmin: Auth = getAuth(adminApp);
-const storageAdmin: Storage = getStorage(adminApp);
 
 export { adminApp, dbAdmin, authAdmin, storageAdmin };
