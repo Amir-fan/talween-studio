@@ -12,34 +12,36 @@ let dbAdmin: Firestore | undefined;
 let authAdmin: Auth | undefined;
 let storageAdmin: Storage | undefined;
 
-const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-
-if (serviceAccountKey && serviceAccountKey !== 'YOUR_SERVICE_ACCOUNT_KEY_HERE') {
-  if (!getApps().length) {
-    try {
-      const serviceAccount = JSON.parse(serviceAccountKey);
+try {
+  const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (serviceAccountKey && serviceAccountKey !== 'YOUR_SERVICE_ACCOUNT_KEY_HERE' && serviceAccountKey.trim() !== '') {
+    const serviceAccount = JSON.parse(serviceAccountKey);
+    
+    if (!getApps().length) {
       adminApp = initializeApp({
         credential: cert(serviceAccount),
         storageBucket: 'talween-studio.appspot.com',
       });
-    } catch (e) {
-      console.error(
-        'Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY. ' +
-          'Please ensure it is a valid, un-escaped JSON string in your .env file.',
-        e
-      );
-      throw new Error('Firebase Admin SDK initialization failed.');
+    } else {
+      adminApp = getApps()[0];
     }
-  } else {
-    adminApp = getApps()[0];
-  }
 
-  dbAdmin = getFirestore(adminApp);
-  authAdmin = getAuth(adminApp);
-  storageAdmin = getStorage(adminApp);
-} else {
+    dbAdmin = getFirestore(adminApp);
+    authAdmin = getAuth(adminApp);
+    storageAdmin = getStorage(adminApp);
+  } else {
+    console.warn(
+      'FIREBASE_SERVICE_ACCOUNT_KEY is not set or is using the default placeholder. Firebase Admin SDK is not initialized. Server-side Firebase features will not work.'
+    );
+  }
+} catch (e) {
+  console.error(
+    'Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY. ' +
+      'Please ensure it is a valid, un-escaped JSON string in your .env file.',
+    e
+  );
   console.warn(
-    'FIREBASE_SERVICE_ACCOUNT_KEY is not set or is using the default placeholder. Firebase Admin SDK is not initialized. Server-side Firebase features will not work.'
+    'Firebase Admin SDK initialization failed. Server-side Firebase features will not work.'
   );
 }
 
