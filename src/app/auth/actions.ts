@@ -2,11 +2,12 @@
 
 import { z } from 'zod';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { app } from '@/lib/firebase-config';
+import { app, db } from '@/lib/firebase';
 import { setCookie } from '@/lib/cookies';
 import { AuthError } from 'firebase/auth';
 import { dbAdmin } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 const auth = getAuth(app);
 
@@ -54,13 +55,13 @@ export async function signUpUser(
     const idToken = await user.getIdToken();
     await setCookie('auth-token', idToken);
     
-    // Create user document in Firestore
+    // Create user document in Firestore using Admin SDK
     const userRef = dbAdmin.collection('users').doc(user.uid);
     await userRef.set({
       uid: user.uid,
       email: user.email,
       name: values.name || '',
-      credits: 50, // Welcome gift: 5 books * 10 points/book
+      credits: 50, // Welcome gift
       createdAt: FieldValue.serverTimestamp(),
       lastLogin: FieldValue.serverTimestamp(),
       status: 'active'
@@ -81,10 +82,10 @@ export async function signInUser(
     const idToken = await user.getIdToken();
     await setCookie('auth-token', idToken);
 
-    // Update lastLogin timestamp
-    const userRef = dbAdmin.collection('users').doc(user.uid);
-    await userRef.update({
-      lastLogin: FieldValue.serverTimestamp(),
+    // Update lastLogin timestamp using the CLIENT SDK
+    const userRef = doc(db, 'users', user.uid);
+    await updateDoc(userRef, {
+        lastLogin: serverTimestamp()
     });
 
     return { success: true, userId: user.uid };
