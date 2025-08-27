@@ -70,28 +70,25 @@ const createStoryAndColoringPagesFlow = ai.defineFlow(
     outputSchema: CreateStoryAndColoringPagesOutputSchema,
   },
   async input => {
-    // Generate title first
     const titleResult = await titlePrompt({ topic: input.topic });
     const title = titleResult.output?.title || 'قصة جميلة';
 
-    // Generate pages sequentially
     const pages = [];
     for (let i = 1; i <= input.numPages; i++) {
       try {
-        const pageResult = await pagePrompt({
+        const {output} = await pagePrompt({
           topic: input.topic,
           pageNumber: i,
           totalPages: input.numPages,
         });
-        if (pageResult.output) {
-          pages.push(pageResult.output);
+        if (output) {
+          pages.push(output);
         }
       } catch (error) {
         console.error(`Failed to generate page ${i}:`, error);
-        // Skip the failed page and continue
+        // Silently skip the page if generation fails
       }
     }
-
-    return { title, pages };
+    return {title, pages};
   }
 );
