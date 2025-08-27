@@ -89,7 +89,9 @@ const createStoryAndColoringPagesFlow = ai.defineFlow(
             totalPages: input.numPages,
         }).then(result => {
             if (result.output?.text && result.output?.imageDataUri) {
-                return result.output as StoryPage;
+                // Clean up the imageDataUri to ensure it's a valid data URI
+                const imageDataUri = result.output.imageDataUri.split(' ')[0].trim();
+                return { text: result.output.text, imageDataUri };
             }
             console.warn(`Invalid output for page ${pageNumber}. Skipping.`);
             return null;
@@ -100,7 +102,7 @@ const createStoryAndColoringPagesFlow = ai.defineFlow(
     });
 
     const resolvedPages = await Promise.all(pagePromises);
-    const validPages = resolvedPages.filter((page): page is StoryPage => page !== null);
+    const validPages = resolvedPages.filter((page): page is StoryPage => page !== null && page.imageDataUri.startsWith('data:image'));
 
     return { title, pages: validPages };
   }
