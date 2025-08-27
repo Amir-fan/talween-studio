@@ -4,8 +4,10 @@
 import Link from 'next/link';
 import { Button } from './ui/button';
 import { User, Globe, Library, Menu, BookOpen, School, ShoppingCart, LogOut, LogIn } from 'lucide-react';
-import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useAuth } from '@/context/auth-context';
+import { cn } from '@/lib/utils';
+
 
 export default function Header() {
     const { user, logout } = useAuth();
@@ -64,6 +66,9 @@ export default function Header() {
                         </Button>
                     </SheetTrigger>
                     <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                        <SheetHeader>
+                            <SheetTitle className="sr-only">القائمة</SheetTitle>
+                        </SheetHeader>
                          <nav className="flex flex-col gap-4 mt-8">
                             {navLinks.map((link) => {
                                  if (link.auth && !user) return null;
