@@ -36,19 +36,13 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
-  generateStory,
-  GenerateStoryOutput,
-} from '@/ai/flows/generate-story';
-import { generateColoringPageFromDescription } from '@/ai/flows/generate-coloring-page-from-description';
+  createStoryAndColoringPages,
+  CreateStoryAndColoringPagesOutput,
+} from '@/ai/flows/create-story-and-coloring-pages';
 import React from 'react';
 import { saveStoryAction } from './actions';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-
-interface StoryPage {
-  text: string;
-  imageDataUri: string;
-}
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
@@ -74,8 +68,7 @@ export default function CreateStoryPage() {
   const [heroAge, setHeroAge] = useState('');
   const [location, setLocation] = useState('');
   const [selectedLessons, setSelectedLessons] = useState<string[]>([]);
-  const [storyContent, setStoryContent] = useState<GenerateStoryOutput | null>(null);
-  const [storyPages, setStoryPages] = useState<StoryPage[]>([]);
+  const [story, setStory] = useState<CreateStoryAndColoringPagesOutput | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -102,50 +95,30 @@ export default function CreateStoryPage() {
     }
 
     setLoading(true);
-    setStoryContent(null);
-    setStoryPages([]);
+    setStory(null);
     setStep(3); 
 
     try {
-        const result = await generateStory({
-            childName: heroName,
-            age: heroAge,
-            place: location,
-            lesson: selectedLessons.join(', ') || 'any good moral',
-        });
-        setStoryContent(result);
-
-        const imagePromises = result.chapters.map(chapter => 
-            generateColoringPageFromDescription({
-                description: chapter.illustrationDescription,
-                childName: heroName,
-            })
-        );
-        const imageResults = await Promise.all(imagePromises);
-        
-        const pages: StoryPage[] = result.chapters.map((chapter, index) => ({
-            text: chapter.narrative,
-            imageDataUri: imageResults[index].coloringPageDataUri,
-        }));
-        setStoryPages(pages);
-
+        const topic = `قصة عن طفل اسمه ${heroName} عمره ${heroAge} في ${location}. ${selectedLessons.length > 0 ? 'الدرس المستفاد من القصة هو ' + selectedLessons.join(', ') : ''}`;
+        const result = await createStoryAndColoringPages({ topic, numPages: 3 });
+        setStory(result);
     } catch (error) {
+        console.error(error);
         toast({
             variant: "destructive",
             title: "حدث خطأ",
             description: "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.",
         });
-        setStep(2); 
+        setStep(2); // Go back to the previous step on error
     } finally {
         setLoading(false);
     }
   };
 
   const handleSaveStory = async () => {
-    if (!storyPages.length) return;
+    if (!story || !story.pages.length) return;
     setSaving(true);
-    const storyToSave = { pages: storyPages };
-    const result = await saveStoryAction(storyToSave, heroName, location);
+    const result = await saveStoryAction({ pages: story.pages, title: story.title }, heroName, location);
     setSaving(false);
 
     if (result.success) {
@@ -183,7 +156,7 @@ export default function CreateStoryPage() {
             pdf.addImage(imgData, 'PNG', 0, 0, 210, 297); // A4 dimensions in mm
         }
         
-        pdf.save(`${storyContent?.storyTitle || 'story'}.pdf`);
+        pdf.save(`${story?.title || 'story'}.pdf`);
     } catch (error) {
         console.error("Failed to download PDF:", error);
         toast({
@@ -332,11 +305,11 @@ export default function CreateStoryPage() {
         {step === 3 && (
             <Card className="mt-8">
                  <CardHeader className="text-center">
-                    <CardTitle className="font-headline text-3xl">{loading && !storyContent ? "لحظات..." : (storyContent?.storyTitle || "ها هي قصتك!")}</CardTitle>
+                    <CardTitle className="font-headline text-3xl">{loading ? "لحظات..." : (story?.title || "ها هي قصتك!")}</CardTitle>
                     <CardDescription>اقرأ مغامرة {heroName} الجديدة</CardDescription>
                 </CardHeader>
                 <CardContent className="px-8">
-                    {loading && !storyPages.length && (
+                    {loading && (
                          <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-muted-foreground">
                             <Loader2 className="h-16 w-16 animate-spin text-primary" />
                             <p className="font-semibold">لحظات، القصة على وشك الاكتمال...</p>
@@ -344,36 +317,22 @@ export default function CreateStoryPage() {
                         </div>
                     )}
                      <div ref={storyContainerRef} className="space-y-8">
-                        {(storyContent && storyPages.length > 0) ? (
-                            storyContent.chapters.map((chapter, index) => (
-                                <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center story-page-container bg-white p-4 rounded-lg">
-                                    <div className='order-2 md:order-1'>
-                                        <h3 className="font-bold text-xl mb-2">{chapter.chapterTitle}</h3>
-                                        <p className="leading-loose text-lg">{chapter.narrative}</p>
-                                    </div>
-                                    <div className='order-1 md:order-2'>
-                                        {storyPages[index] ? (
-                                                <Image
-                                                    src={storyPages[index].imageDataUri}
-                                                    alt={`Illustration for page ${index + 1}`}
-                                                    width={500}
-                                                    height={500}
-                                                    className="rounded-lg border bg-white shadow-sm w-full object-contain aspect-square"
-                                                />
-                                        ): (
-                                                <div className="rounded-lg border bg-gray-200 w-full aspect-square flex items-center justify-center">
-                                                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                                                </div>
-                                        )}
-                                    </div>
+                        {story && story.pages.map((page, index) => (
+                            <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center story-page-container bg-white p-4 rounded-lg">
+                                <div className='order-2 md:order-1'>
+                                    <p className="leading-loose text-lg">{page.text}</p>
                                 </div>
-                            ))
-                        ): (
-                            storyContent && <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-muted-foreground">
-                                <Loader2 className="h-16 w-16 animate-spin text-primary" />
-                                <p className="font-semibold">جاري رسم الصور...</p>
+                                <div className='order-1 md:order-2'>
+                                    <Image
+                                        src={page.imageDataUri}
+                                        alt={`Illustration for page ${index + 1}`}
+                                        width={500}
+                                        height={500}
+                                        className="rounded-lg border bg-white shadow-sm w-full object-contain aspect-square"
+                                    />
+                                </div>
                             </div>
-                        )}
+                        ))}
                     </div>
                 </CardContent>
                  <CardFooter className="justify-between p-8">
@@ -381,7 +340,7 @@ export default function CreateStoryPage() {
                         <ArrowRight className="ml-2 h-5 w-5" />
                         السابق
                     </Button>
-                    <Button onClick={nextStep} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500" disabled={loading || !storyPages.length}>
+                    <Button onClick={nextStep} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500" disabled={loading || !story}>
                         التالي
                         <ArrowLeft className="mr-2 h-5 w-5" />
                     </Button>

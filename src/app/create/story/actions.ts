@@ -1,7 +1,7 @@
 'use server';
 
 import { db, storage } from '@/lib/firebase';
-import { collection, doc, setDoc, addDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 // This is a helper type and does not need to be exported
@@ -12,13 +12,16 @@ interface StoryPageForSave {
 
 // This is a helper type and does not need to be exported
 interface StoryDataForSave {
+    title: string;
     pages: StoryPageForSave[];
 }
 
 
 async function uploadImage(imageDataUri: string, storyId: string, pageIndex: number): Promise<string> {
   const storageRef = ref(storage, `stories/${storyId}/page_${pageIndex + 1}.png`);
-  const uploadResult = await uploadString(storageRef, imageDataUri.split(',')[1], 'base64', {
+  // Ensure we are passing only the base64 part of the data URI
+  const base64Data = imageDataUri.includes(',') ? imageDataUri.split(',')[1] : imageDataUri;
+  const uploadResult = await uploadString(storageRef, base64Data, 'base64', {
       contentType: 'image/png'
   });
   return await getDownloadURL(uploadResult.ref);
@@ -30,7 +33,7 @@ export async function saveStoryAction(
   location: string,
 ): Promise<{ success: boolean; error?: string; storyId?: string }> {
   try {
-    const storyTitle = `مغامرة ${heroName} في ${location}`;
+    const storyTitle = storyData.title || `مغامرة ${heroName} في ${location}`;
 
     // 1. Create a document reference with a new ID in the 'stories' collection
     const storyRef = doc(collection(db, 'stories'));
