@@ -22,6 +22,7 @@ const StoryPageSchema = z.object({
     "The image for the coloring page, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'"
   ),
 });
+export type StoryPage = z.infer<typeof StoryPageSchema>;
 
 const CreateStoryAndColoringPagesOutputSchema = z.object({
   title: z.string().describe('The title of the story.'),
@@ -69,26 +70,40 @@ const createStoryAndColoringPagesFlow = ai.defineFlow(
     inputSchema: CreateStoryAndColoringPagesInputSchema,
     outputSchema: CreateStoryAndColoringPagesOutputSchema,
   },
-  async input => {
-    const titleResult = await titlePrompt({ topic: input.topic });
-    const title = titleResult.output?.title || 'قصة جميلة';
-
-    const pages = [];
-    for (let i = 1; i <= input.numPages; i++) {
-      try {
-        const {output} = await pagePrompt({
-          topic: input.topic,
-          pageNumber: i,
-          totalPages: input.numPages,
-        });
-        if (output) {
-          pages.push(output);
+  async (input): Promise<CreateStoryAndColoringPagesOutput> => {
+    let title = 'قصة جميلة';
+    try {
+        const titleResult = await titlePrompt({ topic: input.topic });
+        if (titleResult.output?.title) {
+            title = titleResult.output.title;
         }
-      } catch (error) {
-        console.error(`Failed to generate page ${i}:`, error);
-        // Silently skip the page if generation fails
-      }
+    } catch (error) {
+        console.error("Failed to generate title:", error);
     }
-    return {title, pages};
+
+    const pagePromises: Promise<StoryPage | null>[] = Array.from({ length: input.numPages }, (_, i) => {
+        const pageNumber = i + 1;
+        return pagePrompt({
+            topic: input.topic,
+            pageNumber: pageNumber,
+            totalPages: input.numPages,
+        }).then(result => {
+             // Validate the output to ensure it's a valid StoryPage
+            if (result.output && typeof result.output.text === 'string' && typeof result.output.imageDataUri === 'string') {
+                return result.output;
+            }
+            console.warn(`Invalid output for page ${pageNumber}. Skipping.`);
+            return null;
+        }).catch(error => {
+            console.error(`Failed to generate page ${pageNumber}:`, error);
+            // Return null if a specific page generation fails
+            return null;
+        });
+    });
+
+    const resolvedPages = await Promise.all(pagePromises);
+    const validPages = resolvedPages.filter((page): page is StoryPage => page !== null);
+
+    return { title, pages: validPages };
   }
 );
