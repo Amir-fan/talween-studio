@@ -1,3 +1,5 @@
+'use client';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -16,9 +18,14 @@ import {
   ShoppingBag,
   Edit2,
   Trash2,
+  LogOut
 } from 'lucide-react';
+import withAuth from '@/hoc/withAuth';
+import { useAuth } from '@/context/auth-context';
 
-export default function AccountPage() {
+function AccountPage() {
+  const { user, logout } = useAuth();
+
   return (
     <div className="min-h-screen bg-yellow-50/30">
       <div className="container mx-auto px-4 py-12">
@@ -142,28 +149,36 @@ export default function AccountPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6 text-right">
-                <div className="flex flex-col items-center">
-                  <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary/20">
-                    <User className="h-12 w-12 text-primary" />
-                  </div>
-                  <h3 className="mt-4 text-xl font-bold">المستخدم</h3>
-                  <p className="text-sm text-muted-foreground">
-                    user@example.com
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">
-                    البريد الإلكتروني
-                  </label>
-                  <div className="flex items-center justify-end gap-3 rounded-lg bg-secondary/50 p-3">
-                    <span>user@example.com</span>
-                    <Mail className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                </div>
-                <Button variant="outline" className="w-full">
-                  <Lock className="ml-2 h-4 w-4" />
-                  تغيير كلمة المرور
-                </Button>
+                {user && (
+                    <>
+                        <div className="flex flex-col items-center">
+                            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary/20">
+                                <User className="h-12 w-12 text-primary" />
+                            </div>
+                            <h3 className="mt-4 text-xl font-bold">{user.displayName || 'مستخدم جديد'}</h3>
+                            <p className="text-sm text-muted-foreground">
+                                {user.email}
+                            </p>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-muted-foreground">
+                                البريد الإلكتروني
+                            </label>
+                            <div className="flex items-center justify-end gap-3 rounded-lg bg-secondary/50 p-3">
+                                <span>{user.email}</span>
+                                <Mail className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                        </div>
+                        <Button variant="outline" className="w-full">
+                            <Lock className="ml-2 h-4 w-4" />
+                            تغيير كلمة المرور
+                        </Button>
+                        <Button variant="destructive" className="w-full" onClick={logout}>
+                            <LogOut className="ml-2 h-4 w-4" />
+                            تسجيل الخروج
+                        </Button>
+                    </>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -172,3 +187,5 @@ export default function AccountPage() {
     </div>
   );
 }
+
+export default withAuth(AccountPage);

@@ -3,18 +3,21 @@
 
 import Link from 'next/link';
 import { Button } from './ui/button';
-import { User, Globe, Library, Menu, BookOpen, School, ShoppingCart, Palette } from 'lucide-react';
+import { User, Globe, Library, Menu, BookOpen, School, ShoppingCart, LogOut, LogIn } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-
-const navLinks = [
-    { href: "/create", label: "إنشاء", icon: BookOpen },
-    { href: "/library", label: "مكتبتي", icon: Library },
-    { href: "/account", label: "حسابي", icon: User },
-    { href: "#", label: "المدارس", icon: School },
-    { href: "#", label: "الاشتراك", icon: ShoppingCart },
-];
+import { useAuth } from '@/context/auth-context';
 
 export default function Header() {
+    const { user, logout } = useAuth();
+
+    const navLinks = [
+        { href: "/create", label: "إنشاء", icon: BookOpen },
+        { href: "/library", label: "مكتبتي", icon: Library, auth: true },
+        { href: "/account", label: "حسابي", icon: User, auth: true },
+        { href: "#", label: "المدارس", icon: School },
+        { href: "#", label: "الاشتراك", icon: ShoppingCart },
+    ];
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-20 items-center justify-between">
@@ -26,17 +29,27 @@ export default function Header() {
                 </svg>
             </Link>
              <nav className="hidden items-center gap-6 text-sm lg:flex">
-                {navLinks.map(link => (
-                    <Link key={link.label} href={link.href} className="font-semibold text-muted-foreground transition-colors hover:text-primary">{link.label}</Link>
-                ))}
+                {navLinks.map(link => {
+                    if (link.auth && !user) return null;
+                    return <Link key={link.label} href={link.href} className="font-semibold text-muted-foreground transition-colors hover:text-primary">{link.label}</Link>
+                })}
             </nav>
         </div>
        
         <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="hidden items-center gap-2 md:flex">
-                <Globe className="h-5 w-5" />
-                <span className="sr-only">Change Language</span>
-            </Button>
+            {user ? (
+                 <Button onClick={logout} variant="ghost" size="sm" className="hidden md:flex">
+                    <LogOut className="ml-2 h-4 w-4" />
+                    خروج
+                </Button>
+            ) : (
+                <Button asChild variant="ghost" size="sm" className="hidden md:flex">
+                    <Link href="/login">
+                        <LogIn className="ml-2 h-4 w-4" />
+                        دخول
+                    </Link>
+                </Button>
+            )}
             <Button asChild size="sm" className="hidden md:flex">
                 <Link href="/create">أنشئ قصة</Link>
             </Button>
@@ -51,33 +64,43 @@ export default function Header() {
                         </Button>
                     </SheetTrigger>
                     <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                        <SheetHeader>
-                            <SheetTitle className="sr-only">Menu</SheetTitle>
-                            <SheetDescription className="sr-only">
-                                Main navigation menu for Talween Studio.
-                            </SheetDescription>
-                        </SheetHeader>
                          <nav className="flex flex-col gap-4 mt-8">
-                            {navLinks.map((link) => (
-                                <SheetClose asChild key={link.label}>
-                                    <Link
-                                        href={link.href}
-                                        className="flex items-center gap-3 rounded-lg px-3 py-3 text-lg font-medium text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
-                                    >
-                                        <link.icon className="h-5 w-5" />
-                                        {link.label}
-                                    </Link>
-                                </SheetClose>
-                            ))}
+                            {navLinks.map((link) => {
+                                 if (link.auth && !user) return null;
+                                 return (
+                                    <SheetClose asChild key={link.label}>
+                                        <Link
+                                            href={link.href}
+                                            className="flex items-center gap-3 rounded-lg px-3 py-3 text-lg font-medium text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
+                                        >
+                                            <link.icon className="h-5 w-5" />
+                                            {link.label}
+                                        </Link>
+                                    </SheetClose>
+                                )
+                            })}
                         </nav>
                         <div className="absolute bottom-4 right-4 left-4 flex flex-col gap-2">
-                             <Button variant="outline" className="w-full justify-center">
-                                <Globe className="ml-2 h-4 w-4" />
-                                English
-                            </Button>
-                             <Button asChild className="w-full">
-                                <Link href="/create">أنشئ قصة</Link>
-                            </Button>
+                             {user ? (
+                                <Button onClick={() => {logout();}} variant="outline" className="w-full justify-center">
+                                    <LogOut className="ml-2 h-4 w-4" />
+                                    خروج
+                                </Button>
+                             ) : (
+                                <SheetClose asChild>
+                                    <Link href="/login" className='w-full'>
+                                        <Button variant="outline" className="w-full justify-center">
+                                            <LogIn className="ml-2 h-4 w-4" />
+                                            دخول
+                                        </Button>
+                                    </Link>
+                                </SheetClose>
+                             )}
+                             <SheetClose asChild>
+                                <Button asChild className="w-full">
+                                    <Link href="/create">أنشئ قصة</Link>
+                                </Button>
+                             </SheetClose>
                         </div>
                     </SheetContent>
                 </Sheet>
