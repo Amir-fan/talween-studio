@@ -25,53 +25,6 @@ export async function generateColoringPageFromText(input: GenerateColoringPageFr
   return generateColoringPageFromTextFlow(input);
 }
 
-const illustrationPrompt = ai.definePrompt({
-  name: 'generateColoringPageFromTextPrompt',
-  input: { schema: GenerateColoringPageFromTextInputSchema },
-  output: { schema: GenerateColoringPageFromTextOutputSchema },
-  prompt: `You are an illustrator that creates black-and-white line art images for children’s coloring books.
-
-Input: {{{description}}}
-
-Instructions:
-
-- Create a black-and-white line art illustration only.
-- Style: Simple, bold outlines, cartoon-like.
-- No colors, no shading, no gray areas.
-- Keep the drawing uncluttered with large empty spaces for coloring.
-- Objects and characters must be easy to recognize and cute, child-friendly.
-- The composition should be fun and inviting, suitable for children ages 4–10.
-- The requested difficulty is: {{{difficulty}}}
-{{#if (eq difficulty "Simple")}}
-- Keep it very simple with thick, bold outlines. Avoid small details. Perfect for toddlers.
-{{/if}}
-{{#if (eq difficulty "Detailed")}}
-- Add more intricate details and finer lines suitable for older children who enjoy a challenge.
-{{/if}}
-
-{{media url=coloringPageDataUri}}`,
-   config: {
-    safetySettings: [
-      {
-        category: 'HARM_CATEGORY_HATE_SPEECH',
-        threshold: 'BLOCK_ONLY_HIGH',
-      },
-      {
-        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-        threshold: 'BLOCK_NONE',
-      },
-      {
-        category: 'HARM_CATEGORY_HARASSMENT',
-        threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-      },
-      {
-        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-        threshold: 'BLOCK_LOW_AND_ABOVE',
-      },
-    ],
-  },
-});
-
 const generateColoringPageFromTextFlow = ai.defineFlow(
   {
     name: 'generateColoringPageFromTextFlow',
@@ -79,13 +32,54 @@ const generateColoringPageFromTextFlow = ai.defineFlow(
     outputSchema: GenerateColoringPageFromTextOutputSchema,
   },
   async (input) => {
+    // Construct a detailed, single prompt string to ensure style consistency.
+    const prompt = `
+      You are an expert illustrator that creates black-and-white line art images for children’s coloring books. Your output must be a simple, clean, coloring book style image.
+
+      **Scene Description:** "${input.description}"
+
+      **Rules:**
+      1.  **Style:** Black-and-white line art only.
+      2.  **Outlines:** Use simple, bold, and clear outlines.
+      3.  **Color:** Absolutely no colors, shading, or gray areas. The background must be white.
+      4.  **Simplicity:** Keep the drawing uncluttered with large empty spaces for coloring.
+      5.  **Clarity:** Objects and characters must be cute, child-friendly, and easy to recognize.
+      6.  **Difficulty Level:** ${input.difficulty}.
+          - If 'Simple', use very thick outlines and minimal detail, suitable for toddlers.
+          - If 'Detailed', use finer lines and more intricate details, suitable for older children.
+      7.  **Composition:** The overall image should be fun and inviting for children.
+    `;
+
     const { media } = await ai.generate({
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
-      prompt: `Difficulty: ${input.difficulty}. Description: ${input.description}`,
+      prompt: prompt,
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
+        safetySettings: [
+          {
+            category: 'HARM_CATEGORY_HATE_SPEECH',
+            threshold: 'BLOCK_ONLY_HIGH',
+          },
+          {
+            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+            threshold: 'BLOCK_NONE',
+          },
+          {
+            category: 'HARM_CATEGORY_HARASSMENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          },
+          {
+            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+            threshold: 'BLOCK_LOW_AND_ABOVE',
+          },
+        ],
       },
     });
-    return { coloringPageDataUri: media.url! };
+
+    if (!media?.url) {
+      throw new Error('Image generation failed to return a valid image URL.');
+    }
+
+    return { coloringPageDataUri: media.url };
   }
 );
