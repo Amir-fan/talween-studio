@@ -24,9 +24,6 @@ const GenerateColoringPageFromImageOutputSchema = z.object({
 });
 export type GenerateColoringPageFromImageOutput = z.infer<typeof GenerateColoringPageFromImageOutputSchema>;
 
-export async function generateColoringPageFromImage(input: GenerateColoringPageFromImageInput): Promise<GenerateColoringPageFromImageOutput> {
-  return generateColoringPageFromImageFlow(input);
-}
 
 const imageConversionPrompt = `You are an image editor that converts any given image into a black-and-white coloring-book style illustration.
 
@@ -84,3 +81,7 @@ const generateColoringPageFromImageFlow = ai.defineFlow(
     return {coloringPageDataUri: media.url};
   }
 );
+
+export async function generateColoringPageFromImage(input: GenerateColoringPageFromImageInput): Promise<GenerateColoringPageFromImageOutput> {
+  return generateColoringPageFromImageFlow(input);
+}
