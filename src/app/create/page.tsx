@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -104,7 +105,7 @@ function CreatePage() {
                   <CardDescription className="min-h-[40px]">{option.description}</CardDescription>
                 </CardContent>
                 <CardFooter className="flex justify-center p-6">
-                    <Button size="lg" className={`w-full max-w-xs font-bold rounded-full ${option.buttonClass}`}>
+                    <Button size="lg" className={`w-full max-w-xs font-bold rounded-full shine-effect ${option.buttonClass}`}>
                       {option.buttonText}
                     </Button>
                 </CardFooter>
