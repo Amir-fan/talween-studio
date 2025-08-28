@@ -1,19 +1,18 @@
 'use server';
 /**
- * @fileOverview Generates a story and corresponding coloring pages.
- * This flow is self-contained and handles both text and image generation.
+ * @fileOverview A self-contained flow to generate a complete story with text and coloring pages.
+ * This file is designed to be a compliant Next.js server action.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const StoryPageSchema = z.object({
-  text: z.string().describe('The text content of the page in Arabic.'),
+  text: z.string().describe('The text content of the page.'),
   imageDataUri: z.string().describe(
-    "The image for the coloring page, as a data URI. Should be a simple black and white line drawing."
+    "The image for the coloring page, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
   ),
 });
-export type StoryPage = z.infer<typeof StoryPageSchema>;
 
 export const CreateStoryAndColoringPagesInputSchema = z.object({
   topic: z.string().describe('The topic of the story.'),
@@ -26,51 +25,6 @@ export const CreateStoryAndColoringPagesOutputSchema = z.object({
 });
 export type CreateStoryAndColoringPagesOutput = z.infer<typeof CreateStoryAndColoringPagesOutputSchema>;
 
-// Define the prompt internally. It's used by the flow but not exported.
-const pagePrompt = ai.definePrompt({
-  name: 'storyPagePrompt',
-  input: {schema: z.object({topic: z.string(), pageNumber: z.number()})},
-  output: {schema: StoryPageSchema},
-  prompt: `You are creating a children's story book. Each page will have text and an illustration suitable for a coloring book.
-
-Create page {{pageNumber}} of a story about {{topic}}.
-
-Your output must be a valid JSON object and include:
-- text: the text for this page of the story, written in Arabic.
-- imageDataUri: a data URI for the illustration. The illustration must be a simple black and white line drawing suitable for a children's coloring book, with no colors or shading.
-
-Ensure imageDataUri is a valid data URI with proper MIME type and base64 encoding.
-`,
-});
-
-// Define the flow internally. It's used by the exported function but not exported itself.
-const createStoryAndColoringPagesFlow = ai.defineFlow(
-  {
-    name: 'createStoryAndColoringPagesFlow',
-    inputSchema: CreateStoryAndColoringPagesInputSchema,
-    outputSchema: CreateStoryAndColoringPagesOutputSchema,
-  },
-  async (flowInput) => {
-    const pagePromises = Array.from({length: flowInput.numPages}, (_, i) =>
-      pagePrompt({
-        topic: flowInput.topic,
-        pageNumber: i + 1,
-      })
-    );
-
-    const results = await Promise.all(pagePromises);
-
-    const pages = results.map((result) => {
-      if (!result.output) {
-        throw new Error('A page generation failed to produce output.');
-      }
-      return result.output;
-    });
-
-    return {pages};
-  }
-);
-
 /**
  * An exported async function that can be called from server components or actions.
  * This is the ONLY function exported, which complies with "use server" rules.
@@ -80,5 +34,57 @@ const createStoryAndColoringPagesFlow = ai.defineFlow(
 export async function createStoryAndColoringPages(
   input: CreateStoryAndColoringPagesInput
 ): Promise<CreateStoryAndColoringPagesOutput> {
+  
+  // Define the prompt internally to this function's scope
+  const pagePrompt = ai.definePrompt({
+    name: 'pagePrompt',
+    input: {schema: z.object({topic: z.string(), pageNumber: z.number()})},
+    output: {schema: StoryPageSchema},
+    prompt: `You are creating a children's story book. Each page will have text and an illustration suitable for a coloring book.
+
+Create page {{pageNumber}} of a story about {{topic}}.
+
+Your output should include:
+- text: the text for this page of the story in Arabic.
+- imageDataUri: a base64 encoded data URI for the coloring book illustration. Make the illustration simple, black and white line art, and suitable for coloring.
+
+Ensure imageDataUri is a valid data URI with proper MIME type and base64 encoding.
+
+Output in JSON format:
+`,
+  });
+
+  // Define the flow internally as well.
+  const createStoryAndColoringPagesFlow = ai.defineFlow(
+    {
+      name: 'createStoryAndColoringPagesFlow',
+      inputSchema: CreateStoryAndColoringPagesInputSchema,
+      outputSchema: CreateStoryAndColoringPagesOutputSchema,
+    },
+    async (flowInput) => {
+        const pagePromises = [];
+        for (let i = 1; i <= flowInput.numPages; i++) {
+            pagePromises.push(
+                pagePrompt({
+                    topic: flowInput.topic,
+                    pageNumber: i,
+                })
+            );
+        }
+
+        const results = await Promise.all(pagePromises);
+        
+        const pages = results.map(result => {
+            if (!result.output) {
+                throw new Error(`Page generation failed for one of the pages.`);
+            }
+            return result.output;
+        });
+
+        return { pages };
+    }
+  );
+
+  // Execute the internally defined flow
   return createStoryAndColoringPagesFlow(input);
 }
