@@ -107,7 +107,7 @@ export default function PackagesPage() {
             <TabsContent value="points">
                  <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4 mt-8">
                     {pointsPackages.map((pkg) => (
-                        <Card key={pkg.title} className={cn('relative flex flex-col overflow-hidden rounded-2xl transition-all duration-300', pkg.highlight && 'border-primary border-2 shadow-lg')}>
+                        <Card key={pkg.title} className={cn('relative flex flex-col overflow-hidden rounded-2xl transition-all duration-300 animate-float', pkg.highlight && 'border-primary border-2 shadow-lg')}>
                             {pkg.badge && <div className="absolute top-0 right-0 -mr-1 -mt-1 rounded-bl-lg rounded-tr-xl bg-primary px-3 py-1 text-sm font-bold text-primary-foreground">{pkg.badge}</div>}
                             <CardHeader className="items-center text-center p-6">
                                 <div className={cn('flex h-16 w-16 items-center justify-center rounded-full', pkg.bgColor, pkg.color)}>
@@ -132,7 +132,7 @@ export default function PackagesPage() {
             <TabsContent value="subscriptions">
                  <div className="grid grid-cols-1 gap-8 md:grid-cols-3 mt-8">
                     {subscriptionPackages.map((pkg) => (
-                        <Card key={pkg.title} className={cn('relative flex flex-col overflow-hidden rounded-2xl transition-all duration-300', pkg.highlight && 'border-primary border-2 shadow-lg')}>
+                        <Card key={pkg.title} className={cn('relative flex flex-col overflow-hidden rounded-2xl transition-all duration-300 animate-float', pkg.highlight && 'border-primary border-2 shadow-lg')}>
                             {pkg.badge && <div className="absolute top-0 right-0 -mr-1 -mt-1 rounded-bl-lg rounded-tr-xl bg-primary px-3 py-1 text-sm font-bold text-primary-foreground">{pkg.badge}</div>}
                             <CardHeader className="items-center text-center p-6">
                                 <CardTitle className="mt-4 font-headline text-2xl">{pkg.title}</CardTitle>
