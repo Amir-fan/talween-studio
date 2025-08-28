@@ -89,7 +89,7 @@ const storyPrompt = ai.definePrompt({
 - Reference traditional customs and values
 
 ## Output Format:
-You must output a valid JSON object that conforms to the provided schema. Do not add any text before or after the JSON object.
+You must output a valid JSON object that conforms to the provided schema. Each "page" object must have a unique "image_reference" string (e.g., "cover", "page_1", "page_2").
 
 ## Story Structure Requirements:
 - A 4-page story should have a simple beginning, problem, solution, and conclusion.
