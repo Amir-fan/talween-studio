@@ -35,6 +35,7 @@ import { createStoryAndColoringPages, CreateStoryAndColoringPagesOutput, StoryPa
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/context/auth-context';
 import { InsufficientCreditsPopup } from '@/components/popups/insufficient-credits-popup';
+import { TenorGIF } from '@/components/tenor-gif';
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
@@ -73,7 +74,7 @@ export default function CreateStoryPage() {
   const [showCreditPopup, setShowCreditPopup] = useState(false);
 
   const { toast } = useToast();
-  const { user, userData } = useAuth();
+  const { user } = useAuth();
   const storyContainerRef = React.useRef<HTMLDivElement>(null);
 
   const storyCost = useMemo(() => calculateCost(numPages), [numPages]);
@@ -364,7 +365,7 @@ export default function CreateStoryPage() {
                 <CardContent className="px-8" >
                     {loading && (
                          <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-muted-foreground">
-                            <Loader2 className="h-16 w-16 animate-spin text-primary" />
+                            <TenorGIF />
                             <p className="font-semibold">{loadingMessage || 'لحظات، القصة على وشك الاكتمال...'}</p>
                             <p className="text-sm">يقوم الذكاء الاصطناعي بنسج الكلمات والصور معاً.</p>
                         </div>

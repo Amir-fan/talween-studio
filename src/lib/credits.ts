@@ -38,7 +38,7 @@ export async function checkAndDeductCredits(userId: string, amount: number): Pro
       amount: -amount,
       date: FieldValue.serverTimestamp(),
       type: 'deduction',
-      description: 'AI Generation'
+      description: 'AI Story Generation'
     });
 
     return { success: true };

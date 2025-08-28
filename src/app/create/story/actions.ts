@@ -17,6 +17,9 @@ interface StoryDataForSave {
 
 
 async function uploadImage(imageDataUri: string, storyId: string, pageIndex: number): Promise<string> {
+  if (!storageAdmin) {
+    throw new Error("Firebase Storage Admin SDK is not initialized.");
+  }
   const bucket = storageAdmin.bucket();
   const file = bucket.file(`stories/${storyId}/page_${pageIndex + 1}.png`);
   
@@ -42,6 +45,9 @@ export async function saveStoryAction(
 ): Promise<{ success: boolean; error?: string; storyId?: string }> {
   if (!userId) {
     return { success: false, error: 'User not authenticated.' };
+  }
+  if (!dbAdmin) {
+      return { success: false, error: "Firebase Firestore Admin SDK is not initialized." };
   }
   
   try {

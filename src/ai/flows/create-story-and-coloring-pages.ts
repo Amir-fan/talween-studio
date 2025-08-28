@@ -11,8 +11,6 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { generateColoringPageFromDescription } from './generate-coloring-page-from-description';
 import { checkAndDeductCredits } from '@/lib/credits';
-import { getAuth } from 'firebase-admin/auth';
-import { adminAuth } from '@/lib/firebase-admin';
 
 const CreateStoryAndColoringPagesInputSchema = z.object({
   topic: z.string().describe('The topic of the story.'),
