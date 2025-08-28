@@ -40,8 +40,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import React from 'react';
-import { generateStoryAction } from './actions';
-import type { CreateStoryAndColoringPagesOutput, CreateStoryAndColoringPagesInput } from '@/ai/flows/create-story-and-coloring-pages';
+import { createStoryAndColoringPages } from './actions';
+import type { CreateStoryAndColoringPagesOutput, CreateStoryAndColoringPagesInput } from './actions';
 import { TenorGIF } from '@/components/tenor-gif';
 import { useAuth } from '@/context/auth-context';
 import { InsufficientCreditsPopup } from '@/components/popups/insufficient-credits-popup';
@@ -123,7 +123,7 @@ function CreateStoryPage() {
     setStep(3); // Move to the generating view step
 
     try {
-      const result = await generateStoryAction({
+      const result = await createStoryAndColoringPages({
           ...formData,
           userId: user.uid,
       });

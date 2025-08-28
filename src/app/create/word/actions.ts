@@ -3,13 +3,14 @@
 import {
   generateColoringPageFromText,
   GenerateColoringPageFromTextInput,
+  GenerateColoringPageFromTextOutput,
 } from '@/ai/flows/generate-coloring-page-from-text';
 
 export async function generateImageAction(
   values: GenerateColoringPageFromTextInput
 ): Promise<{
   success: boolean;
-  data?: { coloringPageDataUri: string };
+  data?: GenerateColoringPageFromTextOutput;
   error?: string;
 }> {
   try {

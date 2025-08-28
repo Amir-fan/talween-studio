@@ -1,4 +1,3 @@
-'use server';
 /**
  * @fileOverview Generates the textual content of a story based on user inputs.
  */
