@@ -25,18 +25,6 @@ export async function generateColoringPageFromDescription(input: GenerateColorin
   return generateColoringPageFromDescriptionFlow(input);
 }
 
-const illustrationPrompt = `Create a black-and-white line art illustration for a children’s coloring book.
-
-Input Scene: {{{description}}}
-
-Rules:
-- Style: Simple, bold outlines, no shading, no gray areas, no colors.
-- Objects and characters should be easy for children to recognize and color.
-- Keep it uncluttered with large empty spaces for coloring.
-- Maintain consistency of the main character {{{childName}}} across all illustrations.
-- Avoid small details that are difficult to color.
-- Make it fun, cute, and child-friendly.`;
-
 const generateColoringPageFromDescriptionFlow = ai.defineFlow(
   {
     name: 'generateColoringPageFromDescriptionFlow',
@@ -44,13 +32,21 @@ const generateColoringPageFromDescriptionFlow = ai.defineFlow(
     outputSchema: GenerateColoringPageFromDescriptionOutputSchema,
   },
   async input => {
+     // A simplified and direct prompt for better reliability.
+    const illustrationPrompt = `black-and-white, line-art, coloring book style. A simple, cute, child-friendly illustration for a children's coloring book. The scene: ${input.description}. The main character is named ${input.childName}. Use thick, clean outlines and no shading or color.`;
+
     const {media} = await ai.generate({
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
-      prompt: illustrationPrompt.replace('{{{description}}}', input.description).replace('{{{childName}}}', input.childName),
+      prompt: illustrationPrompt,
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
       },
     });
-    return {coloringPageDataUri: media.url!};
+
+    if (!media?.url) {
+      throw new Error('Image generation failed to return a valid URL.');
+    }
+
+    return {coloringPageDataUri: media.url};
   }
 );

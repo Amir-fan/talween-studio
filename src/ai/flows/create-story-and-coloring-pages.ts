@@ -92,6 +92,9 @@ const createStoryAndColoringPagesFlow = ai.defineFlow(
         generateColoringPageFromDescription({
             description: desc.image_prompt,
             childName: input.childName,
+        }).catch(err => {
+            console.error(`Failed to generate image for page ${desc.page_reference}:`, err);
+            return { coloringPageDataUri: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' }; // Return a placeholder on error
         })
     );
 
@@ -99,7 +102,11 @@ const createStoryAndColoringPagesFlow = ai.defineFlow(
     
     // Step 4: Combine story content with generated images
     const finalPages: FinalStoryPage[] = storyContent.pages.map((page, index) => {
-        const correspondingImage = generatedImages[index];
+        // Find the corresponding image description first to ensure we match correctly
+        const imageDesc = imageDescriptions.image_descriptions.find(d => d.page_reference === page.image_reference);
+        const imageIndex = imageDesc ? imageDescriptions.image_descriptions.indexOf(imageDesc) : -1;
+        const correspondingImage = imageIndex !== -1 ? generatedImages[imageIndex] : null;
+
         return {
             page_number: page.page_number,
             content: page.content,
