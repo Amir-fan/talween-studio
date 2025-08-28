@@ -1,3 +1,4 @@
+
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -152,7 +153,7 @@ export default function PackagesPage() {
                                 </ul>
                             </CardContent>
                             <CardFooter className="p-6">
-                                <Button size="lg" className={cn('w-full font-bold', pkg.buttonClass, !pkg.highlight && 'bg-opacity-80')}>ابدأ الآن</Button>
+                                <Button size="lg" className={cn('w-full font-bold', pkg.buttonClass)}>ابدأ الآن</Button>
                             </CardFooter>
                         </Card>
                     ))}
