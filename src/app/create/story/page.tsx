@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
   ArrowRight,
   ArrowLeft,
   Sparkles,
+  Heart,
   BookOpen,
+  Image as ImageIcon,
   CheckCircle,
   Loader2,
   Download,
@@ -23,21 +25,82 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import React from 'react';
-import { saveStoryAction } from './actions';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import { createStoryAndColoringPages, CreateStoryAndColoringPagesOutput, FinalStoryPage } from '@/ai/flows/create-story-and-coloring-pages';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAuth } from '@/context/auth-context';
-import { InsufficientCreditsPopup } from '@/components/popups/insufficient-credits-popup';
-import { TenorGIF } from '@/components/tenor-gif';
+import { z } from 'zod';
+import { ai } from '@/ai/genkit';
+
+// Define schemas and the AI flow directly in the component for simplicity and reliability.
+
+const StoryPageSchema = z.object({
+  text: z.string().describe('The text content of the page.'),
+  imageDataUri: z.string().describe(
+    "The image for the coloring page, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+  ),
+});
+export type StoryPage = z.infer<typeof StoryPageSchema>;
+
+const CreateStoryAndColoringPagesInputSchema = z.object({
+  topic: z.string().describe('The topic of the story.'),
+  numPages: z.number().describe('The number of pages for the story.').default(3),
+});
+export type CreateStoryAndColoringPagesInput = z.infer<typeof CreateStoryAndColoringPagesInputSchema>;
+
+const CreateStoryAndColoringPagesOutputSchema = z.object({
+  pages: z.array(StoryPageSchema).describe('The generated story pages with text and image data URIs.'),
+});
+export type CreateStoryAndColoringPagesOutput = z.infer<typeof CreateStoryAndColoringPagesOutputSchema>;
+
+// This is the single, reliable flow that will be used.
+const createStoryAndColoringPagesFlow = ai.defineFlow(
+  {
+    name: 'createStoryAndColoringPagesFlow',
+    inputSchema: CreateStoryAndColoringPagesInputSchema,
+    outputSchema: CreateStoryAndColoringPagesOutputSchema,
+  },
+  async input => {
+    const pages = await Promise.all(Array.from({ length: input.numPages }, (_, i) => {
+        const pagePrompt = ai.definePrompt({
+          name: `pagePrompt_${i}`, // Unique name for each prompt
+          input: {schema: z.object({topic: z.string(), pageNumber: z.number()})},
+          output: {schema: StoryPageSchema},
+          prompt: `You are creating a children's story book. Each page will have text and an illustration suitable for a coloring book.
+
+Create page {{pageNumber}} of a story about {{topic}}.
+
+Your output should include:
+- text: the text for this page of the story. It should be in Arabic.
+- imageDataUri: a data URI for the illustration. The illustration should be a simple black and white line drawing suitable for a coloring book.
+
+Ensure imageDataUri is a valid data URI with proper MIME type and base64 encoding.
+
+Output in JSON format:
+`,
+        });
+
+        return pagePrompt({ topic: input.topic, pageNumber: i + 1 }).then(result => result.output!);
+    }));
+    
+    return {pages};
+  }
+);
+
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
+  { icon: Heart, label: 'الدرس المستفاد' },
+  { icon: ImageIcon, label: 'الصور' },
   { icon: BookOpen, label: 'القصة' },
   { icon: CheckCircle, label: 'النهاية' },
 ];
@@ -45,173 +108,61 @@ const steps = [
 const locations = [
   'المسجد الحرام', 'المسجد النبوي', 'الصحراء الخليجية', 'الشاطئ', 'المدرسة',
   'الحديقة', 'السوق التراثي', 'القرية', 'برج خليفة', 'متحف الفن الإسلامي',
-  'حديقة الأزهر', 'الكورنيش', 'auto-select'
+  'حديقة الأزهر', 'الكورنيش'
 ];
 
 const lessons = [
     'الصلاة', 'الصدق', 'بر الوالدين', 'الصدقة', 'الرحمة', 'الصبر',
-    'التعاون', 'الأمانة', 'العدل', 'حب الحيوانات', 'إدارة الوقت', 'النمو والتعلم', 'auto-select'
+    'التعاون', 'الأمانة', 'العدل', 'حب الحيوانات', 'إدارة الوقت', 'النمو والتعلم'
 ];
 
-function calculateCost(numPagesStr: '4' | '8' | '12' | '16'): number {
-    const numPages = parseInt(numPagesStr, 10);
-    return Math.ceil(numPages * 1.25);
-}
+const artStyles = [
+    'صور فوتوغرافية', 'رسم كرتوني', 'فن رقمي', 'فن تجريدي', 'ألوان مائية'
+]
 
 export default function CreateStoryPage() {
   const [step, setStep] = useState(1);
   const [heroName, setHeroName] = useState('');
-  const [ageGroup, setAgeGroup] = useState<'3-5' | '6-8' | '9-12'>('6-8');
-  const [numPages, setNumPages] = useState<'4' | '8' | '12' | '16'>('8');
-  const [setting, setSetting] = useState('auto-select');
-  const [lesson, setLesson] = useState('auto-select');
-
+  const [location, setLocation] = useState('');
   const [story, setStory] = useState<CreateStoryAndColoringPagesOutput | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [showCreditPopup, setShowCreditPopup] = useState(false);
-
   const { toast } = useToast();
-  const { user } = useAuth();
-  const storyContainerRef = React.useRef<HTMLDivElement>(null);
-
-  const storyCost = useMemo(() => calculateCost(numPages), [numPages]);
 
   const nextStep = () => setStep((prev) => (prev < steps.length ? prev + 1 : prev));
   const prevStep = () => setStep((prev) => (prev > 1 ? prev - 1 : prev));
 
-  const isStep1Complete = heroName.trim() !== '';
-
-  const handleDownload = async () => {
-    const container = storyContainerRef.current;
-    if (!container || !story) return;
-
-    const pdf = new jsPDF('p', 'pt', 'a4');
-    const pageElements = Array.from(container.querySelectorAll('.story-page-container'));
-    
-    for (let i = 0; i < pageElements.length; i++) {
-        const canvas = await html2canvas(pageElements[i] as HTMLElement, { 
-            scale: 2,
-            useCORS: true,
-            backgroundColor: '#ffffff'
-        });
-        const imgData = canvas.toDataURL('image/png');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgProps = pdf.getImageProperties(imgData);
-        const ratio = imgProps.height / imgProps.width;
-        let imgHeight = pdfWidth * ratio;
-        let y = 0;
-
-        if (imgHeight > pdfHeight) {
-            imgHeight = pdfHeight;
-        }
-        y = (pdfHeight - imgHeight) / 2;
-
-
-        if (i > 0) {
-            pdf.addPage();
-        }
-        pdf.addImage(imgData, 'PNG', 0, y, pdfWidth, imgHeight);
-    }
-    
-    pdf.save(`${story.title.replace(/ /g, '_') || 'story'}.pdf`);
-  };
-
-  const handleSave = async () => {
-    if (!story || !user) return;
-    setSaving(true);
-    try {
-      const result = await saveStoryAction(
-        story,
-        heroName,
-        setting,
-        user.uid,
-      );
-
-      if (result.success) {
-        toast({
-          title: 'تم الحفظ بنجاح',
-          description: 'تم حفظ قصتك في مكتبتك.',
-        });
-      } else {
-        throw new Error(result.error || 'فشل حفظ القصة.');
-      }
-    } catch (error) {
-       toast({
-        variant: 'destructive',
-        title: 'حدث خطأ',
-        description:
-          error instanceof Error ? error.message : 'An unknown error occurred.',
-      });
-    } finally {
-      setSaving(false);
-    }
-  }
-
   const handleGenerateStory = async () => {
-    if (!user) {
-      toast({
-        variant: "destructive",
-        title: "الرجاء تسجيل الدخول",
-        description: "يجب عليك تسجيل الدخول لإنشاء قصة.",
-      });
-      return;
-    }
-    if (!isStep1Complete) {
+    if (!heroName || !location) {
          toast({
             variant: "destructive",
             title: "معلومات ناقصة",
-            description: "الرجاء إدخال اسم البطل.",
+            description: "الرجاء إدخال اسم البطل واختيار مكان الأحداث.",
         });
         return;
     }
 
     setLoading(true);
     setStory(null);
-    setStep(2); // Move to the story view step
+    setStep(4); // Move to the story view step
 
     try {
-        setLoadingMessage("يتم الآن كتابة قصة شيقة...");
-        
-        const result = await createStoryAndColoringPages({
-            childName: heroName,
-            ageGroup: ageGroup,
-            numPages: numPages,
-            setting: setting,
-            lesson: lesson,
-            userId: user.uid 
-        });
-
-        if (!result || !result.pages || result.pages.length === 0) {
-          throw new Error("فشل إنشاء القصة. لم يتم إرجاع أي صفحات.");
-        }
-        
+        const topic = `قصة عن طفل اسمه ${heroName} في ${location}`;
+        const result = await createStoryAndColoringPagesFlow({ topic, numPages: 3 });
         setStory(result);
-
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.";
-        if (errorMessage.includes('Not enough credits')) {
-            setShowCreditPopup(true);
-        } else {
-            toast({
-                variant: "destructive",
-                title: "حدث خطأ",
-                description: errorMessage,
-            });
-        }
-        setStep(1); // Go back to the first step on error
+        toast({
+            variant: "destructive",
+            title: "حدث خطأ",
+            description: "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.",
+        });
+        setStep(3); // Go back to the previous step on error
     } finally {
         setLoading(false);
-        setLoadingMessage('');
     }
   };
 
 
   return (
-    <>
-    <InsufficientCreditsPopup open={showCreditPopup} onOpenChange={setShowCreditPopup} />
     <div className="min-h-screen bg-yellow-50/30">
       <div className="container mx-auto px-4 py-8">
         <header className="flex items-center justify-between">
@@ -235,7 +186,7 @@ export default function CreateStoryPage() {
           <div className="flex items-center justify-between">
             {steps.map((s, index) => (
               <React.Fragment key={s.label}>
-                <div className="flex flex-col items-center gap-2 text-center w-20">
+                <div className="flex flex-col items-center gap-2">
                   <div
                     className={cn(
                       'flex h-12 w-12 items-center justify-center rounded-full border-2 bg-secondary/50 transition-colors',
@@ -247,7 +198,6 @@ export default function CreateStoryPage() {
                   >
                     <s.icon className="h-6 w-6" />
                   </div>
-                   <p className={cn("mt-2 text-xs font-semibold", step === index + 1 ? "text-primary" : "text-muted-foreground")}>{s.label}</p>
                 </div>
                 {index < steps.length - 1 && (
                    <div className={cn("h-0.5 flex-1 transition-colors", step > index + 1 ? 'bg-primary/50' : 'bg-border')}></div>
@@ -255,6 +205,9 @@ export default function CreateStoryPage() {
               </React.Fragment>
             ))}
           </div>
+          <p className="mt-4 text-center text-sm font-semibold text-muted-foreground">
+            الخطوة {step} من {steps.length}: {steps[step - 1].label}
+          </p>
         </Card>
 
         {step === 1 && (
@@ -264,98 +217,151 @@ export default function CreateStoryPage() {
               <CardDescription>أخبرنا عن الشخصية الرئيسية</CardDescription>
             </CardHeader>
             <CardContent className="space-y-8 px-8">
-               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  <div>
-                    <Label htmlFor="hero-name" className="mb-2 block text-right font-semibold">اسم البطل</Label>
-                    <Input id="hero-name" placeholder="مثال: سارة" className="text-right" value={heroName} onChange={(e) => setHeroName(e.target.value)} />
-                  </div>
-                  <div>
-                    <Label htmlFor="age-group" className="mb-2 block text-right font-semibold">الفئة العمرية</Label>
-                    <Select dir="rtl" value={ageGroup} onValueChange={(v) => setAgeGroup(v as '3-5'|'6-8'|'9-12')}>
-                      <SelectTrigger id="age-group"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="3-5">3-5 سنوات</SelectItem>
-                        <SelectItem value="6-8">6-8 سنوات</SelectItem>
-                        <SelectItem value="9-12">9-12 سنوات</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="num-pages" className="mb-2 block text-right font-semibold">عدد الصفحات</Label>
-                     <Select dir="rtl" value={numPages} onValueChange={(v) => setNumPages(v as '4'|'8'|'12'|'16')}>
-                      <SelectTrigger id="num-pages"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="4">4 صفحات</SelectItem>
-                        <SelectItem value="8">8 صفحات</SelectItem>
-                        <SelectItem value="12">12 صفحة</SelectItem>
-                        <SelectItem value="16">16 صفحة</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-               </div>
-
-              <div>
-                <Label className="mb-4 block text-right font-semibold">مكان الأحداث (اختر أو اتركه للاختيار التلقائي)</Label>
-                <div dir="rtl" className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
-                  {locations.map((loc) => (
-                      <Button
-                        key={loc}
-                        variant={setting === loc ? 'default' : 'outline'}
-                        onClick={() => setSetting(loc)}
-                        className="h-12 rounded-full text-sm font-medium"
-                      >
-                          {loc === 'auto-select' ? 'اختيار تلقائي' : loc}
-                      </Button>
-                  ))}
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div>
+                  <Label htmlFor="hero-name" className="mb-2 block text-right font-semibold">اسم البطل</Label>
+                  <Input id="hero-name" placeholder="مثال: سارة" className="text-right" value={heroName} onChange={(e) => setHeroName(e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="hero-age" className="mb-2 block text-right font-semibold">العمر</Label>
+                  <Select dir="rtl">
+                    <SelectTrigger id="hero-age">
+                      <SelectValue placeholder="7 سنة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5 سنوات</SelectItem>
+                      <SelectItem value="6">6 سنوات</SelectItem>
+                      <SelectItem value="7">7 سنوات</SelectItem>
+                      <SelectItem value="8">8 سنوات</SelectItem>
+                      <SelectItem value="9">9 سنوات</SelectItem>
+                      <SelectItem value="10">10 سنوات</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-               <div>
-                <Label className="mb-4 block text-right font-semibold">الدرس المستفاد (اختر أو اتركه للاختيار التلقائي)</Label>
-                <div dir="rtl" className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
-                  {lessons.map((les) => (
-                      <Button
-                        key={les}
-                        variant={lesson === les ? 'default' : 'outline'}
-                        onClick={() => setLesson(les)}
-                        className="h-12 rounded-full text-sm font-medium"
-                      >
-                           {les === 'auto-select' ? 'اختيار تلقائي' : les}
-                      </Button>
+
+              <div>
+                <Label className="mb-4 block text-right font-semibold">مكان الأحداث</Label>
+                <RadioGroup dir="rtl" className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6" value={location} onValueChange={setLocation}>
+                  {locations.map((loc) => (
+                      <div key={loc}>
+                          <RadioGroupItem value={loc} id={loc} className="peer sr-only" />
+                          <Label
+                              htmlFor={loc}
+                              className="flex h-12 cursor-pointer items-center justify-center rounded-full border bg-background px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-accent/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/20 peer-data-[state=checked]:text-primary"
+                          >
+                              {loc}
+                          </Label>
+                      </div>
                   ))}
-                </div>
+                </RadioGroup>
               </div>
             </CardContent>
             <CardFooter className="justify-end p-8">
-                <Button onClick={handleGenerateStory} size="lg" className="bg-gradient-to-l from-rose-400 to-red-500 font-bold text-white hover:to-red-600" disabled={loading || !isStep1Complete || !user}>
-                    {loading ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Sparkles className="ml-2 h-5 w-5" />}
-                    {loading ? '...جاري إنشاء القصة' : `أنشئ القصة الآن (${storyCost} نقطة)`}
+                <Button onClick={nextStep} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
+                    التالي
+                    <ArrowLeft className="mr-2 h-5 w-5" />
                 </Button>
             </CardFooter>
           </Card>
         )}
 
         {step === 2 && (
+             <Card className="mt-8">
+                <CardHeader className="text-center">
+                    <CardTitle className="font-headline text-3xl">الدرس المستفاد</CardTitle>
+                    <CardDescription>اختر القيم التي تريد غرسها في القصة</CardDescription>
+                </CardHeader>
+                <CardContent className="px-8">
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-4 md:grid-cols-3 lg:grid-cols-4">
+                        {lessons.map((lesson) => (
+                            <div key={lesson} className="flex items-center justify-end gap-3">
+                               <Label htmlFor={lesson} className="cursor-pointer font-medium hover:text-primary">{lesson}</Label>
+                                <Checkbox id={lesson} dir='rtl' />
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+                <CardFooter className="justify-between p-8">
+                    <Button onClick={prevStep} size="lg" variant="outline">
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                        السابق
+                    </Button>
+                    <Button onClick={nextStep} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
+                        التالي
+                        <ArrowLeft className="mr-2 h-5 w-5" />
+                    </Button>
+                </CardFooter>
+            </Card>
+        )}
+
+        {step === 3 && (
+            <Card className="mt-8">
+                <CardHeader className="text-center">
+                    <CardTitle className="font-headline text-3xl">اختر النمط البصري</CardTitle>
+                    <CardDescription>اختر كيف ستبدو الصور في قصتك</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-8 px-8">
+                   <div>
+                        <Label htmlFor="art-style" className="mb-2 block text-right font-semibold">نمط فني</Label>
+                        <Select dir="rtl">
+                            <SelectTrigger id="art-style">
+                                <SelectValue placeholder="اختر نمطاً" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {artStyles.map(style => (
+                                    <SelectItem key={style} value={style}>{style}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                   </div>
+                   <div>
+                       <Label className="mb-4 block text-right font-semibold">اختر نوع الرسوم</Label>
+                       <RadioGroup dir="rtl" defaultValue="bw" className="flex gap-4">
+                           <div className="flex items-center gap-2">
+                               <RadioGroupItem value="bw" id="bw"/>
+                               <Label htmlFor="bw">أبيض وأسود (للتلوين)</Label>
+                           </div>
+                           <div className="flex items-center gap-2">
+                               <RadioGroupItem value="color" id="color" />
+                               <Label htmlFor="color">ملون</Label>
+                           </div>
+                       </RadioGroup>
+                   </div>
+                </CardContent>
+                <CardFooter className="justify-between p-8">
+                    <Button onClick={prevStep} size="lg" variant="outline">
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                        السابق
+                    </Button>
+                    <Button onClick={handleGenerateStory} size="lg" className="bg-gradient-to-l from-rose-400 to-red-500 font-bold text-white hover:to-red-600" disabled={loading}>
+                        {loading ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Sparkles className="ml-2 h-5 w-5" />}
+                        {loading ? '...جاري إنشاء القصة' : 'أنشئ القصة الآن'}
+                    </Button>
+                </CardFooter>
+            </Card>
+        )}
+
+        {step === 4 && (
             <Card className="mt-8">
                  <CardHeader className="text-center">
-                    <CardTitle className="font-headline text-3xl">{story?.title || 'ها هي قصتك!'}</CardTitle>
+                    <CardTitle className="font-headline text-3xl">ها هي قصتك!</CardTitle>
                     <CardDescription>اقرأ مغامرة {heroName} الجديدة</CardDescription>
                 </CardHeader>
-                <CardContent className="px-8" >
+                <CardContent className="px-8">
                     {loading && (
                          <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-muted-foreground">
-                            <TenorGIF />
-                            <p className="font-semibold">{loadingMessage || 'لحظات، القصة على وشك الاكتمال...'}</p>
+                            <Loader2 className="h-16 w-16 animate-spin text-primary" />
+                            <p className="font-semibold">لحظات، القصة على وشك الاكتمال...</p>
                             <p className="text-sm">يقوم الذكاء الاصطناعي بنسج الكلمات والصور معاً.</p>
                         </div>
                     )}
                     {story && (
-                        <div className="space-y-8" ref={storyContainerRef}>
+                        <div className="space-y-8">
                            {story.pages.map((page, index) => (
-                               <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center story-page-container bg-white p-4 rounded-lg">
+                               <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                                    <div className='order-2 md:order-1'>
-                                        <p className="font-bold text-lg mb-2">الصفحة {page.page_number}</p>
-                                        <p className="leading-loose text-lg whitespace-pre-wrap mb-4">{page.content}</p>
-                                        {page.interaction && <p className="text-base text-primary font-semibold p-3 bg-primary/10 rounded-lg">{page.interaction}</p>}
+                                        <p className="leading-loose text-lg">{page.text}</p>
                                    </div>
                                    <div className='order-1 md:order-2'>
                                        <Image
@@ -384,7 +390,7 @@ export default function CreateStoryPage() {
             </Card>
         )}
 
-        {step === 3 && (
+        {step === 5 && (
             <Card className="mt-8">
                 <CardHeader className="text-center">
                     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600">
@@ -398,11 +404,11 @@ export default function CreateStoryPage() {
                         قصتك عن <strong>{heroName}</strong> جاهزة الآن. يمكنك حفظها في مكتبتك للوصول إليها لاحقًا، أو تحميلها كملف لمشاركتها مع الأصدقاء والعائلة.
                     </p>
                     <div className="mt-8 flex justify-center gap-4">
-                        <Button onClick={handleSave} size="lg" variant="outline" disabled={saving || !user}>
-                             {saving ? <Loader2 className="animate-spin" /> : <Save />}
-                             {saving ? 'جاري الحفظ...' : 'حفظ في مكتبتي'}
+                        <Button size="lg" variant="outline">
+                             <Save className="ml-2 h-5 w-5" />
+                            حفظ في مكتبتي
                         </Button>
-                         <Button onClick={handleDownload} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
+                         <Button size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
                             <Download className="ml-2 h-5 w-5" />
                             تحميل القصة
                         </Button>
@@ -417,6 +423,5 @@ export default function CreateStoryPage() {
         )}
       </div>
     </div>
-    </>
   );
 }
