@@ -57,7 +57,8 @@ export default function SignUpPage() {
             title: 'تم إنشاء الحساب بنجاح!',
             description: 'أهلاً بك في عالم الإبداع. لقد حصلت على 50 نقطة مجانية للبدء!',
         });
-        window.location.href = '/account';
+        router.push('/account');
+        router.refresh();
       } else {
         throw new Error(result.error || 'فشلت عملية إنشاء الحساب.');
       }

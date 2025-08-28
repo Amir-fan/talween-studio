@@ -55,7 +55,8 @@ export default function LoginPage() {
           title: 'تم تسجيل الدخول بنجاح!',
           description: 'مرحباً بعودتك.',
         });
-        window.location.href = '/account';
+        router.push('/account');
+        router.refresh(); 
       } else {
         throw new Error(result.error || 'فشلت عملية تسجيل الدخول.');
       }
