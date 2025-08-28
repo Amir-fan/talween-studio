@@ -8,7 +8,7 @@ import Link from 'next/link';
 export default function Home() {
   return (
     <div className="bg-background">
-      <section className="bg-gradient-to-b from-yellow-50/0 via-white/0 to-white/0 py-16 sm:py-24">
+      <section className="bg-gradient-to-b from-yellow-100 via-orange-100 to-white py-16 sm:py-24">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
             <div className="relative flex items-center justify-center">
