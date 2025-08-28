@@ -1,12 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Camera } from 'lucide-react';
+import { ArrowRight, Camera, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useState, useRef } from 'react';
 import Image from 'next/image';
+import { useToast } from '@/hooks/use-toast';
+import { generateImageFromPhotoAction } from './actions';
 
 export default function CreateWithImagePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -14,6 +16,7 @@ export default function CreateWithImagePage() {
   const [coloringPageUrl, setColoringPageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,16 +37,26 @@ export default function CreateWithImagePage() {
   };
 
   const generateColoringPage = async () => {
-    if (!selectedFile) return;
+    if (!previewUrl) return;
     setLoading(true);
-    // Here you would call the AI flow
-    // For now, we'll just simulate a delay and show the same image
-    setTimeout(() => {
-        if(previewUrl) {
-            setColoringPageUrl(previewUrl);
+    setColoringPageUrl(null);
+
+    try {
+        const result = await generateImageFromPhotoAction({ photoDataUri: previewUrl });
+        if (result.success && result.data) {
+            setColoringPageUrl(result.data.coloringPageDataUri);
+        } else {
+            throw new Error(result.error || 'فشلت عملية إنشاء الصورة.');
         }
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "حدث خطأ",
+            description: error instanceof Error ? error.message : 'An unknown error occurred.',
+        });
+    } finally {
         setLoading(false);
-    }, 2000);
+    }
   };
 
 
@@ -72,10 +85,18 @@ export default function CreateWithImagePage() {
                 <Card className="flex min-h-[600px] flex-col p-4">
                     <CardContent className="flex w-full flex-col items-center justify-center p-0 pt-6">
                         <div className="mb-4 flex w-full items-center justify-between">
-                            <h2 className="font-headline text-xl font-bold">المعاينة</h2>
+                            <h2 className="font-headline text-xl font-bold">صفحة التلوين الناتجة</h2>
                         </div>
                         
-                        {!coloringPageUrl && (
+                        {loading && (
+                            <div className="flex flex-col items-center gap-4 text-muted-foreground">
+                                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                                <p className="font-semibold">يقوم الذكاء الاصطناعي بتحويل صورتك...</p>
+                                <p className="text-sm">قد تستغرق هذه العملية دقيقة.</p>
+                            </div>
+                        )}
+                        
+                        {!loading && !coloringPageUrl && (
                              <div className="flex h-full min-h-[480px] w-full flex-col items-center justify-center rounded-lg bg-secondary/50">
                                 <div className="text-center text-muted-foreground">
                                     <ImageIcon className="mx-auto h-16 w-16 opacity-50" />
@@ -207,5 +228,3 @@ function LightbulbIcon(props: React.SVGProps<SVGSVGElement>) {
       </svg>
     )
   }
-
-    
