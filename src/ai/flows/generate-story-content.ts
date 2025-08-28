@@ -18,9 +18,9 @@ export type StoryContentInput = z.infer<typeof StoryContentInputSchema>;
 
 
 const PageSchema = z.object({
-    page_number: z.union([z.string(), z.number()]),
+    page_number: z.any(),
     content: z.string(),
-    interaction: z.string().nullable(),
+    interaction: z.string().nullable().optional(),
     image_reference: z.string(),
 });
 
@@ -37,7 +37,7 @@ const StoryContentOutputSchema = z.object({
   story_metadata: StoryMetadataSchema,
   pages: z.array(PageSchema),
   usage_instructions: z.string(),
-  educational_objectives: z.array(z.string()),
+  educational_objectives: z.array(z.string()).optional(),
 });
 export type StoryContentOutput = z.infer<typeof StoryContentOutputSchema>;
 

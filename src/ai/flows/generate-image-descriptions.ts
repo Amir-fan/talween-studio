@@ -28,7 +28,7 @@ const ImageDescriptionItemSchema = z.object({
     page_reference: z.string(),
     image_prompt: z.string(),
     technical_specs: TechnicalSpecsSchema,
-    cultural_elements: z.array(z.string()),
+    cultural_elements: z.array(z.string()).optional(),
 });
 
 const ImageDescriptionOutputSchema = z.object({

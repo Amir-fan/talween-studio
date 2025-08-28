@@ -26,9 +26,9 @@ const CreateStoryAndColoringPagesInputSchema = z.object({
 export type CreateStoryAndColoringPagesInput = z.infer<typeof CreateStoryAndColoringPagesInputSchema>;
 
 const FinalStoryPageSchema = z.object({
-  page_number: z.union([z.string(), z.number()]),
+  page_number: z.any(),
   content: z.string(),
-  interaction: z.string().nullable(),
+  interaction: z.string().nullable().optional(),
   imageDataUri: z.string().describe("The image for the coloring page, as a data URI."),
 });
 export type FinalStoryPage = z.infer<typeof FinalStoryPageSchema>;
