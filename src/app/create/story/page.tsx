@@ -7,7 +7,6 @@ import {
   ArrowRight,
   ArrowLeft,
   Sparkles,
-  Heart,
   BookOpen,
   CheckCircle,
   Loader2,
@@ -31,7 +30,7 @@ import React from 'react';
 import { saveStoryAction } from './actions';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { createStoryAndColoringPages, CreateStoryAndColoringPagesOutput, StoryPage } from '@/ai/flows/create-story-and-coloring-pages';
+import { createStoryAndColoringPages, CreateStoryAndColoringPagesOutput, FinalStoryPage } from '@/ai/flows/create-story-and-coloring-pages';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/context/auth-context';
 import { InsufficientCreditsPopup } from '@/components/popups/insufficient-credits-popup';
@@ -39,7 +38,6 @@ import { TenorGIF } from '@/components/tenor-gif';
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
-  { icon: Heart, label: 'الدرس المستفاد' },
   { icon: BookOpen, label: 'القصة' },
   { icon: CheckCircle, label: 'النهاية' },
 ];
@@ -47,25 +45,26 @@ const steps = [
 const locations = [
   'المسجد الحرام', 'المسجد النبوي', 'الصحراء الخليجية', 'الشاطئ', 'المدرسة',
   'الحديقة', 'السوق التراثي', 'القرية', 'برج خليفة', 'متحف الفن الإسلامي',
-  'حديقة الأزهر', 'الكورنيش'
+  'حديقة الأزهر', 'الكورنيش', 'auto-select'
 ];
 
 const lessons = [
     'الصلاة', 'الصدق', 'بر الوالدين', 'الصدقة', 'الرحمة', 'الصبر',
-    'التعاون', 'الأمانة', 'العدل', 'حب الحيوانات', 'إدارة الوقت', 'النمو والتعلم'
+    'التعاون', 'الأمانة', 'العدل', 'حب الحيوانات', 'إدارة الوقت', 'النمو والتعلم', 'auto-select'
 ];
 
-function calculateCost(numPages: number): number {
+function calculateCost(numPagesStr: '4' | '8' | '12' | '16'): number {
+    const numPages = parseInt(numPagesStr, 10);
     return Math.ceil(numPages * 1.25);
 }
 
 export default function CreateStoryPage() {
   const [step, setStep] = useState(1);
   const [heroName, setHeroName] = useState('');
-  const [heroAge, setHeroAge] = useState('6-9');
-  const [numPages, setNumPages] = useState(4);
-  const [location, setLocation] = useState('');
-  const [selectedLesson, setSelectedLesson] = useState('');
+  const [ageGroup, setAgeGroup] = useState<'3-5' | '6-8' | '9-12'>('6-8');
+  const [numPages, setNumPages] = useState<'4' | '8' | '12' | '16'>('8');
+  const [setting, setSetting] = useState('auto-select');
+  const [lesson, setLesson] = useState('auto-select');
 
   const [story, setStory] = useState<CreateStoryAndColoringPagesOutput | null>(null);
   const [loading, setLoading] = useState(false);
@@ -82,8 +81,7 @@ export default function CreateStoryPage() {
   const nextStep = () => setStep((prev) => (prev < steps.length ? prev + 1 : prev));
   const prevStep = () => setStep((prev) => (prev > 1 ? prev - 1 : prev));
 
-  const isStep1Complete = heroName.trim() !== '' && location !== '';
-  const isStep2Complete = selectedLesson !== '';
+  const isStep1Complete = heroName.trim() !== '';
 
   const handleDownload = async () => {
     const container = storyContainerRef.current;
@@ -128,7 +126,7 @@ export default function CreateStoryPage() {
       const result = await saveStoryAction(
         story,
         heroName,
-        location,
+        setting,
         user.uid,
       );
 
@@ -161,24 +159,30 @@ export default function CreateStoryPage() {
       });
       return;
     }
-    if (!isStep1Complete || !isStep2Complete) {
+    if (!isStep1Complete) {
          toast({
             variant: "destructive",
             title: "معلومات ناقصة",
-            description: "الرجاء إكمال جميع الحقول لإنشاء القصة.",
+            description: "الرجاء إدخال اسم البطل.",
         });
         return;
     }
 
     setLoading(true);
     setStory(null);
-    setStep(3); // Move to the story view step
+    setStep(2); // Move to the story view step
 
     try {
         setLoadingMessage("يتم الآن كتابة قصة شيقة...");
         
-        const topic = `قصة عن طفل اسمه ${heroName} عمره ${heroAge} في ${location} ويتعلم عن ${selectedLesson}`;
-        const result = await createStoryAndColoringPages({ topic, numPages, userId: user.uid });
+        const result = await createStoryAndColoringPages({
+            childName: heroName,
+            ageGroup: ageGroup,
+            numPages: numPages,
+            setting: setting,
+            lesson: lesson,
+            userId: user.uid 
+        });
 
         if (!result || !result.pages || result.pages.length === 0) {
           throw new Error("فشل إنشاء القصة. لم يتم إرجاع أي صفحات.");
@@ -231,7 +235,7 @@ export default function CreateStoryPage() {
           <div className="flex items-center justify-between">
             {steps.map((s, index) => (
               <React.Fragment key={s.label}>
-                <div className="flex flex-col items-center gap-2">
+                <div className="flex flex-col items-center gap-2 text-center w-20">
                   <div
                     className={cn(
                       'flex h-12 w-12 items-center justify-center rounded-full border-2 bg-secondary/50 transition-colors',
@@ -243,6 +247,7 @@ export default function CreateStoryPage() {
                   >
                     <s.icon className="h-6 w-6" />
                   </div>
+                   <p className={cn("mt-2 text-xs font-semibold", step === index + 1 ? "text-primary" : "text-muted-foreground")}>{s.label}</p>
                 </div>
                 {index < steps.length - 1 && (
                    <div className={cn("h-0.5 flex-1 transition-colors", step > index + 1 ? 'bg-primary/50' : 'bg-border')}></div>
@@ -250,9 +255,6 @@ export default function CreateStoryPage() {
               </React.Fragment>
             ))}
           </div>
-          <p className="mt-4 text-center text-sm font-semibold text-muted-foreground">
-            الخطوة {step} من {steps.length}: {steps[step - 1].label}
-          </p>
         </Card>
 
         {step === 1 && (
@@ -262,101 +264,77 @@ export default function CreateStoryPage() {
               <CardDescription>أخبرنا عن الشخصية الرئيسية</CardDescription>
             </CardHeader>
             <CardContent className="space-y-8 px-8">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                <div>
-                  <Label htmlFor="hero-name" className="mb-2 block text-right font-semibold">اسم البطل</Label>
-                  <Input id="hero-name" placeholder="مثال: سارة" className="text-right" value={heroName} onChange={(e) => setHeroName(e.target.value)} />
-                </div>
-                <div>
-                  <Label htmlFor="hero-age" className="mb-2 block text-right font-semibold">العمر</Label>
-                  <Select dir="rtl" value={heroAge} onValueChange={setHeroAge}>
-                    <SelectTrigger id="hero-age">
-                      <SelectValue placeholder="اختر الفئة العمرية" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="3-5">3-5 سنوات</SelectItem>
-                      <SelectItem value="6-9">6-9 سنوات</SelectItem>
-                      <SelectItem value="10-13">10-13 سنوات</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                 <div>
-                  <Label htmlFor="num-pages" className="mb-2 block text-right font-semibold">عدد الصفحات (حد أقصى 30)</Label>
-                   <Input 
-                    id="num-pages" 
-                    type="number" 
-                    value={numPages} 
-                    onChange={(e) => {
-                        const val = Math.max(1, Math.min(30, Number(e.target.value)));
-                        setNumPages(val);
-                    }}
-                    min="1"
-                    max="30"
-                    className="text-right"
-                    placeholder="ادخل عدد الصفحات"
-                  />
-                </div>
-              </div>
+               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  <div>
+                    <Label htmlFor="hero-name" className="mb-2 block text-right font-semibold">اسم البطل</Label>
+                    <Input id="hero-name" placeholder="مثال: سارة" className="text-right" value={heroName} onChange={(e) => setHeroName(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="age-group" className="mb-2 block text-right font-semibold">الفئة العمرية</Label>
+                    <Select dir="rtl" value={ageGroup} onValueChange={(v) => setAgeGroup(v as '3-5'|'6-8'|'9-12')}>
+                      <SelectTrigger id="age-group"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3-5">3-5 سنوات</SelectItem>
+                        <SelectItem value="6-8">6-8 سنوات</SelectItem>
+                        <SelectItem value="9-12">9-12 سنوات</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="num-pages" className="mb-2 block text-right font-semibold">عدد الصفحات</Label>
+                     <Select dir="rtl" value={numPages} onValueChange={(v) => setNumPages(v as '4'|'8'|'12'|'16')}>
+                      <SelectTrigger id="num-pages"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="4">4 صفحات</SelectItem>
+                        <SelectItem value="8">8 صفحات</SelectItem>
+                        <SelectItem value="12">12 صفحة</SelectItem>
+                        <SelectItem value="16">16 صفحة</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+               </div>
 
               <div>
-                <Label className="mb-4 block text-right font-semibold">مكان الأحداث</Label>
-                <div dir="rtl" className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
+                <Label className="mb-4 block text-right font-semibold">مكان الأحداث (اختر أو اتركه للاختيار التلقائي)</Label>
+                <div dir="rtl" className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
                   {locations.map((loc) => (
                       <Button
                         key={loc}
-                        variant={location === loc ? 'default' : 'outline'}
-                        onClick={() => setLocation(loc)}
+                        variant={setting === loc ? 'default' : 'outline'}
+                        onClick={() => setSetting(loc)}
                         className="h-12 rounded-full text-sm font-medium"
                       >
-                          {loc}
+                          {loc === 'auto-select' ? 'اختيار تلقائي' : loc}
+                      </Button>
+                  ))}
+                </div>
+              </div>
+               <div>
+                <Label className="mb-4 block text-right font-semibold">الدرس المستفاد (اختر أو اتركه للاختيار التلقائي)</Label>
+                <div dir="rtl" className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
+                  {lessons.map((les) => (
+                      <Button
+                        key={les}
+                        variant={lesson === les ? 'default' : 'outline'}
+                        onClick={() => setLesson(les)}
+                        className="h-12 rounded-full text-sm font-medium"
+                      >
+                           {les === 'auto-select' ? 'اختيار تلقائي' : les}
                       </Button>
                   ))}
                 </div>
               </div>
             </CardContent>
             <CardFooter className="justify-end p-8">
-                <Button onClick={nextStep} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500" disabled={!isStep1Complete}>
-                    التالي
-                    <ArrowLeft className="mr-2 h-5 w-5" />
+                <Button onClick={handleGenerateStory} size="lg" className="bg-gradient-to-l from-rose-400 to-red-500 font-bold text-white hover:to-red-600" disabled={loading || !isStep1Complete || !user}>
+                    {loading ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Sparkles className="ml-2 h-5 w-5" />}
+                    {loading ? '...جاري إنشاء القصة' : `أنشئ القصة الآن (${storyCost} نقطة)`}
                 </Button>
             </CardFooter>
           </Card>
         )}
 
         {step === 2 && (
-             <Card className="mt-8">
-                <CardHeader className="text-center">
-                    <CardTitle className="font-headline text-3xl">الدرس المستفاد</CardTitle>
-                    <CardDescription>اختر القيم التي تريد غرسها في القصة</CardDescription>
-                </CardHeader>
-                <CardContent className="px-8">
-                    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-                        {lessons.map((lesson) => (
-                            <Button
-                                key={lesson}
-                                variant={selectedLesson === lesson ? 'default' : 'outline'}
-                                onClick={() => setSelectedLesson(lesson)}
-                                className="h-12 rounded-full text-sm font-medium"
-                            >
-                                {lesson}
-                            </Button>
-                        ))}
-                    </div>
-                </CardContent>
-                <CardFooter className="flex justify-between p-8">
-                    <Button onClick={prevStep} size="lg" variant="outline">
-                        <ArrowRight className="ml-2 h-5 w-5" />
-                        السابق
-                    </Button>
-                    <Button onClick={handleGenerateStory} size="lg" className="bg-gradient-to-l from-rose-400 to-red-500 font-bold text-white hover:to-red-600" disabled={loading || !isStep2Complete || !user}>
-                        {loading ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Sparkles className="ml-2 h-5 w-5" />}
-                        {loading ? '...جاري إنشاء القصة' : `أنشئ القصة الآن (${storyCost} نقطة)`}
-                    </Button>
-                </CardFooter>
-            </Card>
-        )}
-
-        {step === 3 && (
             <Card className="mt-8">
                  <CardHeader className="text-center">
                     <CardTitle className="font-headline text-3xl">{story?.title || 'ها هي قصتك!'}</CardTitle>
@@ -375,7 +353,9 @@ export default function CreateStoryPage() {
                            {story.pages.map((page, index) => (
                                <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center story-page-container bg-white p-4 rounded-lg">
                                    <div className='order-2 md:order-1'>
-                                        <p className="leading-loose text-lg whitespace-pre-wrap">{page.text}</p>
+                                        <p className="font-bold text-lg mb-2">الصفحة {page.page_number}</p>
+                                        <p className="leading-loose text-lg whitespace-pre-wrap mb-4">{page.content}</p>
+                                        {page.interaction && <p className="text-base text-primary font-semibold p-3 bg-primary/10 rounded-lg">{page.interaction}</p>}
                                    </div>
                                    <div className='order-1 md:order-2'>
                                        <Image
@@ -404,7 +384,7 @@ export default function CreateStoryPage() {
             </Card>
         )}
 
-        {step === 4 && (
+        {step === 3 && (
             <Card className="mt-8">
                 <CardHeader className="text-center">
                     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600">

@@ -1,37 +1,44 @@
 'use server';
 /**
- * @fileOverview Generates a story and corresponding coloring pages.
+ * @fileOverview Orchestrates the generation of a story with coloring pages.
+ * This flow coordinates calls to generate story content and then generate images.
  *
- * - createStoryAndColoringPages - A function that handles the story and coloring page generation.
- * - CreateStoryAndColoringPagesInput - The input type for the createStoryAndColoringPages function.
- * - CreateStoryAndColoringPagesOutput - The return type for the createStoryAndColoringPages function.
+ * - createStoryAndColoringPages - The main orchestration function.
+ * - CreateStoryAndColoringPagesInput - The input type for the orchestration function.
+ * - CreateStoryAndColoringPagesOutput - The return type for the orchestration function.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { generateStoryContent, StoryContentOutput } from './generate-story-content';
+import { generateImageDescriptions, ImageDescriptionOutput } from './generate-image-descriptions';
 import { generateColoringPageFromDescription } from './generate-coloring-page-from-description';
 import { checkAndDeductCredits } from '@/lib/credits';
 
 const CreateStoryAndColoringPagesInputSchema = z.object({
-  topic: z.string().describe('The topic of the story.'),
-  numPages: z.number().describe('The number of pages for the story.').default(3),
+  childName: z.string().describe("Child's name in Arabic"),
+  ageGroup: z.enum(['3-5', '6-8', '9-12']).describe('The age group of the child.'),
+  numPages: z.enum(['4', '8', '12', '16']).describe('The number of pages for the story.'),
+  setting: z.string().describe('The location or setting of the story.'),
+  lesson: z.string().describe('The moral value or lesson to be taught.'),
   userId: z.string().describe('The ID of the user requesting the story.'),
 });
 export type CreateStoryAndColoringPagesInput = z.infer<typeof CreateStoryAndColoringPagesInputSchema>;
 
-const StoryPageSchema = z.object({
-  text: z.string().describe('The text content of the page.'),
-  imageDataUri: z.string().describe(
-    "The image for the coloring page, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'"
-  ),
+const FinalStoryPageSchema = z.object({
+  page_number: z.union([z.string(), z.number()]),
+  content: z.string(),
+  interaction: z.string().nullable(),
+  imageDataUri: z.string().describe("The image for the coloring page, as a data URI."),
 });
-export type StoryPage = z.infer<typeof StoryPageSchema>;
+export type FinalStoryPage = z.infer<typeof FinalStoryPageSchema>;
 
 const CreateStoryAndColoringPagesOutputSchema = z.object({
   title: z.string().describe('The title of the story.'),
-  pages: z.array(StoryPageSchema).describe('The generated story pages with text and image data URIs.'),
+  pages: z.array(FinalStoryPageSchema).describe('The generated story pages with text and image data URIs.'),
 });
 export type CreateStoryAndColoringPagesOutput = z.infer<typeof CreateStoryAndColoringPagesOutputSchema>;
+
 
 export async function createStoryAndColoringPages(
   input: CreateStoryAndColoringPagesInput
@@ -39,42 +46,10 @@ export async function createStoryAndColoringPages(
   return createStoryAndColoringPagesFlow(input);
 }
 
-const StoryContentSchema = z.object({
-    narrative: z.string().describe('The narrative of the chapter (100-150 words).'),
-    illustrationDescription: z.string().describe('A description for a coloring book illustration for this chapter.'),
-});
 
-const StoryGenerationOutputSchema = z.object({
-  storyTitle: z.string().describe('The creative title of the story (3-5 words).'),
-  chapters: z.array(StoryContentSchema).describe('An array of story chapters.'),
-});
-
-const storyPrompt = ai.definePrompt({
-    name: 'storyStructurePrompt',
-    input: {schema: z.object({topic: z.string(), numPages: z.number()})},
-    output: {schema: StoryGenerationOutputSchema},
-    prompt: `You are a children’s story generator. Create a wholesome story in Arabic.
-
-Follow these rules:
-1.  **Language:** The entire output (story title, narrative) MUST be in Arabic. The ONLY exception is 'illustrationDescription', which must be in English.
-2.  **Story Elements:** The story should be about: {{{topic}}}.
-3.  **Structure:**
-    *   Generate a creative story title (3-5 words).
-    *   Divide the story into exactly {{numPages}} chapters.
-    *   Each chapter must have:
-        *   narrative: 100-150 words in simple, age-appropriate Arabic.
-        *   illustrationDescription: A simple, clear description in English for a coloring book illustration (e.g., "A happy boy holding a red balloon in a sunny park").
-
-Output in a valid JSON format.
-`,
-});
-
-function calculateCost(numPages: number): number {
-    // 4 pages = 5 points
-    // 8 pages = 10 points
-    // 12 pages = 15 points
-    // 16 pages = 20 points
-    // This is 1.25 points per page.
+function calculateCost(numPagesStr: '4' | '8' | '12' | '16'): number {
+    const numPages = parseInt(numPagesStr, 10);
+    // 4 pages = 5 points, 8 pages = 10 points, 12 pages = 15 points, 16 pages = 20 points
     return Math.ceil(numPages * 1.25);
 }
 
@@ -85,47 +60,57 @@ const createStoryAndColoringPagesFlow = ai.defineFlow(
     outputSchema: CreateStoryAndColoringPagesOutputSchema,
   },
   async (input): Promise<CreateStoryAndColoringPagesOutput> => {
-    // Step 0: Check credits
+    // Step 0: Check and deduct credits
     const cost = calculateCost(input.numPages);
     const creditCheck = await checkAndDeductCredits(input.userId, cost);
-
     if (!creditCheck.success) {
         throw new Error(creditCheck.error || 'Failed to deduct credits.');
     }
 
-    // Step 1: Generate the story text content (titles, narratives, illustration descriptions)
-    const { output: storyContent } = await storyPrompt({topic: input.topic, numPages: input.numPages});
+    const storyId = `story_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-    if (!storyContent?.chapters?.length) {
-        throw new Error("Failed to generate story content.");
-    }
+    // Step 1: Generate Story Content
+    const storyContent: StoryContentOutput = await generateStoryContent({
+        child_name: input.childName,
+        age_group: input.ageGroup,
+        number_of_pages: input.numPages,
+        setting: input.setting,
+        lesson: input.lesson,
+        story_id: storyId,
+    });
     
-    // Extract the main character's name from the topic for image consistency.
-    const childName = input.topic.split(' ').find(word => word.length > 2) || 'child';
+    // Step 2: Generate Image Descriptions
+    const imageDescriptions: ImageDescriptionOutput = await generateImageDescriptions({
+        story_id: storyId,
+        story_content: storyContent,
+        child_age_group: input.ageGroup,
+        art_style_preference: 'cartoon',
+    });
 
-    // Step 2: Generate images for each chapter in parallel
-    const imagePromises = storyContent.chapters.map(chapter => 
+    // Step 3: Generate Images in parallel from descriptions
+    const imageGenerationPromises = imageDescriptions.image_descriptions.map(desc =>
         generateColoringPageFromDescription({
-            description: chapter.illustrationDescription,
-            childName: childName,
+            description: desc.image_prompt,
+            childName: input.childName,
         })
     );
+
+    const generatedImages = await Promise.all(imageGenerationPromises);
     
-    const imageResults = await Promise.all(imagePromises);
-    
-    // Step 3: Combine text and images
-    const pages: StoryPage[] = storyContent.chapters.map((chapter, index) => {
-        const imageResult = imageResults[index];
+    // Step 4: Combine story content with generated images
+    const finalPages: FinalStoryPage[] = storyContent.pages.map((page, index) => {
+        const correspondingImage = generatedImages[index];
         return {
-            text: chapter.narrative,
-            // Fallback to a placeholder if image generation failed for a page
-            imageDataUri: imageResult?.coloringPageDataUri || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+            page_number: page.page_number,
+            content: page.content,
+            interaction: page.interaction,
+            imageDataUri: correspondingImage?.coloringPageDataUri || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', // Placeholder on failure
         };
     });
 
     return {
-        title: storyContent.storyTitle,
-        pages: pages,
+        title: storyContent.story_metadata.title,
+        pages: finalPages,
     };
   }
 );

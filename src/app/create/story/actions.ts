@@ -2,17 +2,11 @@
 
 import { dbAdmin, storageAdmin } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { FinalStoryPage } from '@/ai/flows/create-story-and-coloring-pages';
 
-// This is a helper type and does not need to be exported
-interface StoryPageForSave {
-  text: string;
-  imageDataUri: string;
-}
-
-// This is a helper type and does not need to be exported
 interface StoryDataForSave {
     title: string;
-    pages: StoryPageForSave[];
+    pages: FinalStoryPage[];
 }
 
 
@@ -22,6 +16,11 @@ async function uploadImage(imageDataUri: string, storyId: string, pageIndex: num
   }
   const bucket = storageAdmin.bucket();
   const file = bucket.file(`stories/${storyId}/page_${pageIndex + 1}.png`);
+  
+  if(!imageDataUri.startsWith('data:image/')){
+      // It's already a URL, no need to re-upload. Or it's a placeholder.
+      return imageDataUri;
+  }
   
   const base64Data = imageDataUri.split(',')[1];
   const buffer = Buffer.from(base64Data, 'base64');
@@ -62,8 +61,10 @@ export async function saveStoryAction(
       storyData.pages.map(async (page, index) => {
         const imageUrl = await uploadImage(page.imageDataUri, storyId, index);
         return {
-          text: page.text,
-          imageUrl: imageUrl, // Store the public URL
+          text: page.content,
+          interaction: page.interaction,
+          pageNumber: page.page_number,
+          imageUrl: imageUrl,
         };
       })
     );
@@ -86,8 +87,10 @@ export async function saveStoryAction(
     pagesWithImageUrls.forEach((page, index) => {
       const pageRef = pagesCollectionRef.doc(`page_${index + 1}`);
       batch.set(pageRef, {
-          ...page,
-          pageNumber: index + 1
+          text: page.text,
+          interaction: page.interaction,
+          pageNumber: page.pageNumber,
+          imageUrl: page.imageUrl,
       });
     });
     await batch.commit();

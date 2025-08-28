@@ -55,6 +55,7 @@ const generateColoringPageFromImageFlow = ai.defineFlow(
       ],
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
+        apiKey: process.env.PHOTO_TO_COLORING_API_KEY,
          safetySettings: [
           {
             category: 'HARM_CATEGORY_HATE_SPEECH',
