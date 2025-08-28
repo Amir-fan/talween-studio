@@ -37,65 +37,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { generateStoryAction, StoryGenerationOutput } from './actions';
 import React from 'react';
-import { z } from 'zod';
-import { ai } from '@/ai/genkit';
-
-// Define schemas and the AI flow directly in the component for simplicity and reliability.
-
-const StoryPageSchema = z.object({
-  text: z.string().describe('The text content of the page.'),
-  imageDataUri: z.string().describe(
-    "The image for the coloring page, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
-  ),
-});
-export type StoryPage = z.infer<typeof StoryPageSchema>;
-
-const CreateStoryAndColoringPagesInputSchema = z.object({
-  topic: z.string().describe('The topic of the story.'),
-  numPages: z.number().describe('The number of pages for the story.').default(3),
-});
-export type CreateStoryAndColoringPagesInput = z.infer<typeof CreateStoryAndColoringPagesInputSchema>;
-
-const CreateStoryAndColoringPagesOutputSchema = z.object({
-  pages: z.array(StoryPageSchema).describe('The generated story pages with text and image data URIs.'),
-});
-export type CreateStoryAndColoringPagesOutput = z.infer<typeof CreateStoryAndColoringPagesOutputSchema>;
-
-// This is the single, reliable flow that will be used.
-const createStoryAndColoringPagesFlow = ai.defineFlow(
-  {
-    name: 'createStoryAndColoringPagesFlow',
-    inputSchema: CreateStoryAndColoringPagesInputSchema,
-    outputSchema: CreateStoryAndColoringPagesOutputSchema,
-  },
-  async input => {
-    const pages = await Promise.all(Array.from({ length: input.numPages }, (_, i) => {
-        const pagePrompt = ai.definePrompt({
-          name: `pagePrompt_${i}`, // Unique name for each prompt
-          input: {schema: z.object({topic: z.string(), pageNumber: z.number()})},
-          output: {schema: StoryPageSchema},
-          prompt: `You are creating a children's story book. Each page will have text and an illustration suitable for a coloring book.
-
-Create page {{pageNumber}} of a story about {{topic}}.
-
-Your output should include:
-- text: the text for this page of the story. It should be in Arabic.
-- imageDataUri: a data URI for the illustration. The illustration should be a simple black and white line drawing suitable for a coloring book.
-
-Ensure imageDataUri is a valid data URI with proper MIME type and base64 encoding.
-
-Output in JSON format:
-`,
-        });
-
-        return pagePrompt({ topic: input.topic, pageNumber: i + 1 }).then(result => result.output!);
-    }));
-    
-    return {pages};
-  }
-);
-
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
@@ -124,7 +67,7 @@ export default function CreateStoryPage() {
   const [step, setStep] = useState(1);
   const [heroName, setHeroName] = useState('');
   const [location, setLocation] = useState('');
-  const [story, setStory] = useState<CreateStoryAndColoringPagesOutput | null>(null);
+  const [story, setStory] = useState<StoryGenerationOutput | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -147,13 +90,17 @@ export default function CreateStoryPage() {
 
     try {
         const topic = `قصة عن طفل اسمه ${heroName} في ${location}`;
-        const result = await createStoryAndColoringPagesFlow({ topic, numPages: 3 });
-        setStory(result);
+        const result = await generateStoryAction({ topic, numPages: 3 });
+        if (result.success && result.data) {
+          setStory(result.data);
+        } else {
+          throw new Error(result.error || "فشلت عملية إنشاء القصة.");
+        }
     } catch (error) {
         toast({
             variant: "destructive",
             title: "حدث خطأ",
-            description: "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.",
+            description: error instanceof Error ? error.message : "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.",
         });
         setStep(3); // Go back to the previous step on error
     } finally {

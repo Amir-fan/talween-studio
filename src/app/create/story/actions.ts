@@ -1,105 +1,27 @@
 'use server';
 
-import { dbAdmin, storageAdmin } from '@/lib/firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
-import { FinalStoryPage } from '@/ai/flows/create-story-and-coloring-pages';
+import {
+  createStoryAndColoringPages,
+  CreateStoryAndColoringPagesInput,
+  CreateStoryAndColoringPagesOutput,
+} from '@/ai/flows/create-story-and-coloring-pages';
 
-interface StoryDataForSave {
-    title: string;
-    pages: FinalStoryPage[];
-}
+export type StoryGenerationOutput = CreateStoryAndColoringPagesOutput;
 
-
-async function uploadImage(imageDataUri: string, storyId: string, pageIndex: number): Promise<string> {
-  if (!storageAdmin) {
-    throw new Error("Firebase Storage Admin SDK is not initialized.");
-  }
-  const bucket = storageAdmin.bucket();
-  const file = bucket.file(`stories/${storyId}/page_${pageIndex + 1}.png`);
-  
-  if(!imageDataUri.startsWith('data:image/')){
-      // It's already a URL, no need to re-upload. Or it's a placeholder.
-      return imageDataUri;
-  }
-  
-  const base64Data = imageDataUri.split(',')[1];
-  const buffer = Buffer.from(base64Data, 'base64');
-
-  await file.save(buffer, {
-    metadata: {
-      contentType: 'image/png',
-    },
-  });
-
-  // Make the file public and get the URL
-  await file.makePublic();
-  return file.publicUrl();
-}
-
-export async function saveStoryAction(
-  storyData: StoryDataForSave,
-  heroName: string,
-  location: string,
-  userId: string,
-): Promise<{ success: boolean; error?: string; storyId?: string }> {
-  if (!userId) {
-    return { success: false, error: 'User not authenticated.' };
-  }
-  if (!dbAdmin) {
-      return { success: false, error: "Firebase Firestore Admin SDK is not initialized." };
-  }
-  
+export async function generateStoryAction(
+  values: CreateStoryAndColoringPagesInput
+): Promise<{
+  success: boolean;
+  data?: CreateStoryAndColoringPagesOutput;
+  error?: string;
+}> {
   try {
-    const storyTitle = storyData.title || `مغامرة ${heroName} في ${location}`;
-
-    // 1. Create a document reference with a new ID in the 'stories' collection
-    const storyRef = dbAdmin.collection('stories').doc();
-    const storyId = storyRef.id;
-
-    // 2. Upload images and collect their public URLs
-    const pagesWithImageUrls = await Promise.all(
-      storyData.pages.map(async (page, index) => {
-        const imageUrl = await uploadImage(page.imageDataUri, storyId, index);
-        return {
-          text: page.content,
-          interaction: page.interaction,
-          pageNumber: page.page_number,
-          imageUrl: imageUrl,
-        };
-      })
-    );
-    
-    const firstImageUrl = pagesWithImageUrls.length > 0 ? pagesWithImageUrls[0].imageUrl : '';
-
-    // 3. Set the main story document data
-    await storyRef.set({
-      title: storyTitle,
-      heroName,
-      location,
-      thumbnailUrl: firstImageUrl,
-      createdAt: FieldValue.serverTimestamp(),
-      userId: userId, // Associate story with the user
-    });
-
-    // 4. Add each page as a separate document in the 'pages' subcollection
-    const pagesCollectionRef = storyRef.collection('pages');
-    const batch = dbAdmin.batch();
-    pagesWithImageUrls.forEach((page, index) => {
-      const pageRef = pagesCollectionRef.doc(`page_${index + 1}`);
-      batch.set(pageRef, {
-          text: page.text,
-          interaction: page.interaction,
-          pageNumber: page.pageNumber,
-          imageUrl: page.imageUrl,
-      });
-    });
-    await batch.commit();
-
-    return { success: true, storyId: storyId };
+    const result = await createStoryAndColoringPages(values);
+    return { success: true, data: result };
   } catch (error) {
-    console.error('Failed to save story:', error);
+    console.error('Story generation failed:', error);
     const errorMessage =
-      error instanceof Error ? error.message : 'فشلت عملية حفظ القصة. الرجاء المحاولة مرة أخرى.';
+      error instanceof Error ? error.message : 'فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.';
     return { success: false, error: errorMessage };
   }
 }
