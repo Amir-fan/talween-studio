@@ -5,7 +5,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { type StoryContentOutput } from './generate-story-content';
 import Handlebars from 'handlebars';
 
 const ImageDescriptionInputSchema = z.object({

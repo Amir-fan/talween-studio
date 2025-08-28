@@ -14,6 +14,11 @@ import {
   Loader2,
   Download,
   Save,
+  WandSparkles,
+  BookUser,
+  MapPin,
+  GraduationCap,
+  Paintbrush,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,14 +42,15 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { generateStoryAction, StoryGenerationOutput } from './actions';
+import { createStoryAndColoringPages, CreateStoryAndColoringPagesOutput, CreateStoryAndColoringPagesInput } from '@/ai/flows/create-story-and-coloring-pages';
 import React from 'react';
+import { TenorGIF } from '@/components/tenor-gif';
 
 const steps = [
-  { icon: Sparkles, label: 'البطل والموضوع' },
-  { icon: Heart, label: 'الدرس المستفاد' },
-  { icon: ImageIcon, label: 'الصور' },
-  { icon: BookOpen, label: 'القصة' },
+  { icon: BookUser, label: 'البطل والموضوع' },
+  { icon: Paintbrush, label: 'النمط الفني' },
+  { icon: WandSparkles, label: 'إنشاء القصة' },
+  { icon: BookOpen, label: 'عرض القصة' },
   { icon: CheckCircle, label: 'النهاية' },
 ];
 
@@ -60,49 +66,66 @@ const lessons = [
 ];
 
 const artStyles = [
-    'صور فوتوغرافية', 'رسم كرتوني', 'فن رقمي', 'فن تجريدي', 'ألوان مائية'
+    { value: 'cartoon', label: 'رسم كرتوني' },
+    { value: 'semi-realistic', label: 'شبه واقعي' },
+    { value: 'simple', label: 'بسيط جداً' },
 ]
 
 export default function CreateStoryPage() {
   const [step, setStep] = useState(1);
-  const [heroName, setHeroName] = useState('');
-  const [location, setLocation] = useState('');
-  const [story, setStory] = useState<StoryGenerationOutput | null>(null);
+  const [formData, setFormData] = useState<Partial<CreateStoryAndColoringPagesInput>>({
+      childName: '',
+      ageGroup: '6-8',
+      numberOfPages: '8',
+      setting: '',
+      lesson: 'auto-select',
+      artStyle: 'cartoon'
+  });
+  
+  const [story, setStory] = useState<CreateStoryAndColoringPagesOutput | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  const handleInputChange = (field: keyof CreateStoryAndColoringPagesInput, value: string) => {
+    setFormData(prev => ({...prev, [field]: value}));
+  };
 
   const nextStep = () => setStep((prev) => (prev < steps.length ? prev + 1 : prev));
   const prevStep = () => setStep((prev) => (prev > 1 ? prev - 1 : prev));
 
   const handleGenerateStory = async () => {
-    if (!heroName || !location) {
+    const { childName, ageGroup, numberOfPages, setting, lesson, artStyle } = formData;
+    if (!childName || !ageGroup || !numberOfPages || !setting) {
          toast({
             variant: "destructive",
             title: "معلومات ناقصة",
-            description: "الرجاء إدخال اسم البطل واختيار مكان الأحداث.",
+            description: "الرجاء إكمال جميع الحقول المطلوبة.",
         });
         return;
     }
 
     setLoading(true);
     setStory(null);
-    setStep(4); // Move to the story view step
+    setStep(3); // Move to the generating view step
 
     try {
-        const topic = `قصة عن طفل اسمه ${heroName} في ${location}`;
-        const result = await generateStoryAction({ topic, numPages: 3 });
-        if (result.success && result.data) {
-          setStory(result.data);
-        } else {
-          throw new Error(result.error || "فشلت عملية إنشاء القصة.");
-        }
+      const result = await createStoryAndColoringPages({
+          childName,
+          ageGroup,
+          numberOfPages,
+          setting,
+          lesson: lesson || 'auto-select',
+          artStyle
+      });
+      setStory(result);
+      setStep(4); // Move to the story view step
     } catch (error) {
         toast({
             variant: "destructive",
             title: "حدث خطأ",
             description: error instanceof Error ? error.message : "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.",
         });
-        setStep(3); // Go back to the previous step on error
+        setStep(2); // Go back to the previous step on error
     } finally {
         setLoading(false);
     }
@@ -161,48 +184,55 @@ export default function CreateStoryPage() {
           <Card className="mt-8">
             <CardHeader className="text-center">
               <CardTitle className="font-headline text-3xl">من هو بطل قصتك؟</CardTitle>
-              <CardDescription>أخبرنا عن الشخصية الرئيسية</CardDescription>
+              <CardDescription>أخبرنا عن الشخصية الرئيسية وموضوع القصة</CardDescription>
             </CardHeader>
             <CardContent className="space-y-8 px-8">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
-                  <Label htmlFor="hero-name" className="mb-2 block text-right font-semibold">اسم البطل</Label>
-                  <Input id="hero-name" placeholder="مثال: سارة" className="text-right" value={heroName} onChange={(e) => setHeroName(e.target.value)} />
+                  <Label htmlFor="hero-name" className="mb-2 block text-right font-semibold flex items-center justify-end gap-2"><BookUser /> اسم البطل</Label>
+                  <Input id="hero-name" placeholder="مثال: سارة" className="text-right" value={formData.childName} onChange={(e) => handleInputChange('childName', e.target.value)} />
                 </div>
                 <div>
-                  <Label htmlFor="hero-age" className="mb-2 block text-right font-semibold">العمر</Label>
-                  <Select dir="rtl">
-                    <SelectTrigger id="hero-age">
-                      <SelectValue placeholder="7 سنة" />
-                    </SelectTrigger>
+                  <Label htmlFor="hero-age" className="mb-2 block text-right font-semibold flex items-center justify-end gap-2"><GraduationCap /> الفئة العمرية</Label>
+                  <Select dir="rtl" value={formData.ageGroup} onValueChange={(v) => handleInputChange('ageGroup', v)}>
+                    <SelectTrigger id="hero-age"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="5">5 سنوات</SelectItem>
-                      <SelectItem value="6">6 سنوات</SelectItem>
-                      <SelectItem value="7">7 سنوات</SelectItem>
-                      <SelectItem value="8">8 سنوات</SelectItem>
-                      <SelectItem value="9">9 سنوات</SelectItem>
-                      <SelectItem value="10">10 سنوات</SelectItem>
+                      <SelectItem value="3-5">3-5 سنوات</SelectItem>
+                      <SelectItem value="6-8">6-8 سنوات</SelectItem>
+                      <SelectItem value="9-12">9-12 سنوات</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
               <div>
-                <Label className="mb-4 block text-right font-semibold">مكان الأحداث</Label>
-                <RadioGroup dir="rtl" className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6" value={location} onValueChange={setLocation}>
+                <Label className="mb-4 block text-right font-semibold flex items-center justify-end gap-2"><MapPin/> مكان الأحداث</Label>
+                <RadioGroup dir="rtl" className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6" value={formData.setting} onValueChange={(v) => handleInputChange('setting', v)}>
                   {locations.map((loc) => (
                       <div key={loc}>
                           <RadioGroupItem value={loc} id={loc} className="peer sr-only" />
-                          <Label
-                              htmlFor={loc}
-                              className="flex h-12 cursor-pointer items-center justify-center rounded-full border bg-background px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-accent/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/20 peer-data-[state=checked]:text-primary"
-                          >
+                          <Label htmlFor={loc} className="flex h-12 cursor-pointer items-center justify-center rounded-full border bg-background px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-accent/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/20 peer-data-[state=checked]:text-primary">
                               {loc}
                           </Label>
                       </div>
                   ))}
                 </RadioGroup>
               </div>
+
+               <div>
+                <Label className="mb-4 block text-right font-semibold flex items-center justify-end gap-2"><Heart/> الدرس المستفاد (اختياري)</Label>
+                 <RadioGroup dir="rtl" className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6" value={formData.lesson} onValueChange={(v) => handleInputChange('lesson', v)}>
+                  {lessons.map((l) => (
+                      <div key={l}>
+                          <RadioGroupItem value={l} id={`lesson-${l}`} className="peer sr-only" />
+                          <Label htmlFor={`lesson-${l}`} className="flex h-12 cursor-pointer items-center justify-center rounded-full border bg-background px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-accent/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/20 peer-data-[state=checked]:text-primary">
+                              {l}
+                          </Label>
+                      </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
             </CardContent>
             <CardFooter className="justify-end p-8">
                 <Button onClick={nextStep} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
@@ -216,17 +246,32 @@ export default function CreateStoryPage() {
         {step === 2 && (
              <Card className="mt-8">
                 <CardHeader className="text-center">
-                    <CardTitle className="font-headline text-3xl">الدرس المستفاد</CardTitle>
-                    <CardDescription>اختر القيم التي تريد غرسها في القصة</CardDescription>
+                    <CardTitle className="font-headline text-3xl">اختر النمط الفني</CardTitle>
+                    <CardDescription>اختر كيف ستبدو الصور في قصتك</CardDescription>
                 </CardHeader>
-                <CardContent className="px-8">
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-4 md:grid-cols-3 lg:grid-cols-4">
-                        {lessons.map((lesson) => (
-                            <div key={lesson} className="flex items-center justify-end gap-3">
-                               <Label htmlFor={lesson} className="cursor-pointer font-medium hover:text-primary">{lesson}</Label>
-                                <Checkbox id={lesson} dir='rtl' />
-                            </div>
-                        ))}
+                <CardContent className="px-8 space-y-8">
+                   <div>
+                        <Label htmlFor="art-style" className="mb-2 block text-right font-semibold">نمط الرسوم</Label>
+                        <Select dir="rtl" value={formData.artStyle} onValueChange={(v) => handleInputChange('artStyle', v)}>
+                            <SelectTrigger id="art-style"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {artStyles.map(style => (
+                                    <SelectItem key={style.value} value={style.value}>{style.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                   </div>
+                    <div>
+                        <Label htmlFor="page-count" className="mb-2 block text-right font-semibold">عدد الصفحات</Label>
+                        <Select dir="rtl" value={formData.numberOfPages} onValueChange={(v) => handleInputChange('numberOfPages', v)}>
+                            <SelectTrigger id="page-count"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="4">4 صفحات (قصة قصيرة)</SelectItem>
+                                <SelectItem value="8">8 صفحات (قصة متوسطة)</SelectItem>
+                                <SelectItem value="12">12 صفحة (قصة طويلة)</SelectItem>
+                                <SelectItem value="16">16 صفحة (كتاب متكامل)</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                 </CardContent>
                 <CardFooter className="justify-between p-8">
@@ -234,75 +279,34 @@ export default function CreateStoryPage() {
                         <ArrowRight className="ml-2 h-5 w-5" />
                         السابق
                     </Button>
-                    <Button onClick={nextStep} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
-                        التالي
-                        <ArrowLeft className="mr-2 h-5 w-5" />
-                    </Button>
-                </CardFooter>
-            </Card>
-        )}
-
-        {step === 3 && (
-            <Card className="mt-8">
-                <CardHeader className="text-center">
-                    <CardTitle className="font-headline text-3xl">اختر النمط البصري</CardTitle>
-                    <CardDescription>اختر كيف ستبدو الصور في قصتك</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-8 px-8">
-                   <div>
-                        <Label htmlFor="art-style" className="mb-2 block text-right font-semibold">نمط فني</Label>
-                        <Select dir="rtl">
-                            <SelectTrigger id="art-style">
-                                <SelectValue placeholder="اختر نمطاً" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {artStyles.map(style => (
-                                    <SelectItem key={style} value={style}>{style}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                   </div>
-                   <div>
-                       <Label className="mb-4 block text-right font-semibold">اختر نوع الرسوم</Label>
-                       <RadioGroup dir="rtl" defaultValue="bw" className="flex gap-4">
-                           <div className="flex items-center gap-2">
-                               <RadioGroupItem value="bw" id="bw"/>
-                               <Label htmlFor="bw">أبيض وأسود (للتلوين)</Label>
-                           </div>
-                           <div className="flex items-center gap-2">
-                               <RadioGroupItem value="color" id="color" />
-                               <Label htmlFor="color">ملون</Label>
-                           </div>
-                       </RadioGroup>
-                   </div>
-                </CardContent>
-                <CardFooter className="justify-between p-8">
-                    <Button onClick={prevStep} size="lg" variant="outline">
-                        <ArrowRight className="ml-2 h-5 w-5" />
-                        السابق
-                    </Button>
                     <Button onClick={handleGenerateStory} size="lg" className="bg-gradient-to-l from-rose-400 to-red-500 font-bold text-white hover:to-red-600" disabled={loading}>
-                        {loading ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Sparkles className="ml-2 h-5 w-5" />}
+                        {loading ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <WandSparkles className="ml-2 h-5 w-5" />}
                         {loading ? '...جاري إنشاء القصة' : 'أنشئ القصة الآن'}
                     </Button>
                 </CardFooter>
             </Card>
         )}
 
+        {step === 3 && (
+            <Card className="mt-8 min-h-[500px] flex flex-col justify-center items-center">
+                 <CardHeader className="text-center">
+                    <CardTitle className="font-headline text-3xl">يقوم الذكاء الاصطناعي بسحر الإبداع!</CardTitle>
+                    <CardDescription>لحظات، القصة على وشك الاكتمال...</CardDescription>
+                </CardHeader>
+                <CardContent className="px-8 text-center">
+                    <TenorGIF />
+                    <p className="font-semibold text-lg mt-4">يقوم الذكاء الاصطناعي بنسج الكلمات والصور معاً.</p>
+                </CardContent>
+            </Card>
+        )}
+
         {step === 4 && (
             <Card className="mt-8">
                  <CardHeader className="text-center">
-                    <CardTitle className="font-headline text-3xl">ها هي قصتك!</CardTitle>
-                    <CardDescription>اقرأ مغامرة {heroName} الجديدة</CardDescription>
+                    <CardTitle className="font-headline text-3xl">{story?.title || 'ها هي قصتك!'}</CardTitle>
+                    <CardDescription>اقرأ مغامرة {formData.childName} الجديدة</CardDescription>
                 </CardHeader>
                 <CardContent className="px-8">
-                    {loading && (
-                         <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-muted-foreground">
-                            <Loader2 className="h-16 w-16 animate-spin text-primary" />
-                            <p className="font-semibold">لحظات، القصة على وشك الاكتمال...</p>
-                            <p className="text-sm">يقوم الذكاء الاصطناعي بنسج الكلمات والصور معاً.</p>
-                        </div>
-                    )}
                     {story && (
                         <div className="space-y-8">
                            {story.pages.map((page, index) => (
@@ -348,7 +352,7 @@ export default function CreateStoryPage() {
                 </CardHeader>
                 <CardContent className="px-8 text-center">
                     <p className="text-muted-foreground">
-                        قصتك عن <strong>{heroName}</strong> جاهزة الآن. يمكنك حفظها في مكتبتك للوصول إليها لاحقًا، أو تحميلها كملف لمشاركتها مع الأصدقاء والعائلة.
+                        قصتك عن <strong>{formData.childName}</strong> جاهزة الآن. يمكنك حفظها في مكتبتك للوصول إليها لاحقًا، أو تحميلها كملف لمشاركتها مع الأصدقاء والعائلة.
                     </p>
                     <div className="mt-8 flex justify-center gap-4">
                         <Button size="lg" variant="outline">

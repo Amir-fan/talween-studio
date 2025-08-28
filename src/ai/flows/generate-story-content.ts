@@ -109,7 +109,7 @@ You must output a valid JSON object that conforms to the provided schema. Each "
 - Cultural and religious sensitivity maintained
 - Each page has clear narrative purpose
 
-Generate a complete story following these specifications.
+Generate a complete story following these specifications. For the cover page content, just use the title of the story.
 `,
     config: {
         model: 'googleai/gemini-2.0-flash',

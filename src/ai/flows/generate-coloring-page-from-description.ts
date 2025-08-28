@@ -32,8 +32,8 @@ const generateColoringPageFromDescriptionFlow = ai.defineFlow(
     outputSchema: GenerateColoringPageFromDescriptionOutputSchema,
   },
   async input => {
-     // A simplified and direct prompt for better reliability.
-    const illustrationPrompt = `black-and-white, line-art, coloring book style. A simple, cute, child-friendly illustration for a children's coloring book. The scene: ${input.description}. The main character is named ${input.childName}. Use thick, clean outlines and no shading or color.`;
+     // The prompt is now just the detailed description from the Image Description API.
+    const illustrationPrompt = input.description;
 
     const {media} = await ai.generate({
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
