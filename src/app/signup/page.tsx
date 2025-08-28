@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -57,8 +56,7 @@ export default function SignUpPage() {
             title: 'تم إنشاء الحساب بنجاح!',
             description: 'أهلاً بك في عالم الإبداع. لقد حصلت على 50 نقطة مجانية للبدء!',
         });
-        router.push('/account');
-        router.refresh();
+        router.push('/create');
       } else {
         throw new Error(result.error || 'فشلت عملية إنشاء الحساب.');
       }

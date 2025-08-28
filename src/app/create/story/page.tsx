@@ -45,6 +45,7 @@ import type { CreateStoryAndColoringPagesOutput, CreateStoryAndColoringPagesInpu
 import { TenorGIF } from '@/components/tenor-gif';
 import { useAuth } from '@/context/auth-context';
 import { InsufficientCreditsPopup } from '@/components/popups/insufficient-credits-popup';
+import withAuth from '@/hoc/withAuth';
 
 const steps = [
   { icon: BookUser, label: 'البطل والموضوع' },
@@ -71,9 +72,9 @@ const artStyles = [
     { value: 'simple', label: 'بسيط جداً' },
 ]
 
-export default function CreateStoryPage() {
+function CreateStoryPage() {
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState<Partial<CreateStoryAndColoringPagesInput>>({
+  const [formData, setFormData] = useState<Omit<CreateStoryAndColoringPagesInput, 'userId'>>({
       childName: '',
       ageGroup: '6-8',
       numberOfPages: '8',
@@ -89,7 +90,7 @@ export default function CreateStoryPage() {
   const { user } = useAuth();
 
 
-  const handleInputChange = (field: keyof CreateStoryAndColoringPagesInput, value: string) => {
+  const handleInputChange = (field: keyof Omit<CreateStoryAndColoringPagesInput, 'userId'>, value: string) => {
     setFormData(prev => ({...prev, [field]: value}));
   };
 
@@ -123,12 +124,8 @@ export default function CreateStoryPage() {
 
     try {
       const result = await generateStoryAction({
-          childName,
-          ageGroup,
-          numberOfPages,
-          setting,
-          lesson: lesson || 'auto-select',
-          artStyle
+          ...formData,
+          userId: user.uid,
       });
       if (result.success && result.data) {
         setStory(result.data);
@@ -282,7 +279,7 @@ export default function CreateStoryPage() {
                 <CardContent className="px-8 space-y-8">
                    <div>
                         <Label htmlFor="art-style" className="mb-2 block text-right font-semibold">نمط الرسوم</Label>
-                        <Select dir="rtl" value={formData.artStyle} onValueChange={(v) => handleInputChange('artStyle', v)}>
+                        <Select dir="rtl" value={formData.artStyle} onValueChange={(v) => handleInputChange('artStyle', v as 'cartoon' | 'semi-realistic' | 'simple')}>
                             <SelectTrigger id="art-style"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 {artStyles.map(style => (
@@ -406,3 +403,6 @@ export default function CreateStoryPage() {
     </div>
   );
 }
+
+
+export default withAuth(CreateStoryPage);

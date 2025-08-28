@@ -23,6 +23,7 @@ const FinalStoryPageSchema = z.object({
 
 // The input schema for the orchestrator, taken from the UI
 export const CreateStoryAndColoringPagesInputSchema = z.object({
+  userId: z.string().describe("The authenticated user's ID."),
   childName: z.string().describe("Child's name in Arabic"),
   ageGroup: z.enum(['3-5', '6-8', '9-12']).describe('The age group of the child.'),
   numberOfPages: z.enum(['4', '8', '12', '16']).describe('The number of pages for the story.'),
@@ -48,8 +49,7 @@ export async function createStoryAndColoringPages(
   input: CreateStoryAndColoringPagesInput
 ): Promise<CreateStoryAndColoringPagesOutput> {
 
-   const userId = auth.currentUser?.uid;
-  if (!userId) {
+  if (!input.userId) {
     throw new Error('User not authenticated. Please log in to create a story.');
   }
 
@@ -62,7 +62,7 @@ export async function createStoryAndColoringPages(
   }[input.numberOfPages];
 
   // Check and deduct credits before proceeding
-  const creditCheck = await checkAndDeductCredits(userId, creditCost);
+  const creditCheck = await checkAndDeductCredits(input.userId, creditCost);
   if (!creditCheck.success) {
     // If error is 'Not enough credits', we want to propagate that specific info
     if (creditCheck.error === 'Not enough credits') {

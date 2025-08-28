@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -55,8 +54,7 @@ export default function LoginPage() {
           title: 'تم تسجيل الدخول بنجاح!',
           description: 'مرحباً بعودتك.',
         });
-        router.push('/account');
-        router.refresh(); 
+        router.push('/create'); 
       } else {
         throw new Error(result.error || 'فشلت عملية تسجيل الدخول.');
       }

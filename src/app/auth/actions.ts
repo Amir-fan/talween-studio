@@ -3,13 +3,14 @@
 import { createUserDocument, CreateUserInput } from "@/ai/flows/create-user-document";
 
 /**
- * Server action to create a user document in Firestore via a Genkit flow.
+ * Server action to create a user document in Firestore.
  * This function is intended to be called from client-side actions.
  * @param {CreateUserInput} input - The user data.
  * @returns {Promise<{success: boolean; error?: string}>}
  */
 export async function createUserDocumentAction(input: CreateUserInput): Promise<{ success: boolean; error?: string }> {
   try {
+    // Directly call the server function.
     await createUserDocument(input);
     return { success: true };
   } catch (error) {

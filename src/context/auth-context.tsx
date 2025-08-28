@@ -70,9 +70,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     await signOut(auth);
-    setUser(null);
-    setUserData(null);
-    deleteCookie('auth-token');
     router.push('/'); // Redirect to home page after logout
   };
 
