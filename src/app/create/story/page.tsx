@@ -6,19 +6,17 @@ import Image from 'next/image';
 import {
   ArrowRight,
   ArrowLeft,
-  Sparkles,
-  Heart,
+  WandSparkles,
   BookOpen,
-  Image as ImageIcon,
   CheckCircle,
   Loader2,
   Download,
   Save,
-  WandSparkles,
+  Paintbrush,
   BookUser,
   MapPin,
   GraduationCap,
-  Paintbrush,
+  Heart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,11 +38,13 @@ import {
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { createStoryAndColoringPages, CreateStoryAndColoringPagesOutput, CreateStoryAndColoringPagesInput } from '@/ai/flows/create-story-and-coloring-pages';
 import React from 'react';
+import { generateStoryAction } from './actions';
+import type { CreateStoryAndColoringPagesOutput, CreateStoryAndColoringPagesInput } from '@/ai/flows/create-story-and-coloring-pages';
 import { TenorGIF } from '@/components/tenor-gif';
+import { useAuth } from '@/context/auth-context';
+import { InsufficientCreditsPopup } from '@/components/popups/insufficient-credits-popup';
 
 const steps = [
   { icon: BookUser, label: 'البطل والموضوع' },
@@ -84,7 +84,10 @@ export default function CreateStoryPage() {
   
   const [story, setStory] = useState<CreateStoryAndColoringPagesOutput | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showCreditsPopup, setShowCreditsPopup] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+
 
   const handleInputChange = (field: keyof CreateStoryAndColoringPagesInput, value: string) => {
     setFormData(prev => ({...prev, [field]: value}));
@@ -104,12 +107,22 @@ export default function CreateStoryPage() {
         return;
     }
 
+    if (!user) {
+        toast({
+            variant: "destructive",
+            title: "تسجيل الدخول مطلوب",
+            description: "يجب عليك تسجيل الدخول لإنشاء قصة.",
+        });
+        return;
+    }
+
+
     setLoading(true);
     setStory(null);
     setStep(3); // Move to the generating view step
 
     try {
-      const result = await createStoryAndColoringPages({
+      const result = await generateStoryAction({
           childName,
           ageGroup,
           numberOfPages,
@@ -117,15 +130,31 @@ export default function CreateStoryPage() {
           lesson: lesson || 'auto-select',
           artStyle
       });
-      setStory(result);
-      setStep(4); // Move to the story view step
+      if (result.success && result.data) {
+        setStory(result.data);
+        setStep(4); // Move to the story view step
+      } else {
+        // Check for specific 'Not enough credits' error
+        if (result.error === 'NotEnoughCredits') {
+          setShowCreditsPopup(true);
+          setStep(2); // Go back to previous step
+        } else {
+          throw new Error(result.error || "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.");
+        }
+      }
     } catch (error) {
-        toast({
-            variant: "destructive",
-            title: "حدث خطأ",
-            description: error instanceof Error ? error.message : "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.",
-        });
-        setStep(2); // Go back to the previous step on error
+       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+       if (errorMessage === 'NotEnoughCredits') {
+            setShowCreditsPopup(true);
+            setStep(2);
+       } else {
+            toast({
+                variant: "destructive",
+                title: "حدث خطأ",
+                description: errorMessage,
+            });
+            setStep(2); // Go back to the previous step on error
+       }
     } finally {
         setLoading(false);
     }
@@ -134,6 +163,7 @@ export default function CreateStoryPage() {
 
   return (
     <div className="min-h-screen bg-yellow-50/30">
+        <InsufficientCreditsPopup open={showCreditsPopup} onOpenChange={setShowCreditsPopup} />
       <div className="container mx-auto px-4 py-8">
         <header className="flex items-center justify-between">
           <Button asChild variant="outline" className="rounded-full font-bold">
@@ -266,10 +296,10 @@ export default function CreateStoryPage() {
                         <Select dir="rtl" value={formData.numberOfPages} onValueChange={(v) => handleInputChange('numberOfPages', v)}>
                             <SelectTrigger id="page-count"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="4">4 صفحات (قصة قصيرة)</SelectItem>
-                                <SelectItem value="8">8 صفحات (قصة متوسطة)</SelectItem>
-                                <SelectItem value="12">12 صفحة (قصة طويلة)</SelectItem>
-                                <SelectItem value="16">16 صفحة (كتاب متكامل)</SelectItem>
+                                <SelectItem value="4">4 صفحات (قصة قصيرة) - 1 نقطة</SelectItem>
+                                <SelectItem value="8">8 صفحات (قصة متوسطة) - 2 نقطة</SelectItem>
+                                <SelectItem value="12">12 صفحة (قصة طويلة) - 3 نقاط</SelectItem>
+                                <SelectItem value="16">16 صفحة (كتاب متكامل) - 4 نقاط</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { signUpUser } from '@/app/auth/client-actions';
+import { signUpWithEmail } from '@/app/auth/client-actions';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'الرجاء إدخال اسم.' }),
@@ -51,7 +51,7 @@ export default function SignUpPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     try {
-      const result = await signUpUser(values);
+      const result = await signUpWithEmail(values);
       if (result.success) {
         toast({
             title: 'تم إنشاء الحساب بنجاح!',

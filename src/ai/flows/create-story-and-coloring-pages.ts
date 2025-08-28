@@ -6,10 +6,12 @@
  */
 
 import {z} from 'genkit';
-import {generateStoryContent, type StoryContentOutput} from './generate-story-content';
-import {generateImageDescriptions, type ImageDescriptionOutput} from './generate-image-descriptions';
-import {generateColoringPageFromDescription} from './generate-coloring-page-from-description';
 import {v4 as uuidv4} from 'uuid';
+import {generateStoryContent} from './generate-story-content';
+import {generateImageDescriptions} from './generate-image-descriptions';
+import {generateColoringPageFromDescription} from './generate-coloring-page-from-description';
+import { checkAndDeductCredits } from '@/lib/credits';
+import { auth } from '@/lib/firebase';
 
 // Final combined output schema for a single page
 const FinalStoryPageSchema = z.object({
@@ -45,6 +47,30 @@ export type CreateStoryAndColoringPagesOutput = z.infer<typeof CreateStoryAndCol
 export async function createStoryAndColoringPages(
   input: CreateStoryAndColoringPagesInput
 ): Promise<CreateStoryAndColoringPagesOutput> {
+
+   const userId = auth.currentUser?.uid;
+  if (!userId) {
+    throw new Error('User not authenticated. Please log in to create a story.');
+  }
+
+  // Define credit cost based on page count
+  const creditCost = {
+    '4': 1,
+    '8': 2,
+    '12': 3,
+    '16': 4,
+  }[input.numberOfPages];
+
+  // Check and deduct credits before proceeding
+  const creditCheck = await checkAndDeductCredits(userId, creditCost);
+  if (!creditCheck.success) {
+    // If error is 'Not enough credits', we want to propagate that specific info
+    if (creditCheck.error === 'Not enough credits') {
+        throw new Error('NotEnoughCredits');
+    }
+    throw new Error(creditCheck.error || 'Failed to process credits.');
+  }
+
   const storyId = `story_${uuidv4()}`;
 
   // Step 1: Generate Story Content

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, type AuthError } from 'firebase/auth';
 import { db, app } from '@/lib/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { createUserDocument } from '@/ai/flows/create-user-document';
+import { createUserDocumentAction } from './actions';
 
 const auth = getAuth(app);
 
@@ -44,19 +44,27 @@ function getFirebaseAuthErrorMessage(error: AuthError): string {
   }
 }
 
-export async function signUpUser(
+export async function signUpWithEmail(
   values: AuthInput
 ): Promise<{ success: boolean; error?: string; userId?: string }> {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
     const user = userCredential.user;
     
-    // Call the server-side flow to create the user document in Firestore
-    await createUserDocument({ 
+    // Call the server action to create the user document in Firestore
+    const creationResult = await createUserDocumentAction({ 
         uid: user.uid, 
         email: values.email, 
         name: values.name || '' 
     });
+
+    if (!creationResult.success) {
+      // If document creation fails, we should ideally handle this,
+      // possibly by deleting the auth user or flagging the account.
+      // For now, we'll just log and return the error.
+      console.error("Failed to create user document:", creationResult.error);
+      return { success: false, error: creationResult.error };
+    }
 
     return { success: true, userId: user.uid };
   } catch (error) {
