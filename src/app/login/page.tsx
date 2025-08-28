@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { signInUser } from '@/app/auth/actions';
+import { signInUser } from '@/app/auth/client-actions';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'الرجاء إدخال بريد إلكتروني صالح.' }),
@@ -55,7 +55,6 @@ export default function LoginPage() {
           title: 'تم تسجيل الدخول بنجاح!',
           description: 'مرحباً بعودتك.',
         });
-        // Instead of router.push, we reload the page to allow AuthProvider to pick up the new state
         window.location.href = '/account';
       } else {
         throw new Error(result.error || 'فشلت عملية تسجيل الدخول.');

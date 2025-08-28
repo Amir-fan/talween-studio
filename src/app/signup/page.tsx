@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { signUpUser } from '@/app/auth/actions';
+import { signUpUser } from '@/app/auth/client-actions';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'الرجاء إدخال اسم.' }),
@@ -57,7 +57,6 @@ export default function SignUpPage() {
             title: 'تم إنشاء الحساب بنجاح!',
             description: 'أهلاً بك في عالم الإبداع. لقد حصلت على 50 نقطة مجانية للبدء!',
         });
-        // Reload the page to let AuthProvider pick up the new auth state
         window.location.href = '/account';
       } else {
         throw new Error(result.error || 'فشلت عملية إنشاء الحساب.');
@@ -68,7 +67,8 @@ export default function SignUpPage() {
         title: 'حدث خطأ',
         description: error instanceof Error ? error.message : 'An unknown error occurred.',
       });
-      setLoading(false);
+    } finally {
+        setLoading(false);
     }
   }
 
