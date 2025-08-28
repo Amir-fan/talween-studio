@@ -42,7 +42,11 @@ const StoryContentOutputSchema = z.object({
 export type StoryContentOutput = z.infer<typeof StoryContentOutputSchema>;
 
 
-const storyPrompt = `You are a professional Arabic children's story writer specializing in creating personalized interactive stories for Arab and Gulf children. Your mission is to create story content ONLY (text) that will be paired with images generated separately.
+const storyPrompt = ai.definePrompt({
+    name: 'storyContentPrompt',
+    input: { schema: StoryContentInputSchema },
+    output: { schema: StoryContentOutputSchema, format: 'json' },
+    prompt: `You are a professional Arabic children's story writer specializing in creating personalized interactive stories for Arab and Gulf children. Your mission is to create story content ONLY (text) that will be paired with images generated separately.
 
 ## Input Parameters:
 {
@@ -106,7 +110,13 @@ You must output a valid JSON object that conforms to the provided schema. Do not
 - Each page has clear narrative purpose
 
 Generate a complete story following these specifications.
-`;
+`,
+    config: {
+        model: 'googleai/gemini-2.0-flash',
+        apiKey: process.env.STORY_API_KEY
+    }
+});
+
 
 const generateStoryContentFlow = ai.defineFlow(
   {
@@ -115,15 +125,7 @@ const generateStoryContentFlow = ai.defineFlow(
     outputSchema: StoryContentOutputSchema,
   },
   async (input) => {
-    const { output } = await ai.generate({
-        model: 'googleai/gemini-2.0-flash',
-        prompt: storyPrompt,
-        input: input,
-        config: {
-            responseFormat: 'json',
-            apiKey: process.env.STORY_API_KEY,
-        },
-    });
+    const { output } = await storyPrompt(input);
 
     if (!output) {
       throw new Error('Failed to generate story content. The model returned no output.');

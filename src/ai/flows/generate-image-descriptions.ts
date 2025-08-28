@@ -6,6 +6,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { type StoryContentOutput } from './generate-story-content';
+import Handlebars from 'handlebars';
 
 const ImageDescriptionInputSchema = z.object({
   story_id: z.string().describe('Must match Story API output'),
@@ -39,7 +40,15 @@ const ImageDescriptionOutputSchema = z.object({
 export type ImageDescriptionOutput = z.infer<typeof ImageDescriptionOutputSchema>;
 
 
-const imageDescriptionPrompt = `You are a professional children's book illustrator specializing in creating detailed image descriptions for AI image generation. Your task is to create precise, culturally appropriate image descriptions that perfectly match the story content provided.
+Handlebars.registerHelper('jsonEncode', (context) => {
+    return new Handlebars.SafeString(JSON.stringify(context, null, 2));
+});
+
+const imageDescriptionPrompt = ai.definePrompt({
+    name: 'imageDescriptionPrompt',
+    input: { schema: ImageDescriptionInputSchema },
+    output: { schema: ImageDescriptionOutputSchema, format: 'json'},
+    prompt: `You are a professional children's book illustrator specializing in creating detailed image descriptions for AI image generation. Your task is to create precise, culturally appropriate image descriptions that perfectly match the story content provided.
 
 ## Input Parameters:
 {
@@ -118,7 +127,14 @@ Always include relevant elements:
 - Islamic values respected in all visual elements
 
 Generate comprehensive image descriptions for all pages of the provided story.
-`;
+`,
+    config: {
+        model: 'googleai/gemini-2.0-flash',
+        apiKey: process.env.IMAGE_API_KEY
+    },
+    // @ts-ignore - a bit of a hack to pass in the custom helper
+    handlebars: Handlebars
+});
 
 const generateImageDescriptionsFlow = ai.defineFlow(
   {
@@ -127,21 +143,7 @@ const generateImageDescriptionsFlow = ai.defineFlow(
     outputSchema: ImageDescriptionOutputSchema,
   },
   async (input) => {
-    const handlebars = await import('handlebars');
-    handlebars.registerHelper('jsonEncode', (context) => {
-      return new handlebars.SafeString(JSON.stringify(context, null, 2));
-    });
-    const template = handlebars.compile(imageDescriptionPrompt);
-    const filledPrompt = template(input);
-    
-    const { output } = await ai.generate({
-        model: 'googleai/gemini-2.0-flash',
-        prompt: filledPrompt,
-        config: {
-            responseFormat: 'json',
-            apiKey: process.env.IMAGE_API_KEY,
-        },
-    });
+    const { output } = await imageDescriptionPrompt(input);
 
     if (!output) {
       throw new Error('Failed to generate image descriptions. The model returned no output.');
