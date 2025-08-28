@@ -15,7 +15,7 @@ const pointsPackages = [
     icon: <Star className="h-8 w-8" />,
     color: 'text-yellow-500',
     bgColor: 'bg-yellow-50',
-    buttonClass: 'bg-gradient-to-r from-yellow-400 to-amber-500 text-white',
+    buttonClass: 'bg-gradient-to-r from-yellow-400 to-orange-400 text-white',
   },
   {
     title: 'الاختيار الذكي',
@@ -24,7 +24,7 @@ const pointsPackages = [
     icon: <Heart className="h-8 w-8" />,
     color: 'text-pink-500',
     bgColor: 'bg-pink-50',
-    buttonClass: 'bg-gradient-to-r from-pink-500 to-rose-500 text-white',
+    buttonClass: 'bg-gradient-to-r from-pink-500 to-red-500 text-white',
     badge: 'الأكثر شيوعًا',
     highlight: true,
   },
@@ -35,7 +35,7 @@ const pointsPackages = [
     icon: <Crown className="h-8 w-8" />,
     color: 'text-purple-500',
     bgColor: 'bg-purple-50',
-    buttonClass: 'bg-gradient-to-r from-purple-500 to-violet-600 text-white',
+    buttonClass: 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white',
     savings: 'خصم 15%',
   },
   {
@@ -45,7 +45,7 @@ const pointsPackages = [
     icon: <Star className="h-8 w-8" />,
     color: 'text-blue-500',
     bgColor: 'bg-blue-50',
-    buttonClass: 'bg-gradient-to-r from-blue-500 to-sky-600 text-white',
+    buttonClass: 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white',
     savings: 'خصم 30%',
     badge: 'أفضل قيمة',
   },
@@ -59,7 +59,7 @@ const subscriptionPackages = [
     features: ['ميزات بريميوم', 'وصول للمحتوى الحصري', 'دعم فني'],
     color: 'text-green-500',
     bgColor: 'bg-green-50',
-    buttonClass: 'bg-gradient-to-r from-green-500 to-emerald-600 text-white',
+    buttonClass: 'bg-gradient-to-r from-green-400 to-teal-500 text-white',
     highlight: false,
 
   },
@@ -70,7 +70,7 @@ const subscriptionPackages = [
     features: ['كل ميزات "راحة البال"', 'ميزات VIP', 'دعم فوري', 'قصص مخصصة جدًا'],
     color: 'text-rose-500',
     bgColor: 'bg-rose-50',
-    buttonClass: 'bg-gradient-to-r from-rose-500 to-red-600 text-white',
+    buttonClass: 'bg-gradient-to-r from-rose-400 to-red-500 text-white',
     badge: 'الأكثر شيوعًا',
     highlight: true,
   },
@@ -81,7 +81,7 @@ const subscriptionPackages = [
     features: ['كل ميزات "ملكة التلوين"', 'حسابات متعددة للأطفال', 'ورش عمل حصرية'],
     color: 'text-indigo-500',
     bgColor: 'bg-indigo-50',
-    buttonClass: 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white',
+    buttonClass: 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white',
   },
 ];
 
