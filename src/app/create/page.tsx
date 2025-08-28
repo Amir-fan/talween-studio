@@ -1,16 +1,20 @@
+'use client';
+
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BookOpen, Image as ImageIcon, Sparkles, Type, FileImage, Bot } from 'lucide-react';
 import Link from 'next/link';
+import withAuth from '@/hoc/withAuth';
+import { useAuth } from '@/context/auth-context';
 
 const creationOptions = [
   {
     href: '/create/word',
     title: 'الكلمات - الصورة',
-    description: 'اكتب فكرة واحصل على 3 خيارات رائعة من الرسوم الخطية.',
+    description: 'اكتب فكرة واحصل على رسوم خطية رائعة.',
     icon: <Type className="h-12 w-12" />,
     buttonText: 'ابدأ الإنشاء',
-    buttonClass: 'bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 text-white',
+    buttonClass: 'bg-gradient-to-br from-sky-400 to-indigo-600 hover:from-sky-500 hover:to-indigo-700 text-white',
     badge: (
       <div className="absolute top-4 right-4 flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
         <Bot className="h-4 w-4" />
@@ -24,7 +28,7 @@ const creationOptions = [
     description: 'حوّل أي صورة إلى رسمة خطوط واضحة مثالية للتلوين.',
     icon: <ImageIcon className="h-12 w-12" />,
     buttonText: 'ابدأ الإنشاء',
-    buttonClass: 'bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white',
+    buttonClass: 'bg-gradient-to-br from-yellow-400 to-red-500 hover:from-yellow-500 hover:to-red-600 text-white',
     badge: (
       <div className="absolute top-4 right-4 flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
         <div className="h-3 w-3 rounded-full bg-red-500"></div>
@@ -40,7 +44,7 @@ const creationOptions = [
     description: 'مئات القوالب الجاهزة مصنفة حسب الموضوع والصعوبة.',
     icon: <FileImage className="h-12 w-12" />,
     buttonText: 'ابدأ الإنشاء',
-    buttonClass: 'bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-white',
+    buttonClass: 'bg-gradient-to-br from-green-400 to-cyan-500 hover:from-green-500 hover:to-cyan-600 text-white',
     badge: (
       <div className="absolute top-4 right-4 flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
         <span>🎨</span>
@@ -56,7 +60,7 @@ const creationOptions = [
     description: 'أنشئ كتب قصص تلوين شخصية مع مغامرات مثيرة.',
     icon: <BookOpen className="h-12 w-12" />,
     buttonText: 'ابدأ الإنشاء',
-    buttonClass: 'bg-gradient-to-r from-rose-400 to-red-500 hover:from-rose-500 hover:to-red-600 text-white',
+    buttonClass: 'bg-gradient-to-br from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white',
     badge: (
       <div className="absolute top-4 right-4 flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
         <span>✏️</span>
@@ -68,7 +72,8 @@ const creationOptions = [
   },
 ];
 
-export default function CreatePage() {
+function CreatePage() {
+    const { user } = useAuth();
   return (
     <div className="bg-yellow-50/50">
       <div className="container mx-auto max-w-5xl px-4 py-16 sm:py-24">
@@ -114,3 +119,5 @@ export default function CreatePage() {
     </div>
   );
 }
+
+export default withAuth(CreatePage);
