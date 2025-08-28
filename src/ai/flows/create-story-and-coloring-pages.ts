@@ -101,7 +101,7 @@ const createStoryAndColoringPagesFlow = ai.defineFlow(
     const generatedImages = await Promise.all(imageGenerationPromises);
     
     // Step 4: Combine story content with generated images
-    const finalPages: FinalStoryPage[] = storyContent.pages.map((page, index) => {
+    const finalPages: FinalStoryPage[] = storyContent.pages.map((page) => {
         // Find the corresponding image description first to ensure we match correctly
         const imageDesc = imageDescriptions.image_descriptions.find(d => d.page_reference === page.image_reference);
         const imageIndex = imageDesc ? imageDescriptions.image_descriptions.indexOf(imageDesc) : -1;
