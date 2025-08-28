@@ -7,7 +7,6 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-// Define the schema for a single page of the story
 const StoryPageSchema = z.object({
   text: z.string().describe('The text content of the page in Arabic.'),
   imageDataUri: z.string().describe(
@@ -16,41 +15,23 @@ const StoryPageSchema = z.object({
 });
 export type StoryPage = z.infer<typeof StoryPageSchema>;
 
-// Define the input schema for the main flow
 export const CreateStoryAndColoringPagesInputSchema = z.object({
   topic: z.string().describe('The topic of the story.'),
   numPages: z.number().describe('The number of pages for the story.').default(3),
 });
 export type CreateStoryAndColoringPagesInput = z.infer<typeof CreateStoryAndColoringPagesInputSchema>;
 
-// Define the output schema for the main flow
 export const CreateStoryAndColoringPagesOutputSchema = z.object({
   pages: z.array(StoryPageSchema).describe('The generated story pages with text and image data URIs.'),
 });
 export type CreateStoryAndColoringPagesOutput = z.infer<typeof CreateStoryAndColoringPagesOutputSchema>;
 
-/**
- * An exported function that can be called from server components or actions.
- * @param input The topic and number of pages for the story.
- * @returns A promise that resolves to the generated story pages.
- */
-export async function createStoryAndColoringPages(
-  input: CreateStoryAndColoringPagesInput
-): Promise<CreateStoryAndColoringPagesOutput> {
-  // This is the main Genkit flow that orchestrates the story creation.
-  const createStoryAndColoringPagesFlow = ai.defineFlow(
-    {
-      name: 'createStoryAndColoringPagesFlow',
-      inputSchema: CreateStoryAndColoringPagesInputSchema,
-      outputSchema: CreateStoryAndColoringPagesOutputSchema,
-    },
-    async (flowInput) => {
-      // We create a new prompt definition for each page to ensure clean execution.
-      const pagePrompt = ai.definePrompt({
-        name: 'storyPagePrompt',
-        input: {schema: z.object({topic: z.string(), pageNumber: z.number()})},
-        output: {schema: StoryPageSchema},
-        prompt: `You are creating a children's story book. Each page will have text and an illustration suitable for a coloring book.
+// Define the prompt internally. It's used by the flow but not exported.
+const pagePrompt = ai.definePrompt({
+  name: 'storyPagePrompt',
+  input: {schema: z.object({topic: z.string(), pageNumber: z.number()})},
+  output: {schema: StoryPageSchema},
+  prompt: `You are creating a children's story book. Each page will have text and an illustration suitable for a coloring book.
 
 Create page {{pageNumber}} of a story about {{topic}}.
 
@@ -60,29 +41,44 @@ Your output must be a valid JSON object and include:
 
 Ensure imageDataUri is a valid data URI with proper MIME type and base64 encoding.
 `,
-      });
+});
 
-      // Generate all pages in parallel for efficiency.
-      const pagePromises = Array.from({length: flowInput.numPages}, (_, i) =>
-        pagePrompt({
-          topic: flowInput.topic,
-          pageNumber: i + 1,
-        })
-      );
+// Define the flow internally. It's used by the exported function but not exported itself.
+const createStoryAndColoringPagesFlow = ai.defineFlow(
+  {
+    name: 'createStoryAndColoringPagesFlow',
+    inputSchema: CreateStoryAndColoringPagesInputSchema,
+    outputSchema: CreateStoryAndColoringPagesOutputSchema,
+  },
+  async (flowInput) => {
+    const pagePromises = Array.from({length: flowInput.numPages}, (_, i) =>
+      pagePrompt({
+        topic: flowInput.topic,
+        pageNumber: i + 1,
+      })
+    );
 
-      const results = await Promise.all(pagePromises);
+    const results = await Promise.all(pagePromises);
 
-      // Extract the output from each result.
-      const pages = results.map((result) => {
-        if (!result.output) {
-          throw new Error('A page generation failed to produce output.');
-        }
-        return result.output;
-      });
+    const pages = results.map((result) => {
+      if (!result.output) {
+        throw new Error('A page generation failed to produce output.');
+      }
+      return result.output;
+    });
 
-      return {pages};
-    }
-  );
+    return {pages};
+  }
+);
 
+/**
+ * An exported async function that can be called from server components or actions.
+ * This is the ONLY function exported, which complies with "use server" rules.
+ * @param input The topic and number of pages for the story.
+ * @returns A promise that resolves to the generated story pages.
+ */
+export async function createStoryAndColoringPages(
+  input: CreateStoryAndColoringPagesInput
+): Promise<CreateStoryAndColoringPagesOutput> {
   return createStoryAndColoringPagesFlow(input);
 }
