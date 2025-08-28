@@ -172,7 +172,7 @@ export default function CreateStoryPage() {
 
     setLoading(true);
     setStory(null);
-    setStep(3);
+    setStep(3); // Move to the story view step
 
     try {
         setLoadingMessage("يتم الآن كتابة قصة شيقة...");
@@ -197,7 +197,7 @@ export default function CreateStoryPage() {
                 description: errorMessage,
             });
         }
-        setStep(2);
+        setStep(1); // Go back to the first step on error
     } finally {
         setLoading(false);
         setLoadingMessage('');

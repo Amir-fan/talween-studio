@@ -15,6 +15,7 @@ import {
   PlusCircle,
   ShoppingBag,
   Edit2,
+  Trash2,
 } from 'lucide-react';
 
 export default function AccountPage() {

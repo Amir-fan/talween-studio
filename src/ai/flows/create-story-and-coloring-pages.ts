@@ -40,8 +40,7 @@ export async function createStoryAndColoringPages(
 }
 
 const StoryContentSchema = z.object({
-    chapterTitle: z.string().describe('The title of the chapter (2-4 words).'),
-    narrative: z.string().describe('The narrative of the chapter (150-200 words).'),
+    narrative: z.string().describe('The narrative of the chapter (100-150 words).'),
     illustrationDescription: z.string().describe('A description for a coloring book illustration for this chapter.'),
 });
 
@@ -57,13 +56,12 @@ const storyPrompt = ai.definePrompt({
     prompt: `You are a children’s story generator. Create a wholesome story in Arabic.
 
 Follow these rules:
-1.  **Language:** The entire output (story title, chapter titles, narrative) MUST be in Arabic. The ONLY exception is 'illustrationDescription', which must be in English.
+1.  **Language:** The entire output (story title, narrative) MUST be in Arabic. The ONLY exception is 'illustrationDescription', which must be in English.
 2.  **Story Elements:** The story should be about: {{{topic}}}.
 3.  **Structure:**
     *   Generate a creative story title (3-5 words).
     *   Divide the story into exactly {{numPages}} chapters.
     *   Each chapter must have:
-        *   chapterTitle: 2–4 words in Arabic.
         *   narrative: 100-150 words in simple, age-appropriate Arabic.
         *   illustrationDescription: A simple, clear description in English for a coloring book illustration (e.g., "A happy boy holding a red balloon in a sunny park").
 
