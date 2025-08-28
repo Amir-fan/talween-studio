@@ -10,68 +10,55 @@ import {
   Wand2,
   Lightbulb,
   Sparkles,
-  Download,
-  Save,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { generateImageAction, saveImageToLibraryAction } from './actions';
-import { useAuth } from '@/context/auth-context';
-import { InsufficientCreditsPopup } from '@/components/popups/insufficient-credits-popup';
+import { generateImageAction } from './actions';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
 const formSchema = z.object({
   description: z.string().min(3, {
-    message: 'الرجاء إدخال وصف.',
+    message: 'الرجاء إدخال وصف لا يقل عن 3 أحرف.',
+  }),
+  difficulty: z.enum(['Simple', 'Detailed'], {
+    required_error: 'الرجاء اختيار مستوى الصعوبة.',
   }),
 });
 
 export function ColoringSection() {
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [imageDataUri, setImageDataUri] = useState<string | null>(null);
-  const [showCreditPopup, setShowCreditPopup] = useState(false);
   const { toast } = useToast();
-  const { user, userData } = useAuth();
-
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       description: '',
+      difficulty: 'Simple',
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!user) {
-       toast({
-        variant: 'destructive',
-        title: 'الرجاء تسجيل الدخول',
-        description: 'يجب عليك تسجيل الدخول لإنشاء صور.',
-      });
-      return;
-    }
-    
     setLoading(true);
     setImageDataUri(null);
     try {
-      const result = await generateImageAction({ ...values, userId: user.uid });
+      const result = await generateImageAction(values);
       if (result.success && result.data) {
         setImageDataUri(result.data.coloringPageDataUri);
       } else {
-        if (result.error?.includes('Not enough credits')) {
-            setShowCreditPopup(true);
-        } else {
-             throw new Error(result.error || 'فشلت عملية إنشاء الصورة.');
-        }
+        throw new Error(result.error || 'فشلت عملية إنشاء الصورة.');
       }
     } catch (error) {
       toast({
@@ -89,84 +76,28 @@ export function ColoringSection() {
     form.setValue('description', 'سفينة تبحر في المحيط');
   }
 
-  function handleDownload() {
-    if (!imageDataUri) return;
-    const link = document.createElement('a');
-    link.href = imageDataUri;
-    link.download = `${form.getValues('description') || 'coloring-page'}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-
-  async function handleSave() {
-    if (!imageDataUri) return;
-    setSaving(true);
-    try {
-      const result = await saveImageToLibraryAction({
-        imageDataUri: imageDataUri,
-        description: form.getValues('description'),
-      });
-
-      if (result.success) {
-        toast({
-          title: 'تم الحفظ بنجاح',
-          description: 'تم حفظ الصورة في مكتبتك.',
-        });
-      } else {
-        throw new Error(result.error || 'فشل حفظ الصورة.');
-      }
-    } catch (error) {
-       toast({
-        variant: 'destructive',
-        title: 'حدث خطأ',
-        description:
-          error instanceof Error ? error.message : 'An unknown error occurred.',
-      });
-    } finally {
-      setSaving(false);
-    }
-  }
-
   return (
-    <>
-    <InsufficientCreditsPopup open={showCreditPopup} onOpenChange={setShowCreditPopup} />
     <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-5">
       <div className="order-2 lg:order-1 lg:col-span-3">
         <Card className="flex min-h-[600px] flex-col p-4">
            <CardContent className="flex w-full flex-col items-center justify-center p-0 pt-6">
-            <div className="mb-4 self-start flex justify-between w-full items-center">
-              <h2 className="font-headline text-xl font-bold">صورة التلوين</h2>
-              <span className="text-sm font-bold text-primary">التكلفة: 1 نقطة</span>
-            </div>
+            <h2 className="mb-4 self-start font-headline text-xl font-bold">صورة التلوين</h2>
             {loading && (
               <div className="flex flex-col items-center gap-4 text-muted-foreground">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <div className="tenor-gif-embed" data-postid="14621922" data-share-method="host" data-aspect-ratio="1.25" data-width="100%"></div> <script type="text/javascript" async src="https://tenor.com/embed.js"></script>
                 <p className="font-semibold">لحظات سحرية قيد الصنع...</p>
                 <p className="text-sm">يقوم الذكاء الاصطناعي برسم فكرتك.</p>
               </div>
             )}
             {imageDataUri && (
-                <div className="w-full">
-                    <div className="aspect-square w-full max-w-full overflow-hidden rounded-lg border bg-white shadow-sm">
-                        <Image
-                        src={imageDataUri}
-                        alt="Generated coloring page"
-                        width={800}
-                        height={800}
-                        className="h-full w-full object-contain"
-                        />
-                    </div>
-                     <div className="mt-4 flex justify-center gap-4">
-                        <Button onClick={handleDownload} variant="outline">
-                            <Download />
-                            تحميل
-                        </Button>
-                        <Button onClick={handleSave} disabled={saving || !user}>
-                            {saving ? <Loader2 className="animate-spin" /> : <Save />}
-                            {saving ? 'جاري الحفظ...' : 'حفظ في المكتبة'}
-                        </Button>
-                    </div>
+                <div className="aspect-square w-full max-w-full overflow-hidden rounded-lg border bg-white shadow-sm">
+                    <Image
+                    src={imageDataUri}
+                    alt="Generated coloring page"
+                    width={800}
+                    height={800}
+                    className="h-full w-full object-contain"
+                    />
                 </div>
             )}
             {!loading && !imageDataUri && (
@@ -203,7 +134,7 @@ export function ColoringSection() {
                     </div>
 
                     <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="mt-6 space-y-4">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="mt-6 space-y-6">
                         <FormField
                         control={form.control}
                         name="description"
@@ -221,7 +152,39 @@ export function ColoringSection() {
                             </FormItem>
                         )}
                         />
-                        <Button type="submit" size="lg" className="w-full rounded-full bg-gradient-to-r from-primary to-orange-500 font-bold text-primary-foreground hover:from-primary/90 hover:to-orange-500/90" disabled={loading || !user}>
+                        <FormField
+                          control={form.control}
+                          name="difficulty"
+                          render={({ field }) => (
+                            <FormItem className="space-y-3 text-right">
+                              <FormLabel className="font-semibold">مستوى الصعوبة</FormLabel>
+                              <FormControl>
+                                <RadioGroup
+                                  onValueChange={field.onChange}
+                                  defaultValue={field.value}
+                                  className="flex justify-center gap-4 pt-2"
+                                  dir="rtl"
+                                >
+                                  <FormItem className="flex items-center space-x-2 space-x-reverse">
+                                    <FormControl>
+                                      <RadioGroupItem value="Simple" id="difficulty-simple" />
+                                    </FormControl>
+                                    <Label htmlFor="difficulty-simple" className="cursor-pointer">بسيط</Label>
+                                  </FormItem>
+                                  <FormItem className="flex items-center space-x-2 space-x-reverse">
+                                    <FormControl>
+                                      <RadioGroupItem value="Detailed" id="difficulty-detailed" />
+                                    </FormControl>
+                                    <Label htmlFor="difficulty-detailed" className="cursor-pointer">مفصل</Label>
+                                  </FormItem>
+                                </RadioGroup>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <Button type="submit" size="lg" className="w-full rounded-full bg-gradient-to-r from-primary to-orange-500 font-bold text-primary-foreground hover:from-primary/90 hover:to-orange-500/90" disabled={loading}>
                         {loading ? (
                             <Loader2 className="ml-2 h-4 w-4 animate-spin" />
                         ) : (
@@ -243,14 +206,13 @@ export function ColoringSection() {
                     <ul className="mt-4 space-y-2 pr-4 text-sm text-muted-foreground">
                         <li className="flex items-start gap-3"><span className="mt-1 block h-1.5 w-1.5 rounded-full bg-primary"></span>استخدم وصفاً واضحاً ومحدداً</li>
                         <li className="flex items-start gap-3"><span className="mt-1 block h-1.5 w-1.5 rounded-full bg-primary"></span>أضف تفاصيل عن الشكل والحجم</li>
-                        <li className="flex items-start gap-3"><span className="mt-1 block h-1.5 w-1.5 rounded-full bg-primary"></span>تجنب التفاصيل المعقدة للأطفال الصغار</li>
-                        <li className="flex items-start gap-3"><span className="mt-1 block h-1.5 w-1.5 rounded-full bg-primary"></span>جرب كلمات مثل: "كبير"، "لطيف"، "ملون"</li>
+                        <li className="flex items-start gap-3"><span className="mt-1 block h-1.5 w-1.5 rounded-full bg-primary"></span>اختر "بسيط" للأطفال الصغار، و "مفصل" للأكبر سناً</li>
+                        <li className="flex items-start gap-3"><span className="mt-1 block h-1.5 w-1.5 rounded-full bg-primary"></span>جرب كلمات مثل: "كبير"، "لطيف"، "كرتوني"</li>
                     </ul>
                 </CardContent>
             </Card>
         </div>
       </div>
     </div>
-    </>
   );
 }
