@@ -15,7 +15,7 @@ const pointsPackages = [
     icon: <Star className="h-8 w-8" />,
     color: 'text-yellow-500',
     bgColor: 'bg-yellow-50',
-    buttonClass: 'bg-yellow-400 hover:bg-yellow-500',
+    buttonClass: 'bg-gradient-to-r from-yellow-400 to-amber-500 text-white',
   },
   {
     title: 'الاختيار الذكي',
@@ -24,7 +24,7 @@ const pointsPackages = [
     icon: <Heart className="h-8 w-8" />,
     color: 'text-pink-500',
     bgColor: 'bg-pink-50',
-    buttonClass: 'bg-pink-500 hover:bg-pink-600',
+    buttonClass: 'bg-gradient-to-r from-pink-500 to-rose-500 text-white',
     badge: 'الأكثر شيوعًا',
     highlight: true,
   },
@@ -35,7 +35,7 @@ const pointsPackages = [
     icon: <Crown className="h-8 w-8" />,
     color: 'text-purple-500',
     bgColor: 'bg-purple-50',
-    buttonClass: 'bg-purple-500 hover:bg-purple-600',
+    buttonClass: 'bg-gradient-to-r from-purple-500 to-violet-600 text-white',
     savings: 'خصم 15%',
   },
   {
@@ -45,7 +45,7 @@ const pointsPackages = [
     icon: <Star className="h-8 w-8" />,
     color: 'text-blue-500',
     bgColor: 'bg-blue-50',
-    buttonClass: 'bg-blue-500 hover:bg-blue-600',
+    buttonClass: 'bg-gradient-to-r from-blue-500 to-sky-600 text-white',
     savings: 'خصم 30%',
     badge: 'أفضل قيمة',
   },
@@ -59,7 +59,7 @@ const subscriptionPackages = [
     features: ['ميزات بريميوم', 'وصول للمحتوى الحصري', 'دعم فني'],
     color: 'text-green-500',
     bgColor: 'bg-green-50',
-    buttonClass: 'bg-green-500 hover:bg-green-600',
+    buttonClass: 'bg-gradient-to-r from-green-500 to-emerald-600 text-white',
     highlight: false,
 
   },
@@ -70,7 +70,7 @@ const subscriptionPackages = [
     features: ['كل ميزات "راحة البال"', 'ميزات VIP', 'دعم فوري', 'قصص مخصصة جدًا'],
     color: 'text-rose-500',
     bgColor: 'bg-rose-50',
-    buttonClass: 'bg-rose-500 hover:bg-rose-600',
+    buttonClass: 'bg-gradient-to-r from-rose-500 to-red-600 text-white',
     badge: 'الأكثر شيوعًا',
     highlight: true,
   },
@@ -81,7 +81,7 @@ const subscriptionPackages = [
     features: ['كل ميزات "ملكة التلوين"', 'حسابات متعددة للأطفال', 'ورش عمل حصرية'],
     color: 'text-indigo-500',
     bgColor: 'bg-indigo-50',
-    buttonClass: 'bg-indigo-500 hover:bg-indigo-600',
+    buttonClass: 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white',
   },
 ];
 
@@ -130,7 +130,7 @@ export default function PackagesPage() {
                  </div>
             </TabsContent>
             <TabsContent value="subscriptions">
-                 <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3 mt-8">
+                 <div className="grid grid-cols-1 gap-8 md:grid-cols-3 mt-8">
                     {subscriptionPackages.map((pkg) => (
                         <Card key={pkg.title} className={cn('relative flex flex-col overflow-hidden rounded-2xl transition-all duration-300', pkg.highlight && 'border-primary border-2 shadow-lg')}>
                             {pkg.badge && <div className="absolute top-0 right-0 -mr-1 -mt-1 rounded-bl-lg rounded-tr-xl bg-primary px-3 py-1 text-sm font-bold text-primary-foreground">{pkg.badge}</div>}
