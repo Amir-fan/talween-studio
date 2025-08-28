@@ -12,8 +12,8 @@ import {
   Star,
   Download,
   Heart,
-  LayoutDashboard,
   Palette,
+  Library as LibraryIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -242,7 +242,7 @@ export default function LibraryPage() {
       <div className="container mx-auto px-4 py-12">
         <header className="mb-10 text-center flex flex-col items-center">
             <div className="flex items-center gap-4 mb-4 bg-white rounded-2xl px-6 py-3 shadow-sm">
-                 <Library className="h-10 w-10 text-primary" />
+                 <LibraryIcon className="h-10 w-10 text-primary" />
                  <h1 className="font-headline text-5xl font-bold text-foreground">مكتبتي</h1>
             </div>
             <p className="mt-2 text-lg text-muted-foreground">

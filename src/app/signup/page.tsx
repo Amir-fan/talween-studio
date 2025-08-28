@@ -25,13 +25,40 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { signUpWithEmail } from '@/app/auth/client-actions';
+import { getAuth, createUserWithEmailAndPassword, type AuthError } from 'firebase/auth';
+import { app } from '@/lib/firebase';
+import { createUserDocumentAction } from '@/app/auth/actions';
+
+const auth = getAuth(app);
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'الرجاء إدخال اسم.' }),
   email: z.string().email({ message: 'الرجاء إدخال بريد إلكتروني صالح.' }),
   password: z.string().min(6, { message: 'يجب أن تكون كلمة المرور 6 أحرف على الأقل.' }),
 });
+
+function getFirebaseAuthErrorMessage(error: AuthError): string {
+  switch (error.code) {
+    case 'auth/email-already-in-use':
+      return 'هذا البريد الإلكتروني مستخدم بالفعل.';
+    case 'auth/invalid-email':
+      return 'البريد الإلكتروني غير صالح.';
+    case 'auth/operation-not-allowed':
+      return 'تسجيل الدخول بكلمة المرور غير مفعل.';
+    case 'auth/weak-password':
+      return 'كلمة المرور ضعيفة جداً.';
+    case 'auth/user-disabled':
+        return 'تم تعطيل هذا الحساب.';
+    case 'auth/user-not-found':
+        return 'المستخدم غير موجود.';
+    case 'auth/wrong-password':
+        return 'كلمة المرور غير صحيحة.';
+    case 'auth/invalid-credential':
+        return 'البيانات المدخلة غير صحيحة.';
+    default:
+      return 'حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى.';
+  }
+}
 
 export default function SignUpPage() {
   const [loading, setLoading] = useState(false);
@@ -50,21 +77,30 @@ export default function SignUpPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     try {
-      const result = await signUpWithEmail(values);
-      if (result.success) {
-        toast({
-            title: 'تم إنشاء الحساب بنجاح!',
-            description: 'أهلاً بك في عالم الإبداع. لقد حصلت على 50 نقطة مجانية للبدء!',
-        });
-        router.push('/create');
-      } else {
-        throw new Error(result.error || 'فشلت عملية إنشاء الحساب.');
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+      
+      const creationResult = await createUserDocumentAction({ 
+          uid: user.uid, 
+          email: values.email, 
+          name: values.name || '' 
+      });
+
+      if (!creationResult.success) {
+        throw new Error(creationResult.error || "فشلت عملية إنشاء مستند المستخدم.");
       }
+
+      toast({
+          title: 'تم إنشاء الحساب بنجاح!',
+          description: 'أهلاً بك في عالم الإبداع. لقد حصلت على 50 نقطة مجانية للبدء!',
+      });
+      router.push('/create');
+
     } catch (error) {
        toast({
         variant: 'destructive',
         title: 'حدث خطأ',
-        description: error instanceof Error ? error.message : 'An unknown error occurred.',
+        description: error instanceof Error ? getFirebaseAuthErrorMessage(error as AuthError) : 'An unknown error occurred.',
       });
     } finally {
         setLoading(false);

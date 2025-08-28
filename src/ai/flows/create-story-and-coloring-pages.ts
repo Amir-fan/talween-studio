@@ -11,7 +11,6 @@ import {generateStoryContent} from './generate-story-content';
 import {generateImageDescriptions} from './generate-image-descriptions';
 import {generateColoringPageFromDescription} from './generate-coloring-page-from-description';
 import { checkAndDeductCredits } from '@/lib/credits';
-import { auth } from '@/lib/firebase';
 
 // Final combined output schema for a single page
 const FinalStoryPageSchema = z.object({

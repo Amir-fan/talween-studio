@@ -25,12 +25,40 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { signInUser } from '@/app/auth/client-actions';
+import { getAuth, signInWithEmailAndPassword, type AuthError } from 'firebase/auth';
+import { db, app } from '@/lib/firebase';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+
+
+const auth = getAuth(app);
 
 const formSchema = z.object({
   email: z.string().email({ message: 'الرجاء إدخال بريد إلكتروني صالح.' }),
   password: z.string().min(6, { message: 'يجب أن تكون كلمة المرور 6 أحرف على الأقل.' }),
 });
+
+function getFirebaseAuthErrorMessage(error: AuthError): string {
+  switch (error.code) {
+    case 'auth/email-already-in-use':
+      return 'هذا البريد الإلكتروني مستخدم بالفعل.';
+    case 'auth/invalid-email':
+      return 'البريد الإلكتروني غير صالح.';
+    case 'auth/operation-not-allowed':
+      return 'تسجيل الدخول بكلمة المرور غير مفعل.';
+    case 'auth/weak-password':
+      return 'كلمة المرور ضعيفة جداً.';
+    case 'auth/user-disabled':
+        return 'تم تعطيل هذا الحساب.';
+    case 'auth/user-not-found':
+        return 'المستخدم غير موجود.';
+    case 'auth/wrong-password':
+        return 'كلمة المرور غير صحيحة.';
+    case 'auth/invalid-credential':
+        return 'البيانات المدخلة غير صحيحة.';
+    default:
+      return 'حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى.';
+  }
+}
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -48,21 +76,25 @@ export default function LoginPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     try {
-      const result = await signInUser(values);
-      if (result.success) {
-        toast({
-          title: 'تم تسجيل الدخول بنجاح!',
-          description: 'مرحباً بعودتك.',
-        });
-        router.push('/create'); 
-      } else {
-        throw new Error(result.error || 'فشلت عملية تسجيل الدخول.');
-      }
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, {
+          lastLogin: serverTimestamp()
+      });
+      
+      toast({
+        title: 'تم تسجيل الدخول بنجاح!',
+        description: 'مرحباً بعودتك.',
+      });
+      router.push('/create'); 
+      
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'حدث خطأ',
-        description: error instanceof Error ? error.message : 'An unknown error occurred.',
+        description: getFirebaseAuthErrorMessage(error as AuthError),
       });
     } finally {
         setLoading(false);
