@@ -1,3 +1,4 @@
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -70,7 +71,7 @@ export default function AccountPage() {
                       <ShoppingBag className="ml-2 h-4 w-4" />
                       شراء نقاط
                     </Button>
-                    <Button className="w-full bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
+                    <Button className="w-full bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500 shine-effect">
                       <Crown className="ml-2 h-4 w-4" />
                       ترقية الباقة
                     </Button>
@@ -96,7 +97,7 @@ export default function AccountPage() {
                   <p className="mt-4 font-semibold text-muted-foreground">
                     لم تقم بإضافة أي ملف طفل بعد
                   </p>
-                  <Button className="mt-6">
+                  <Button className="mt-6 bg-gradient-to-r from-green-400 to-emerald-500 text-white font-bold shine-effect">
                     <PlusCircle className="ml-2 h-5 w-5" />
                     إضافة طفل
                   </Button>
