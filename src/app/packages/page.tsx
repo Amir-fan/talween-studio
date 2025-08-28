@@ -59,7 +59,7 @@ const subscriptionPackages = [
     features: ['ميزات بريميوم', 'وصول للمحتوى الحصري', 'دعم فني'],
     color: 'text-green-500',
     bgColor: 'bg-green-50',
-    buttonClass: 'bg-gradient-to-r from-green-400 to-teal-500 text-white',
+    buttonClass: 'bg-gradient-to-r from-green-500 to-teal-600 text-white',
     highlight: false,
 
   },
@@ -70,7 +70,7 @@ const subscriptionPackages = [
     features: ['كل ميزات "راحة البال"', 'ميزات VIP', 'دعم فوري', 'قصص مخصصة جدًا'],
     color: 'text-rose-500',
     bgColor: 'bg-rose-50',
-    buttonClass: 'bg-gradient-to-r from-rose-400 to-red-500 text-white',
+    buttonClass: 'bg-gradient-to-r from-rose-500 to-red-600 text-white',
     badge: 'الأكثر شيوعًا',
     highlight: true,
   },
@@ -123,7 +123,7 @@ export default function PackagesPage() {
                                 {pkg.savings && <p className="font-semibold text-green-600">{pkg.savings}</p>}
                             </CardContent>
                             <CardFooter className="p-6">
-                                <Button size="lg" className={cn('w-full font-bold', pkg.buttonClass)}>اختر هذه الباقة</Button>
+                                <Button size="lg" className={cn('w-full font-bold shine-effect', pkg.buttonClass)}>اختر هذه الباقة</Button>
                             </CardFooter>
                         </Card>
                     ))}
@@ -153,7 +153,7 @@ export default function PackagesPage() {
                                 </ul>
                             </CardContent>
                             <CardFooter className="p-6">
-                                <Button size="lg" className={cn('w-full font-bold', pkg.buttonClass)}>ابدأ الآن</Button>
+                                <Button size="lg" className={cn('w-full font-bold shine-effect', pkg.buttonClass)}>ابدأ الآن</Button>
                             </CardFooter>
                         </Card>
                     ))}
