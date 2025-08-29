@@ -24,18 +24,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { generateImageAction } from './actions';
+import { generateImageAction, GenerateColoringPageFromTextInputSchema } from './actions';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 
-const formSchema = z.object({
-  description: z.string().min(3, {
-    message: 'الرجاء إدخال وصف لا يقل عن 3 أحرف.',
-  }),
-  difficulty: z.enum(['Simple', 'Detailed'], {
-    required_error: 'الرجاء اختيار مستوى الصعوبة.',
-  }),
-});
+const formSchema = GenerateColoringPageFromTextInputSchema;
 
 export function ColoringSection() {
   const [loading, setLoading] = useState(false);
