@@ -1,6 +1,8 @@
-'use server';
+
 import { z } from 'zod';
-import { generateColoringPageFromText as generateColoringPageFlow } from '@/ai/flows/generate-coloring-page-from-text';
+
+// This file now ONLY defines the data structures (schemas and types)
+// that are shared between the client and server. It is NOT a server action file.
 
 export const GenerateColoringPageFromTextInputSchema = z.object({
   description: z.string().min(3, {
@@ -16,22 +18,3 @@ export const GenerateColoringPageFromTextOutputSchema = z.object({
   coloringPageDataUri: z.string().describe('The generated coloring page as a data URI.'),
 });
 export type GenerateColoringPageFromTextOutput = z.infer<typeof GenerateColoringPageFromTextOutputSchema>;
-
-
-export async function generateImageAction(
-  values: GenerateColoringPageFromTextInput
-): Promise<{
-  success: boolean;
-  data?: GenerateColoringPageFromTextOutput;
-  error?: string;
-}> {
-  try {
-    const result = await generateColoringPageFlow(values);
-    return { success: true, data: result };
-  } catch (error) {
-    console.error('Image generation failed:', error);
-    const errorMessage =
-      error instanceof Error ? error.message : 'فشلت عملية إنشاء الصورة. الرجاء المحاولة مرة أخرى.';
-    return { success: false, error: errorMessage };
-  }
-}

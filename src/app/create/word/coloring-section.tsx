@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -24,7 +25,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { generateImageAction, GenerateColoringPageFromTextInputSchema } from './actions';
+import { GenerateColoringPageFromTextInputSchema } from './actions';
+import { generateImageAction } from './server-actions';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 
@@ -77,7 +79,7 @@ export function ColoringSection() {
             <h2 className="mb-4 self-start font-headline text-xl font-bold">صورة التلوين</h2>
             {loading && (
               <div className="flex flex-col items-center gap-4 text-muted-foreground">
-                <div className="tenor-gif-embed" data-postid="14621922" data-share-method="host" data-aspect-ratio="1.25" data-width="100%"></div> <script type="text/javascript" async src="https://tenor.com/embed.js"></script>
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
                 <p className="font-semibold">لحظات سحرية قيد الصنع...</p>
                 <p className="text-sm">يقوم الذكاء الاصطناعي برسم فكرتك.</p>
               </div>
