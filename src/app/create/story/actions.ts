@@ -6,23 +6,11 @@
  * and final image creation steps.
  */
 
-import {z} from 'genkit';
 import {v4 as uuidv4} from 'uuid';
 import {generateStoryContent, StoryContentOutput} from '@/ai/flows/generate-story-content';
 import {generateColoringPageFromDescription} from '@/ai/flows/generate-coloring-page-from-description';
 import { checkAndDeductCredits } from '@/lib/credits';
-import { CreateStoryAndColoringPagesOutputSchema, CreateStoryAndColoringPagesOutput } from './page';
-
-// The input schema for the orchestrator, taken from the UI
-export const CreateStoryAndColoringPagesInputSchema = z.object({
-  userId: z.string().describe("The authenticated user's ID."),
-  childName: z.string().describe("Child's name in Arabic"),
-  ageGroup: z.enum(['3-5', '6-8', '9-12']).describe('The age group of the child.'),
-  numberOfPages: z.enum(['4', '8', '12', '16']).describe('The number of pages for the story.'),
-  setting: z.string().describe("Location or 'auto-select'"),
-  lesson: z.string().describe("Moral value or 'auto-select'"),
-});
-export type CreateStoryAndColoringPagesInput = z.infer<typeof CreateStoryAndColoringPagesInputSchema>;
+import type { CreateStoryAndColoringPagesInput, CreateStoryAndColoringPagesOutput } from './page';
 
 
 /**
