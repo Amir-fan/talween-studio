@@ -25,6 +25,22 @@ export async function generateColoringPageFromDescription(input: GenerateColorin
   return generateColoringPageFromDescriptionFlow(input);
 }
 
+const illustrationPrompt = `Create a black-and-white line art illustration for a children’s coloring book. 
+Use the following scene description as input:
+
+{{description}}
+
+Rules:
+- Style: Simple, bold outlines, no shading, no gray areas, no colors.
+- Objects and characters must be easy for children to recognize and color.
+- Keep uncluttered with large empty spaces for coloring.
+- Main Character Consistency:
+   • Use the same facial features, hairstyle, and clothing as described in Chapter 1.
+   • Ensure the character’s face and proportions are consistent across all illustrations.
+- Do not add backgrounds that are too detailed — keep focus on main character and a few simple props.
+- Make it fun, cute, and child-friendly.`;
+
+
 const generateColoringPageFromDescriptionFlow = ai.defineFlow(
   {
     name: 'generateColoringPageFromDescriptionFlow',
@@ -32,14 +48,12 @@ const generateColoringPageFromDescriptionFlow = ai.defineFlow(
     outputSchema: GenerateColoringPageFromDescriptionOutputSchema,
   },
   async input => {
-     // The prompt is now just the detailed description from the Image Description API.
-    const illustrationPrompt = input.description;
-
     const {media} = await ai.generate({
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
-      prompt: illustrationPrompt,
+      prompt: illustrationPrompt.replace('{{description}}', input.description),
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
+        apiKey: process.env.STORY_IMAGE_KEY,
       },
     });
 

@@ -1,3 +1,4 @@
+'use server';
 /**
  * @fileOverview Generates the textual content of a story based on user inputs.
  */
@@ -17,10 +18,9 @@ export type StoryContentInput = z.infer<typeof StoryContentInputSchema>;
 
 
 const PageSchema = z.object({
-    page_number: z.any(),
-    content: z.string(),
-    interaction: z.string().nullable().optional(),
-    image_reference: z.string(),
+    page_number: z.any().describe('The page number or "cover".'),
+    content: z.string().describe('The text for the page. For the cover, this is the title.'),
+    illustration_description: z.string().describe('A detailed description for the image generator.'),
 });
 
 const StoryMetadataSchema = z.object({
@@ -35,84 +35,48 @@ const StoryMetadataSchema = z.object({
 const StoryContentOutputSchema = z.object({
   story_metadata: StoryMetadataSchema,
   pages: z.array(PageSchema),
-  usage_instructions: z.string(),
-  educational_objectives: z.array(z.string()).optional(),
 });
 export type StoryContentOutput = z.infer<typeof StoryContentOutputSchema>;
+
+const storyPromptText = `You are a children’s story generator for coloring books. 
+Your goal is to create a short, fun, and easy-to-read story that can also be illustrated in black-and-white line art.
+
+Story Rules:
+1. Main Character: {{child_name}}
+2. Age of the Child: {{age_group}}
+3. Setting/Place: {{setting}}
+4. Lesson to Learn: {{lesson}}
+
+Structure:
+- Title of the story (3–5 words).
+- Divide the story into 2–3 short chapters (100–150 words each). The number of pages should be {{number_of_pages}}.
+- Each chapter must include:
+   • Chapter title (2–4 words).
+   • Narrative in simple, age-appropriate language for {{age_group}}-year-olds.
+   • An "illustration_description" for a single scene.
+
+Illustration Description Rules:
+- The first chapter must clearly describe the main character’s appearance (hair, clothes, face shape) → this becomes the reference design.
+- Later chapters must reference this same character: ("Same {{child_name}} as Chapter 1, with the same face and clothes, but now doing [action].")
+- Descriptions should be easy to draw as coloring pages (simple objects, no complex details, no colors, only outlines).
+
+Tone:
+- Warm, imaginative, and positive.
+- Simple enough for children of {{age_group}}.
+- End with a clear statement of the learned lesson.
+
+You must output a valid JSON object that conforms to the provided schema.
+`;
 
 
 const storyPrompt = ai.definePrompt({
     name: 'storyContentPrompt',
     input: { schema: StoryContentInputSchema },
     output: { schema: StoryContentOutputSchema, format: 'json' },
-    prompt: `You are a professional Arabic children's story writer specializing in creating personalized interactive stories for Arab and Gulf children. Your mission is to create story content ONLY (text) that will be paired with images generated separately.
-
-## Input Parameters:
-{
-  "child_name": "{{child_name}}",
-  "age_group": "{{age_group}}",
-  "number_of_pages": "{{number_of_pages}}",
-  "setting": "{{setting}}",
-  "lesson": "{{lesson}}",
-  "story_id": "{{story_id}}"
-}
-
-## Age-Specific Content Guidelines:
-
-### Ages 3-5:
-- Simple sentences (5-8 words)
-- Basic vocabulary only
-- One main concept per page
-- Repetitive, rhythmic language
-- Focus on colors, shapes, numbers 1-5
-
-### Ages 6-8:
-- Medium sentences (8-12 words)
-- Introduce new vocabulary in context
-- 2-3 concepts per page
-- Simple dialogue
-- Basic moral reasoning
-
-### Ages 9-12:
-- Complex sentences (12-18 words)
-- Rich vocabulary
-- Multiple concepts and subplots
-- Character development
-- Deep moral and ethical discussions
-
-## Cultural Requirements:
-- Write entirely in Modern Standard Arabic
-- Include Islamic values naturally
-- Use Gulf/Arab cultural references
-- Include phrases like "الحمد لله", "إن شاء الله" naturally
-- Reference traditional customs and values
-
-## Output Format:
-You must output a valid JSON object that conforms to the provided schema. Each "page" object must have a unique "image_reference" string (e.g., "cover", "page_1", "page_2").
-
-## Story Structure Requirements:
-- A 4-page story should have a simple beginning, problem, solution, and conclusion.
-- An 8-page story should have an introduction, character development, conflict, resolution, lesson, and conclusion.
-- 12-16 pages stories should have extended character development, multiple mini-lessons, and rich interactions.
-
-## Interactive Elements by Age:
-- **3-5**: "ابحث عن...", "عدّ كم...", "أشر إلى..."
-- **6-8**: "ما رأيك في...؟", "ماذا كنت ستفعل...؟"
-- **9-12**: "لماذا اتخذ هذا القرار؟", "كيف نطبق هذا في حياتنا؟"
-
-## Quality Checklist:
-- Child's name appears 2+ times per page naturally
-- Story flows logically and engagingly
-- Moral lesson integrated smoothly, not preachy
-- Language appropriate for specified age
-- Cultural and religious sensitivity maintained
-- Each page has clear narrative purpose
-
-Generate a complete story following these specifications. For the cover page content, just use the title of the story.
-`,
+    prompt: storyPromptText,
     config: {
         model: 'googleai/gemini-2.0-flash',
-        apiKey: process.env.STORY_API_KEY
+        apiKey: process.env.STORY_TEXT_KEY
     }
 });
 

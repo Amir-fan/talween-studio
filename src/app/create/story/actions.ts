@@ -7,8 +7,7 @@
 
 import {z} from 'genkit';
 import {v4 as uuidv4} from 'uuid';
-import {generateStoryContent} from '@/ai/flows/generate-story-content';
-import {generateImageDescriptions} from '@/ai/flows/generate-image-descriptions';
+import {generateStoryContent, StoryContentOutput} from '@/ai/flows/generate-story-content';
 import {generateColoringPageFromDescription} from '@/ai/flows/generate-coloring-page-from-description';
 import { checkAndDeductCredits } from '@/lib/credits';
 
@@ -16,7 +15,6 @@ import { checkAndDeductCredits } from '@/lib/credits';
 const FinalStoryPageSchema = z.object({
   page_number: z.any().describe('Page number or cover'),
   text: z.string().describe('The text content of the page.'),
-  interaction: z.string().nullable().optional().describe('Interactive question for the page.'),
   imageDataUri: z.string().describe('The generated coloring page image as a data URI.'),
 });
 
@@ -28,7 +26,6 @@ export const CreateStoryAndColoringPagesInputSchema = z.object({
   numberOfPages: z.enum(['4', '8', '12', '16']).describe('The number of pages for the story.'),
   setting: z.string().describe("Location or 'auto-select'"),
   lesson: z.string().describe("Moral value or 'auto-select'"),
-  artStyle: z.enum(['cartoon', 'semi-realistic', 'simple']).optional().default('cartoon'),
 });
 export type CreateStoryAndColoringPagesInput = z.infer<typeof CreateStoryAndColoringPagesInputSchema>;
 
@@ -53,18 +50,12 @@ export async function createStoryAndColoringPages(
       throw new Error('User not authenticated. Please log in to create a story.');
     }
 
-    // Define credit cost based on page count
-    const creditCost = {
-      '4': 1,
-      '8': 2,
-      '12': 3,
-      '16': 4,
-    }[input.numberOfPages];
+    const pageCount = parseInt(input.numberOfPages, 10);
+    const creditCost = Math.ceil(pageCount / 4); // 1 credit for 4 pages, 2 for 8, etc.
 
     // Check and deduct credits before proceeding
     const creditCheck = await checkAndDeductCredits(input.userId, creditCost);
     if (!creditCheck.success) {
-      // If error is 'Not enough credits', we want to propagate that specific info
       if (creditCheck.error === 'Not enough credits') {
           throw new Error('NotEnoughCredits');
       }
@@ -73,8 +64,8 @@ export async function createStoryAndColoringPages(
 
     const storyId = `story_${uuidv4()}`;
 
-    // Step 1: Generate Story Content
-    const storyContent = await generateStoryContent({
+    // Step 1: Generate Story Content (Text and image descriptions)
+    const storyContent: StoryContentOutput = await generateStoryContent({
       child_name: input.childName,
       age_group: input.ageGroup,
       number_of_pages: input.numberOfPages,
@@ -83,44 +74,28 @@ export async function createStoryAndColoringPages(
       story_id: storyId,
     });
 
-    // Step 2: Generate Image Descriptions
-    const imageDescriptions = await generateImageDescriptions({
-      story_id: storyId,
-      story_content: storyContent,
-      child_age_group: input.ageGroup,
-      art_style_preference: input.artStyle,
-    });
-
-    // Step 3: Generate an image for each description and combine with page text
+    // Step 2: Generate an image for each description and combine with page text
     const finalPages = await Promise.all(
       storyContent.pages.map(async (page) => {
-        // Find the matching image description
-        const description = imageDescriptions.image_descriptions.find(
-          (d) => d.page_reference === page.image_reference
-        );
 
-        if (!description) {
-          // Handle cases where a description might be missing
-          console.warn(`No image description found for page_reference: ${page.image_reference}`);
-          // Return a page with a placeholder or default image if needed
+        if (!page.illustration_description) {
+          console.warn(`No image description found for page_reference: ${page.page_number}`);
           return {
             page_number: page.page_number,
             text: page.content,
-            interaction: page.interaction,
             imageDataUri: '', // Or a placeholder data URI
           };
         }
         
         // Generate the actual coloring page image from the description
         const imageResult = await generateColoringPageFromDescription({
-          description: description.image_prompt,
+          description: page.illustration_description,
           childName: input.childName,
         });
 
         return {
           page_number: page.page_number,
           text: page.content,
-          interaction: page.interaction,
           imageDataUri: imageResult.coloringPageDataUri,
         };
       })
@@ -137,7 +112,6 @@ export async function createStoryAndColoringPages(
     const errorMessage =
       error instanceof Error ? error.message : 'فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.';
     
-    // Specifically check for the custom 'Not enough credits' error
     if (errorMessage === 'NotEnoughCredits') {
         return { success: false, error: 'NotEnoughCredits' };
     }
