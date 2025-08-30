@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -14,6 +15,7 @@ import {
   Loader2,
   Download,
   Save,
+  Wand2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,18 +37,21 @@ import {
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import {
   createStoryAndColoringPages,
   CreateStoryAndColoringPagesOutput,
-} from '@/ai/flows/create-story-and-coloring-pages';
+} from './actions';
 import React from 'react';
+import { useAuth } from '@/context/auth-context';
+import withAuth from '@/hoc/withAuth';
+import { InsufficientCreditsPopup } from '@/components/popups/insufficient-credits-popup';
+import { TenorGIF } from '@/components/tenor-gif';
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
   { icon: Heart, label: 'الدرس المستفاد' },
-  { icon: ImageIcon, label: 'الصور' },
+  { icon: Wand2, label: 'اللمسة السحرية' },
   { icon: BookOpen, label: 'القصة' },
   { icon: CheckCircle, label: 'النهاية' },
 ];
@@ -62,27 +67,35 @@ const lessons = [
     'التعاون', 'الأمانة', 'العدل', 'حب الحيوانات', 'إدارة الوقت', 'النمو والتعلم'
 ];
 
-const artStyles = [
-    'صور فوتوغرافية', 'رسم كرتوني', 'فن رقمي', 'فن تجريدي', 'ألوان مائية'
-]
-
-export default function CreateStoryPage() {
+function CreateStoryPage() {
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
-  const [heroName, setHeroName] = useState('');
-  const [location, setLocation] = useState('');
+
+  // Form state
+  const [childName, setChildName] = useState('');
+  const [ageGroup, setAgeGroup] = useState<'3-5' | '6-8' | '9-12'>('6-8');
+  const [numberOfPages, setNumberOfPages] = useState<'4'| '8' | '12' | '16'>('4');
+  const [setting, setSetting] = useState('');
+  const [lesson, setLesson] = useState('');
+
   const [story, setStory] = useState<CreateStoryAndColoringPagesOutput | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showCreditsPopup, setShowCreditsPopup] = useState(false);
   const { toast } = useToast();
 
   const nextStep = () => setStep((prev) => (prev < steps.length ? prev + 1 : prev));
   const prevStep = () => setStep((prev) => (prev > 1 ? prev - 1 : prev));
 
   const handleGenerateStory = async () => {
-    if (!heroName || !location) {
+    if (!user) {
+        toast({ variant: "destructive", title: "خطأ", description: "يجب عليك تسجيل الدخول لإنشاء قصة."});
+        return;
+    }
+    if (!childName || !setting || !lesson) {
          toast({
             variant: "destructive",
             title: "معلومات ناقصة",
-            description: "الرجاء إدخال اسم البطل واختيار مكان الأحداث.",
+            description: "الرجاء إكمال جميع الحقول في الخطوات السابقة.",
         });
         return;
     }
@@ -91,14 +104,30 @@ export default function CreateStoryPage() {
     setStep(4); // Move to the story view step
 
     try {
-        const topic = `قصة عن طفل اسمه ${heroName} في ${location}`;
-        const result = await createStoryAndColoringPages({ topic, numPages: 3 });
-        setStory(result);
+        const result = await createStoryAndColoringPages({ 
+            userId: user.uid,
+            childName,
+            ageGroup,
+            numberOfPages,
+            setting,
+            lesson
+        });
+
+        if (result.success && result.data) {
+            setStory(result.data);
+        } else {
+            if (result.error === 'NotEnoughCredits') {
+                setShowCreditsPopup(true);
+                setStep(3); // Go back to allow them to see the button again
+            } else {
+                throw new Error(result.error || "فشلت عملية إنشاء القصة.");
+            }
+        }
     } catch (error) {
         toast({
             variant: "destructive",
             title: "حدث خطأ",
-            description: "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.",
+            description: error instanceof Error ? error.message : "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.",
         });
         setStep(3); // Go back to the previous step on error
     } finally {
@@ -109,6 +138,7 @@ export default function CreateStoryPage() {
 
   return (
     <div className="min-h-screen bg-yellow-50/30">
+        <InsufficientCreditsPopup open={showCreditsPopup} onOpenChange={setShowCreditsPopup} />
       <div className="container mx-auto px-4 py-8">
         <header className="flex items-center justify-between">
           <Button asChild variant="outline" className="rounded-full font-bold">
@@ -159,35 +189,32 @@ export default function CreateStoryPage() {
           <Card className="mt-8">
             <CardHeader className="text-center">
               <CardTitle className="font-headline text-3xl">من هو بطل قصتك؟</CardTitle>
-              <CardDescription>أخبرنا عن الشخصية الرئيسية</CardDescription>
+              <CardDescription>أخبرنا عن الشخصية الرئيسية ومكان الأحداث</CardDescription>
             </CardHeader>
             <CardContent className="space-y-8 px-8">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
                   <Label htmlFor="hero-name" className="mb-2 block text-right font-semibold">اسم البطل</Label>
-                  <Input id="hero-name" placeholder="مثال: سارة" className="text-right" value={heroName} onChange={(e) => setHeroName(e.target.value)} />
+                  <Input id="hero-name" placeholder="مثال: سارة" className="text-right" value={childName} onChange={(e) => setChildName(e.target.value)} />
                 </div>
                 <div>
-                  <Label htmlFor="hero-age" className="mb-2 block text-right font-semibold">العمر</Label>
-                  <Select dir="rtl">
-                    <SelectTrigger id="hero-age">
-                      <SelectValue placeholder="7 سنة" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5">5 سنوات</SelectItem>
-                      <SelectItem value="6">6 سنوات</SelectItem>
-                      <SelectItem value="7">7 سنوات</SelectItem>
-                      <SelectItem value="8">8 سنوات</SelectItem>
-                      <SelectItem value="9">9 سنوات</SelectItem>
-                      <SelectItem value="10">10 سنوات</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <Label htmlFor="age-group" className="mb-2 block text-right font-semibold">الفئة العمرية</Label>
+                    <Select dir="rtl" value={ageGroup} onValueChange={(v) => setAgeGroup(v as any)}>
+                        <SelectTrigger id="age-group">
+                            <SelectValue placeholder="اختر الفئة العمرية" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="3-5">3-5 سنوات</SelectItem>
+                            <SelectItem value="6-8">6-8 سنوات</SelectItem>
+                            <SelectItem value="9-12">9-12 سنوات</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
               </div>
 
               <div>
                 <Label className="mb-4 block text-right font-semibold">مكان الأحداث</Label>
-                <RadioGroup dir="rtl" className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6" value={location} onValueChange={setLocation}>
+                <RadioGroup dir="rtl" className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6" value={setting} onValueChange={setSetting}>
                   {locations.map((loc) => (
                       <div key={loc}>
                           <RadioGroupItem value={loc} id={loc} className="peer sr-only" />
@@ -215,17 +242,22 @@ export default function CreateStoryPage() {
              <Card className="mt-8">
                 <CardHeader className="text-center">
                     <CardTitle className="font-headline text-3xl">الدرس المستفاد</CardTitle>
-                    <CardDescription>اختر القيم التي تريد غرسها في القصة</CardDescription>
+                    <CardDescription>اختر القيمة الأخلاقية التي تريد غرسها في القصة</CardDescription>
                 </CardHeader>
                 <CardContent className="px-8">
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-4 md:grid-cols-3 lg:grid-cols-4">
-                        {lessons.map((lesson) => (
-                            <div key={lesson} className="flex items-center justify-end gap-3">
-                               <Label htmlFor={lesson} className="cursor-pointer font-medium hover:text-primary">{lesson}</Label>
-                                <Checkbox id={lesson} dir='rtl' />
+                    <RadioGroup dir="rtl" className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6" value={lesson} onValueChange={setLesson}>
+                        {lessons.map((l) => (
+                            <div key={l}>
+                                <RadioGroupItem value={l} id={l} className="peer sr-only" />
+                                <Label
+                                    htmlFor={l}
+                                    className="flex h-12 cursor-pointer items-center justify-center rounded-full border bg-background px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-accent/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/20 peer-data-[state=checked]:text-primary"
+                                >
+                                    {l}
+                                </Label>
                             </div>
                         ))}
-                    </div>
+                    </RadioGroup>
                 </CardContent>
                 <CardFooter className="justify-between p-8">
                     <Button onClick={prevStep} size="lg" variant="outline">
@@ -243,35 +275,23 @@ export default function CreateStoryPage() {
         {step === 3 && (
             <Card className="mt-8">
                 <CardHeader className="text-center">
-                    <CardTitle className="font-headline text-3xl">اختر النمط البصري</CardTitle>
-                    <CardDescription>اختر كيف ستبدو الصور في قصتك</CardDescription>
+                    <CardTitle className="font-headline text-3xl">اللمسة السحرية الأخيرة</CardTitle>
+                    <CardDescription>اختر عدد الصفحات واستعد للمفاجأة!</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-8 px-8">
-                   <div>
-                        <Label htmlFor="art-style" className="mb-2 block text-right font-semibold">نمط فني</Label>
-                        <Select dir="rtl">
-                            <SelectTrigger id="art-style">
-                                <SelectValue placeholder="اختر نمطاً" />
+                <CardContent className="space-y-8 px-8 max-w-md mx-auto">
+                    <div>
+                        <Label htmlFor="num-pages" className="mb-2 block text-right font-semibold">عدد صفحات القصة</Label>
+                        <Select dir="rtl" value={numberOfPages} onValueChange={(v) => setNumberOfPages(v as any)}>
+                            <SelectTrigger id="num-pages">
+                                <SelectValue placeholder="اختر عدد الصفحات" />
                             </SelectTrigger>
                             <SelectContent>
-                                {artStyles.map(style => (
-                                    <SelectItem key={style} value={style}>{style}</SelectItem>
-                                ))}
+                                <SelectItem value="4">4 صفحات (تكلفة: 1 نقطة)</SelectItem>
+                                <SelectItem value="8">8 صفحات (تكلفة: 2 نقطة)</SelectItem>
+                                <SelectItem value="12">12 صفحة (تكلفة: 3 نقاط)</SelectItem>
+                                <SelectItem value="16">16 صفحة (تكلفة: 4 نقاط)</SelectItem>
                             </SelectContent>
                         </Select>
-                   </div>
-                   <div>
-                       <Label className="mb-4 block text-right font-semibold">اختر نوع الرسوم</Label>
-                       <RadioGroup dir="rtl" defaultValue="bw" className="flex gap-4">
-                           <div className="flex items-center gap-2">
-                               <RadioGroupItem value="bw" id="bw"/>
-                               <Label htmlFor="bw">أبيض وأسود (للتلوين)</Label>
-                           </div>
-                           <div className="flex items-center gap-2">
-                               <RadioGroupItem value="color" id="color" />
-                               <Label htmlFor="color">ملون</Label>
-                           </div>
-                       </RadioGroup>
                    </div>
                 </CardContent>
                 <CardFooter className="justify-between p-8">
@@ -279,7 +299,7 @@ export default function CreateStoryPage() {
                         <ArrowRight className="ml-2 h-5 w-5" />
                         السابق
                     </Button>
-                    <Button onClick={handleGenerateStory} size="lg" className="bg-gradient-to-l from-rose-400 to-red-500 font-bold text-white hover:to-red-600" disabled={loading}>
+                    <Button onClick={handleGenerateStory} size="lg" className="bg-gradient-to-l from-rose-400 to-red-500 font-bold text-white hover:to-red-600 shine-effect" disabled={loading}>
                         {loading ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Sparkles className="ml-2 h-5 w-5" />}
                         {loading ? '...جاري إنشاء القصة' : 'أنشئ القصة الآن'}
                     </Button>
@@ -290,25 +310,23 @@ export default function CreateStoryPage() {
         {step === 4 && (
             <Card className="mt-8">
                  <CardHeader className="text-center">
-                    <CardTitle className="font-headline text-3xl">ها هي قصتك!</CardTitle>
-                    <CardDescription>اقرأ مغامرة {heroName} الجديدة</CardDescription>
+                    <CardTitle className="font-headline text-3xl">{loading ? 'لحظات سحرية...' : (story?.title ? story.title : `قصة ${childName}!`)}</CardTitle>
+                    <CardDescription>{loading ? 'يقوم الذكاء الاصطناعي بنسج الكلمات والصور معاً' : `اقرأ مغامرة ${childName} الجديدة`}</CardDescription>
                 </CardHeader>
                 <CardContent className="px-8">
                     {loading && (
-                         <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-muted-foreground">
-                            <Loader2 className="h-16 w-16 animate-spin text-primary" />
-                            <p className="font-semibold">لحظات، القصة على وشك الاكتمال...</p>
-                            <p className="text-sm">يقوم الذكاء الاصطناعي بنسج الكلمات والصور معاً.</p>
+                        <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-muted-foreground">
+                            <TenorGIF />
                         </div>
                     )}
-                    {story && (
-                        <div className="space-y-8">
+                    {story && story.pages && (
+                        <div className="space-y-12">
                            {story.pages.map((page, index) => (
-                               <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                                   <div className='order-2 md:order-1'>
-                                        <p className="leading-loose text-lg">{page.text}</p>
+                               <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                                   <div className={`order-2 ${index % 2 === 0 ? 'md:order-1' : 'md:order-2'}`}>
+                                        <p className="leading-loose text-xl">{page.text}</p>
                                    </div>
-                                   <div className='order-1 md:order-2'>
+                                   <div className={`order-1 ${index % 2 === 0 ? 'md:order-2' : 'md:order-1'}`}>
                                        <Image
                                             src={page.imageDataUri}
                                             alt={`Illustration for page ${index + 1}`}
@@ -346,7 +364,7 @@ export default function CreateStoryPage() {
                 </CardHeader>
                 <CardContent className="px-8 text-center">
                     <p className="text-muted-foreground">
-                        قصتك عن <strong>{heroName}</strong> جاهزة الآن. يمكنك حفظها في مكتبتك للوصول إليها لاحقًا، أو تحميلها كملف لمشاركتها مع الأصدقاء والعائلة.
+                        قصتك عن <strong>{childName}</strong> جاهزة الآن. يمكنك حفظها في مكتبتك للوصول إليها لاحقًا، أو تحميلها كملف لمشاركتها مع الأصدقاء والعائلة.
                     </p>
                     <div className="mt-8 flex justify-center gap-4">
                         <Button size="lg" variant="outline">
@@ -370,3 +388,7 @@ export default function CreateStoryPage() {
     </div>
   );
 }
+
+export default withAuth(CreateStoryPage);
+
+    
