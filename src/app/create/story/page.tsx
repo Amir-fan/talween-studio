@@ -40,13 +40,26 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
   createStoryAndColoringPages,
-  CreateStoryAndColoringPagesOutput,
 } from './actions';
 import React from 'react';
 import { useAuth } from '@/context/auth-context';
 import withAuth from '@/hoc/withAuth';
 import { InsufficientCreditsPopup } from '@/components/popups/insufficient-credits-popup';
 import { TenorGIF } from '@/components/tenor-gif';
+import { z } from 'zod';
+
+// Moved from actions.ts to resolve build error
+const FinalStoryPageSchema = z.object({
+  page_number: z.any().describe('Page number or cover'),
+  text: z.string().describe('The text content of the page.'),
+  imageDataUri: z.string().describe('The generated coloring page image as a data URI.'),
+});
+export const CreateStoryAndColoringPagesOutputSchema = z.object({
+  title: z.string(),
+  pages: z.array(FinalStoryPageSchema).describe('The final generated story pages with text and images.'),
+});
+export type CreateStoryAndColoringPagesOutput = z.infer<typeof CreateStoryAndColoringPagesOutputSchema>;
+
 
 const steps = [
   { icon: Sparkles, label: 'البطل والموضوع' },
@@ -390,5 +403,3 @@ function CreateStoryPage() {
 }
 
 export default withAuth(CreateStoryPage);
-
-    

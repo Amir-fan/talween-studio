@@ -11,13 +11,7 @@ import {v4 as uuidv4} from 'uuid';
 import {generateStoryContent, StoryContentOutput} from '@/ai/flows/generate-story-content';
 import {generateColoringPageFromDescription} from '@/ai/flows/generate-coloring-page-from-description';
 import { checkAndDeductCredits } from '@/lib/credits';
-
-// Final combined output schema for a single page
-const FinalStoryPageSchema = z.object({
-  page_number: z.any().describe('Page number or cover'),
-  text: z.string().describe('The text content of the page.'),
-  imageDataUri: z.string().describe('The generated coloring page image as a data URI.'),
-});
+import { CreateStoryAndColoringPagesOutputSchema, CreateStoryAndColoringPagesOutput } from './page';
 
 // The input schema for the orchestrator, taken from the UI
 export const CreateStoryAndColoringPagesInputSchema = z.object({
@@ -30,12 +24,6 @@ export const CreateStoryAndColoringPagesInputSchema = z.object({
 });
 export type CreateStoryAndColoringPagesInput = z.infer<typeof CreateStoryAndColoringPagesInputSchema>;
 
-// The final output schema that the UI will receive
-export const CreateStoryAndColoringPagesOutputSchema = z.object({
-  title: z.string(),
-  pages: z.array(FinalStoryPageSchema).describe('The final generated story pages with text and images.'),
-});
-export type CreateStoryAndColoringPagesOutput = z.infer<typeof CreateStoryAndColoringPagesOutputSchema>;
 
 /**
  * The main exported server action that orchestrates the story generation process.
@@ -120,5 +108,3 @@ export async function createStoryAndColoringPages(
     return { success: false, error: errorMessage };
   }
 }
-
-    
