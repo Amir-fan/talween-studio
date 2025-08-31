@@ -23,9 +23,15 @@ const PageContentSchema = z.object({
     illustrationDescription: z.string().describe('A detailed description for the illustrator.'),
 });
 
+const ChapterContentSchema = z.object({
+    chapterTitle: z.string(),
+    narrative: z.string(),
+    illustrationDescription: z.string(),
+});
+
 const StoryContentOutputSchema = z.object({
   title: z.string().describe('The title of the story.'),
-  pages: z.array(PageContentSchema).describe('An array of page content objects.')
+  chapters: z.array(ChapterContentSchema).describe('An array of chapter content objects.')
 });
 export type StoryContent = z.infer<typeof StoryContentOutputSchema>;
 
@@ -39,33 +45,30 @@ const storyPrompt = ai.definePrompt({
   },
   prompt: `You are a children’s story generator for coloring books. 
 Your goal is to create a short, fun, and easy-to-read story that can also be illustrated in black-and-white line art.
-Your entire output must be a single JSON object.
 
 Story Rules:
 1. Main Character: {{childName}}
 2. Age of the Child: {{age}}
 3. Setting/Place: {{place}}
 4. Lesson to Learn: {{moralLesson}}
-5. Number of pages: {{numPages}}
 
 Structure:
-- The JSON object must have a "title" field (3-5 words).
-- The JSON object must have a "pages" field, which is an array of page objects.
-- Each object in the "pages" array represents one page and must contain:
-    - "pageNumber": The number of the page.
-    - "text": The narrative for that page, in simple, age-appropriate language for {{age}}-year-olds.
-    - "illustrationDescription": A description for a single scene on that page.
+- Title of the story (3–5 words).
+- Divide the story into 2–3 short chapters (100–150 words each).
+- Each chapter must include:
+   • Chapter title (2–4 words).
+   • Narrative in simple, age-appropriate language for {{age}}-year-olds.
+   • An "illustration description" for a single scene.
 
 Illustration Description Rules:
-- The description for page 1 MUST clearly describe the main character’s appearance (e.g., "A boy named {{childName}} with short curly hair, wearing a t-shirt with a star and shorts."). This becomes the reference design.
-- For all subsequent pages (page 2 and beyond), the description MUST reference the character consistently (e.g., "The same boy, {{childName}}, from page 1, now running in the park.").
+- First chapter must clearly describe the main character’s appearance (hair, clothes, face shape) → this becomes the reference design.
+- Later chapters must reference this same character: ("Same {{childName}} as Chapter 1, with the same face and clothes, but now doing [action].")
 - Descriptions should be easy to draw as coloring pages (simple objects, no complex details, no colors, only outlines).
 
 Tone:
 - Warm, imaginative, and positive.
-- Simple enough for children of age {{age}}.
-- The story should conclude with a clear statement of the learned lesson on the final page.
-`,
+- Simple enough for children of {{age}}.
+- End with a clear statement of the learned lesson.`,
 });
 
 const generateStoryContentFlow = ai.defineFlow(

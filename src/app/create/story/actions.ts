@@ -37,38 +37,38 @@ export async function createStoryAndColoringPages(
       numPages: pageCount
     });
 
-    if (!storyContentResult || !storyContentResult.pages || storyContentResult.pages.length === 0) {
-      throw new Error('Story text generation failed to return any pages.');
+    if (!storyContentResult || !storyContentResult.chapters || storyContentResult.chapters.length === 0) {
+      throw new Error('Story text generation failed to return any chapters.');
     }
 
-    // 2. Generate images for each page description.
-    const pagesWithImages = await Promise.all(
-      storyContentResult.pages.map(async (pageContent) => {
+    let allPages: { pageNumber: number; text: string; imageDataUri: string; }[] = [];
+    let currentPageNumber = 1;
+
+    for (const chapter of storyContentResult.chapters) {
         const imageResult = await generateImageFromDescription({
-          description: pageContent.illustrationDescription,
+            description: chapter.illustrationDescription,
         });
 
         if (!imageResult.imageDataUri) {
-          // If a single image fails, we still have the text.
-          // We can decide to either fail the whole process or return with a placeholder.
-          // For now, let's log the error and use a placeholder to not lose the whole story.
-          console.error(`Image generation failed for page ${pageContent.pageNumber}.`);
-          return {
-            ...pageContent,
-            imageDataUri: 'https://placehold.co/512x512/eee/ccc?text=Image+Failed', // Placeholder
-          };
+            console.error(`Image generation failed for chapter: ${chapter.chapterTitle}.`);
+            // Skip this page if image generation fails
+            continue;
         }
-        
-        return {
-          ...pageContent,
-          imageDataUri: imageResult.imageDataUri,
-        };
-      })
-    );
+
+        allPages.push({
+            pageNumber: currentPageNumber++,
+            text: `${chapter.chapterTitle}\n\n${chapter.narrative}`,
+            imageDataUri: imageResult.imageDataUri,
+        });
+    }
+
+    if (allPages.length === 0) {
+        throw new Error("All image generations failed. Could not create story.");
+    }
     
     const finalStory: StoryAndPagesOutput = {
       title: storyContentResult.title,
-      pages: pagesWithImages,
+      pages: allPages,
     };
 
     // 3. Persist the final story to Firestore

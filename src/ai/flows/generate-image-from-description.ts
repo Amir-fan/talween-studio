@@ -38,8 +38,8 @@ Rules:
 - Objects and characters must be easy for children to recognize and color.
 - Keep uncluttered with large empty spaces for coloring.
 - Main Character Consistency:
-   - Use the same facial features, hairstyle, and clothing as described in Chapter 1.
-   - Ensure the character’s face and proportions are consistent across all illustrations.
+   • Use the same facial features, hairstyle, and clothing as described in Chapter 1.
+   • Ensure the character’s face and proportions are consistent across all illustrations.
 - Do not add backgrounds that are too detailed — keep focus on main character and a few simple props.
 - Make it fun, cute, and child-friendly.`,
   },
