@@ -11,7 +11,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { StoryAndPagesInputSchema, StoryAndPagesOutputSchema } from '@/app/create/story/types';
-import type { StoryAndPagesOutput } from '@/app/create/story/types';
+import type { StoryAndPagesOutput, StoryAndPagesInput } from '@/app/create/story/types';
 
 
 const ChapterSchema = z.object({
@@ -56,7 +56,8 @@ Instructions:
    - Describe only one scene per chapter.
    - Keep it simple: (e.g., “علي يقف أمام المدرسة مع حقيبته”).
    - No colors mentioned — line art only.
-   - Keep the main character {{childName}} consistent across all chapters (same face, hair, and clothing).
+   - The first chapter's description must clearly define the character's main features (e.g., "علي, a boy with short curly hair, wearing a t-shirt and shorts").
+   - For subsequent chapters, the description should reference the character doing a new action (e.g., "The same character, علي, is now petting a cat").
 
 Output Format:
 - Story Title
@@ -71,21 +72,26 @@ Output Format:
 });
 
 
-async function generateImageFromDescription(description: string, characterName: string): Promise<string> {
-    const prompt = `Create a black-and-white line art illustration for a children’s coloring book.
+async function generateImageFromDescription(
+    description: string,
+    characterName: string,
+    referenceImageUrl?: string
+): Promise<string> {
 
-Input Scene: ${description}
+    const textPrompt = referenceImageUrl
+        ? `Use the character from the provided image as a reference. The character's name is ${characterName}. Place this character in the following scene: "${description}". Ensure the character's face, hair, and clothing are consistent with the reference image.`
+        : `Create a black-and-white line art illustration for a children’s coloring book. Input Scene: "${description}". Rules: Style: Bold outlines, no colors, no shading. Keep characters simple. Ensure the main character, ${characterName}, is clearly defined and easy to color. Make it fun, cute, and child-friendly.`;
 
-Rules:
-- Style: Bold outlines, no colors, no shading, no gray areas.
-- Keep characters and objects simple and easy to recognize.
-- Leave large empty spaces for coloring.
-- Ensure the main character ${characterName} looks the same across all illustrations (same face, hair, clothes).
-- Child-friendly, fun, and uncluttered design.`
+    const promptParts = referenceImageUrl
+        ? [
+            { media: { url: referenceImageUrl } },
+            { text: textPrompt },
+          ]
+        : [textPrompt];
 
     const { media } = await ai.generate({
         model: 'googleai/gemini-2.0-flash-preview-image-generation',
-        prompt: prompt,
+        prompt: promptParts,
         config: {
             apiKey: process.env.STORY_IMAGE_KEY,
             responseModalities: ['TEXT', 'IMAGE'],
@@ -123,18 +129,29 @@ export const createStoryAndColoringPagesFlow = ai.defineFlow(
     const numPagesToGenerate = Math.min(parseInt(input.numberOfPages, 10), storyContent.chapters.length);
     const chaptersToProcess = storyContent.chapters.slice(0, numPagesToGenerate);
 
+    const imageUrls: string[] = [];
+    let characterReferenceImage: string | undefined = undefined;
 
-    // 2. Generate an image for each chapter's description in parallel.
-    const imagePromises = chaptersToProcess.map(chapter => 
-        generateImageFromDescription(chapter.illustrationDescription, input.childName)
-    );
-    const imageUrls = await Promise.all(imagePromises);
+    // 2. Generate images for each chapter sequentially to maintain consistency.
+    for (const chapter of chaptersToProcess) {
+      const imageUrl = await generateImageFromDescription(
+        chapter.illustrationDescription,
+        input.childName,
+        characterReferenceImage
+      );
+      imageUrls.push(imageUrl);
+      
+      // After the first image is generated, use it as the reference for all subsequent images.
+      if (!characterReferenceImage) {
+        characterReferenceImage = imageUrl;
+      }
+    }
 
     // 3. Combine text and images into pages.
     const pages = chaptersToProcess.map((chapter, index) => ({
       pageNumber: index + 1,
       text: `${chapter.chapterTitle}\n\n${chapter.narrative}`,
-      imageDataUri: imageUrls[index], // The corresponding image URL
+      imageDataUri: imageUrls[index],
     }));
 
     if (pages.some(p => !p.imageDataUri)) {

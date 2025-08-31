@@ -4,11 +4,10 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { GenerateColoringPageFromTextInputSchema, GenerateColoringPageFromTextOutputSchema } from '@/app/create/word/types';
-import type { GenerateColoringPageFromTextInput, GenerateColoringPageFromTextOutput } from '@/app/create/word/types';
+import type { GenerateColoringPageFromTextOutput } from '@/app/create/word/types';
 import { dbAdmin } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { v4 as uuidv4 } from 'uuid';
-import { checkAndDeductCredits } from '@/lib/credits';
 
 
 export const generateColoringPageFromTextFlow = ai.defineFlow(
@@ -18,13 +17,6 @@ export const generateColoringPageFromTextFlow = ai.defineFlow(
         outputSchema: GenerateColoringPageFromTextOutputSchema,
     },
     async (input) => {
-        if (input.userId) {
-            const creditCheck = await checkAndDeductCredits(input.userId, 1);
-            if (!creditCheck.success) {
-                 throw new Error(creditCheck.error === 'Not enough credits' ? 'NotEnoughCredits' : 'Failed to process credits.');
-            }
-        }
-
         const prompt = `
           Create a black-and-white line art illustration for a children’s coloring book.
     
@@ -32,10 +24,9 @@ export const generateColoringPageFromTextFlow = ai.defineFlow(
     
           **Rules:**
           1.  **Style:** Bold outlines, no colors, no shading, no gray areas.
-          2.  **Simplicity:** Keep characters and objects simple and easy to recognize.
+          2.  **Simplicity:** Keep characters and objects simple and easy to recognize. Difficulty: ${input.difficulty}.
           3.  **Clarity:** Leave large empty spaces for coloring.
-          4.  **Consistency:** Ensure the main character looks the same across all illustrations (same face, hair, clothes).
-          5.  **Design:** The final output should be fun, cute, and child-friendly.
+          4.  **Design:** The final output should be fun, cute, and child-friendly.
         `;
     
         const { media } = await ai.generate({
@@ -55,6 +46,7 @@ export const generateColoringPageFromTextFlow = ai.defineFlow(
             const creationId = uuidv4();
             const creationRef = dbAdmin.collection('creations').doc(creationId);
             await creationRef.set({
+                id: creationId,
                 userId: input.userId,
                 description: input.description,
                 imageUrl: media.url,
@@ -66,11 +58,3 @@ export const generateColoringPageFromTextFlow = ai.defineFlow(
         return { coloringPageDataUri: media.url };
     }
 );
-
-
-export async function generateColoringPageFromText(
-  input: GenerateColoringPageFromTextInput
-): Promise<GenerateColoringPageFromTextOutput> {
-  const result = await generateColoringPageFromTextFlow(input);
-  return result;
-}

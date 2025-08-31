@@ -1,7 +1,8 @@
 
 'use server';
 
-import { generateColoringPageFromText } from '@/ai/flows/generate-coloring-page-from-text';
+import { checkAndDeductCredits } from '@/lib/credits';
+import { generateColoringPageFromTextFlow } from '@/ai/flows/generate-coloring-page-from-text-flow';
 import type { GenerateColoringPageFromTextInput, GenerateColoringPageFromTextOutput } from './types';
 
 
@@ -13,7 +14,14 @@ export async function generateImageAction(
   error?: string;
 }> {
   try {
-    const result = await generateColoringPageFromText(values);
+    if (values.userId) {
+        const creditCheck = await checkAndDeductCredits(values.userId, 1);
+        if (!creditCheck.success) {
+            throw new Error(creditCheck.error === 'Not enough credits' ? 'NotEnoughCredits' : 'Failed to process credits.');
+        }
+    }
+
+    const result = await generateColoringPageFromTextFlow(values);
     return { success: true, data: result };
   } catch (error) {
     console.error('Image generation failed:', error);
