@@ -1,26 +1,17 @@
-
 'use server';
-/**
- * @fileOverview Orchestrates the dual-API system to generate a complete story with coloring pages.
- * This server action coordinates the story content generation, image description generation,
- * and final image creation steps.
- */
 
-import {v4 as uuidv4} from 'uuid';
-import {generateStoryContent, StoryContentOutput} from '@/ai/flows/generate-story-content';
-import {generateColoringPageFromDescription} from '@/ai/flows/generate-coloring-page-from-description';
+import {
+  createStoryAndColoringPages as createStoryFlow,
+  CreateStoryAndColoringPagesInput,
+} from '@/ai/flows/create-story-and-coloring-pages';
 import { checkAndDeductCredits } from '@/lib/credits';
-import type { CreateStoryAndColoringPagesInput, CreateStoryAndColoringPagesOutput } from './page';
+import { dbAdmin } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
+import type { StoryAndPagesInput } from './page';
 
-
-/**
- * The main exported server action that orchestrates the story generation process.
- * @param input The user's preferences for the story.
- * @returns A promise that resolves to the complete story with images.
- */
 export async function createStoryAndColoringPages(
-  input: CreateStoryAndColoringPagesInput
-): Promise<{ success: boolean; data?: CreateStoryAndColoringPagesOutput; error?: string; }> {
+  input: StoryAndPagesInput
+): Promise<{ success: boolean; data?: { title: string, pages: any[] }, error?: string; }> {
 
   try {
     if (!input.userId) {
@@ -28,59 +19,28 @@ export async function createStoryAndColoringPages(
     }
 
     const pageCount = parseInt(input.numberOfPages, 10);
-    const creditCost = Math.ceil(pageCount / 4); // 1 credit for 4 pages, 2 for 8, etc.
+    const creditCost = Math.ceil(pageCount / 4);
 
-    // Check and deduct credits before proceeding
     const creditCheck = await checkAndDeductCredits(input.userId, creditCost);
     if (!creditCheck.success) {
-      if (creditCheck.error === 'Not enough credits') {
-          throw new Error('NotEnoughCredits');
-      }
-      throw new Error(creditCheck.error || 'Failed to process credits.');
+      throw new Error(creditCheck.error === 'Not enough credits' ? 'NotEnoughCredits' : 'Failed to process credits.');
     }
+    
+    const topic = `A story about a child named ${input.childName}, who is in the age group ${input.ageGroup}, taking place in ${input.setting}, and learning a lesson about ${input.lesson}.`;
+    
+    const storyResult = await createStoryFlow({ topic, numPages: pageCount });
 
-    const storyId = `story_${uuidv4()}`;
+    if (!storyResult || !storyResult.pages || storyResult.pages.length === 0) {
+      throw new Error('Story generation failed to return any pages.');
+    }
+    
+    const storyTitle = `The Adventures of ${input.childName}`;
 
-    // Step 1: Generate Story Content (Text and image descriptions)
-    const storyContent: StoryContentOutput = await generateStoryContent({
-      child_name: input.childName,
-      age_group: input.ageGroup,
-      number_of_pages: input.numberOfPages,
-      setting: input.setting,
-      lesson: input.lesson,
-      story_id: storyId,
-    });
-
-    // Step 2: Generate an image for each description and combine with page text
-    const finalPages = await Promise.all(
-      storyContent.pages.map(async (page) => {
-
-        if (!page.illustration_description) {
-          console.warn(`No image description found for page_reference: ${page.page_number}`);
-          return {
-            page_number: page.page_number,
-            text: page.content,
-            imageDataUri: '', // Or a placeholder data URI
-          };
-        }
-        
-        // Generate the actual coloring page image from the description
-        const imageResult = await generateColoringPageFromDescription({
-          description: page.illustration_description,
-          childName: input.childName,
-        });
-
-        return {
-          page_number: page.page_number,
-          text: page.content,
-          imageDataUri: imageResult.coloringPageDataUri,
-        };
-      })
-    );
-
+    // TODO: Persist the story to Firestore
+    
     const data = {
-      title: storyContent.story_metadata.title,
-      pages: finalPages.filter(p => p.imageDataUri), // Filter out any pages that failed image generation
+      title: storyTitle,
+      pages: storyResult.pages,
     };
 
     return { success: true, data };

@@ -38,9 +38,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import {
-  createStoryAndColoringPages,
-} from './actions';
+import { createStoryAndColoringPages } from './actions';
 import React from 'react';
 import { useAuth } from '@/context/auth-context';
 import withAuth from '@/hoc/withAuth';
@@ -48,19 +46,19 @@ import { InsufficientCreditsPopup } from '@/components/popups/insufficient-credi
 import { TenorGIF } from '@/components/tenor-gif';
 import { z } from 'zod';
 
-// Moved from actions.ts to resolve build error
-const FinalStoryPageSchema = z.object({
-  page_number: z.any().describe('Page number or cover'),
+
+export const StoryPageSchema = z.object({
   text: z.string().describe('The text content of the page.'),
   imageDataUri: z.string().describe('The generated coloring page image as a data URI.'),
 });
-export const CreateStoryAndColoringPagesOutputSchema = z.object({
-  title: z.string(),
-  pages: z.array(FinalStoryPageSchema).describe('The final generated story pages with text and images.'),
-});
-export type CreateStoryAndColoringPagesOutput = z.infer<typeof CreateStoryAndColoringPagesOutputSchema>;
 
-export const CreateStoryAndColoringPagesInputSchema = z.object({
+export const StoryAndPagesOutputSchema = z.object({
+  title: z.string(),
+  pages: z.array(StoryPageSchema).describe('The final generated story pages with text and images.'),
+});
+export type StoryAndPagesOutput = z.infer<typeof StoryAndPagesOutputSchema>;
+
+export const StoryAndPagesInputSchema = z.object({
   userId: z.string().describe("The authenticated user's ID."),
   childName: z.string().describe("Child's name in Arabic"),
   ageGroup: z.enum(['3-5', '6-8', '9-12']).describe('The age group of the child.'),
@@ -68,7 +66,7 @@ export const CreateStoryAndColoringPagesInputSchema = z.object({
   setting: z.string().describe("Location or 'auto-select'"),
   lesson: z.string().describe("Moral value or 'auto-select'"),
 });
-export type CreateStoryAndColoringPagesInput = z.infer<typeof CreateStoryAndColoringPagesInputSchema>;
+export type StoryAndPagesInput = z.infer<typeof StoryAndPagesInputSchema>;
 
 
 const steps = [
@@ -101,7 +99,7 @@ function CreateStoryPage() {
   const [setting, setSetting] = useState('');
   const [lesson, setLesson] = useState('');
 
-  const [story, setStory] = useState<CreateStoryAndColoringPagesOutput | null>(null);
+  const [story, setStory] = useState<StoryAndPagesOutput | null>(null);
   const [loading, setLoading] = useState(false);
   const [showCreditsPopup, setShowCreditsPopup] = useState(false);
   const { toast } = useToast();
