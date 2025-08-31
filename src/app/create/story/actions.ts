@@ -2,15 +2,13 @@
 'use server';
 
 import { checkAndDeductCredits } from '@/lib/credits';
-import type { StoryAndPagesInput, StoryAndPagesOutput } from './page';
-import { generateStoryContent, type StoryContent } from '@/ai/flows/generate-story-content';
-import { generateImageFromDescription } from '@/ai/flows/generate-image-from-description';
-import { z } from 'zod';
+import { createStoryAndColoringPagesFlow } from '@/ai/flows/create-story-and-coloring-pages';
 import { dbAdmin } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { v4 as uuidv4 } from 'uuid';
+import type { StoryAndPagesInput, StoryAndPagesOutput } from './types';
 
-export async function createStoryAndColoringPages(
+export async function generateStoryAction(
   input: StoryAndPagesInput
 ): Promise<{ success: boolean; data?: StoryAndPagesOutput, error?: string; }> {
 
@@ -28,50 +26,13 @@ export async function createStoryAndColoringPages(
       throw new Error(creditCheck.error === 'Not enough credits' ? 'NotEnoughCredits' : 'Failed to process credits.');
     }
     
-    // 1. Generate all story text content and image descriptions first.
-    const storyContentResult = await generateStoryContent({
-      childName: input.childName,
-      age: input.ageGroup,
-      place: input.setting,
-      moralLesson: input.lesson,
-      numPages: pageCount
-    });
+    const finalStory = await createStoryAndColoringPagesFlow(input);
 
-    if (!storyContentResult || !storyContentResult.chapters || storyContentResult.chapters.length === 0) {
-      throw new Error('Story text generation failed to return any chapters.');
+    if (!finalStory || !finalStory.pages || finalStory.pages.length === 0) {
+      throw new Error("Story generation flow failed to return complete data.");
     }
 
-    let allPages: { pageNumber: number; text: string; imageDataUri: string; }[] = [];
-    let currentPageNumber = 1;
-
-    for (const chapter of storyContentResult.chapters) {
-        const imageResult = await generateImageFromDescription({
-            description: chapter.illustrationDescription,
-        });
-
-        if (!imageResult.imageDataUri) {
-            console.error(`Image generation failed for chapter: ${chapter.chapterTitle}.`);
-            // Skip this page if image generation fails
-            continue;
-        }
-
-        allPages.push({
-            pageNumber: currentPageNumber++,
-            text: `${chapter.chapterTitle}\n\n${chapter.narrative}`,
-            imageDataUri: imageResult.imageDataUri,
-        });
-    }
-
-    if (allPages.length === 0) {
-        throw new Error("All image generations failed. Could not create story.");
-    }
-    
-    const finalStory: StoryAndPagesOutput = {
-      title: storyContentResult.title,
-      pages: allPages,
-    };
-
-    // 3. Persist the final story to Firestore
+    // Persist the final story to Firestore
     const storyId = uuidv4();
     const storyRef = dbAdmin.collection('stories').doc(storyId);
     
@@ -87,13 +48,14 @@ export async function createStoryAndColoringPages(
     });
 
     const pagesCollectionRef = storyRef.collection('pages');
-    await Promise.all(finalStory.pages.map(page => {
+    const pagePromises = finalStory.pages.map(page => {
       return pagesCollectionRef.doc(page.pageNumber.toString()).set({
         text: page.text,
         imageUrl: page.imageDataUri, // Note: storing as imageUrl
         pageNumber: page.pageNumber,
       });
-    }));
+    });
+    await Promise.all(pagePromises);
 
 
     return { success: true, data: finalStory };
@@ -102,7 +64,7 @@ export async function createStoryAndColoringPages(
     const errorMessage =
       error instanceof Error ? error.message : 'فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.';
     
-    if (errorMessage === 'NotEnoughCredits') {
+    if (errorMessage.includes('NotEnoughCredits')) {
         return { success: false, error: 'NotEnoughCredits' };
     }
 
