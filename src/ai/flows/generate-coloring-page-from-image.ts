@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Converts a user-uploaded image into a coloring page.
@@ -37,14 +38,10 @@ Instructions:
 - Preserve the main characters or objects from the original image but simplify them into cartoon-style outlines.
 - Ensure the result looks like a page from a children’s coloring book.`;
 
-const generateColoringPageFromImageFlow = ai.defineFlow(
-  {
-    name: 'generateColoringPageFromImageFlow',
-    inputSchema: GenerateColoringPageFromImageInputSchema,
-    outputSchema: GenerateColoringPageFromImageOutputSchema,
-  },
-  async ({photoDataUri}) => {
-    const {media} = await ai.generate({
+
+export async function generateColoringPageFromImage(input: GenerateColoringPageFromImageInput): Promise<GenerateColoringPageFromImageOutput> {
+  const {photoDataUri} = input;
+  const {media} = await ai.generate({
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
       prompt: [
         {media: {url: photoDataUri}},
@@ -61,9 +58,4 @@ const generateColoringPageFromImageFlow = ai.defineFlow(
     }
     
     return {coloringPageDataUri: media.url};
-  }
-);
-
-export async function generateColoringPageFromImage(input: GenerateColoringPageFromImageInput): Promise<GenerateColoringPageFromImageOutput> {
-  return generateColoringPageFromImageFlow(input);
 }

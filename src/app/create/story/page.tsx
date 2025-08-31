@@ -47,16 +47,18 @@ import { TenorGIF } from '@/components/tenor-gif';
 import { z } from 'zod';
 
 
-export const StoryPageSchema = z.object({
-  text: z.string().describe('The text content of the page.'),
-  imageDataUri: z.string().describe('The generated coloring page image as a data URI.'),
+export const PageSchema = z.object({
+  pageNumber: z.number(),
+  text: z.string(),
+  imageDataUri: z.string(),
 });
 
 export const StoryAndPagesOutputSchema = z.object({
   title: z.string(),
-  pages: z.array(StoryPageSchema).describe('The final generated story pages with text and images.'),
+  pages: z.array(PageSchema),
 });
 export type StoryAndPagesOutput = z.infer<typeof StoryAndPagesOutputSchema>;
+
 
 export const StoryAndPagesInputSchema = z.object({
   userId: z.string().describe("The authenticated user's ID."),
@@ -122,6 +124,7 @@ function CreateStoryPage() {
     }
 
     setLoading(true);
+    setStory(null);
     setStep(4); // Move to the story view step
 
     try {
