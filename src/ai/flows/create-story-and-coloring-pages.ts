@@ -11,7 +11,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { StoryAndPagesInputSchema, StoryAndPagesOutputSchema } from '@/app/create/story/types';
-import type { StoryAndPagesInput, StoryAndPagesOutput } from '@/app/create/story/types';
+import type { StoryAndPagesOutput } from '@/app/create/story/types';
 
 
 const ChapterSchema = z.object({
@@ -71,7 +71,7 @@ Output Format:
 });
 
 
-async function generateImageFromDescription(description: string): Promise<string> {
+async function generateImageFromDescription(description: string, characterName: string): Promise<string> {
     const prompt = `Create a black-and-white line art illustration for a children’s coloring book.
 
 Input Scene: ${description}
@@ -80,7 +80,7 @@ Rules:
 - Style: Bold outlines, no colors, no shading, no gray areas.
 - Keep characters and objects simple and easy to recognize.
 - Leave large empty spaces for coloring.
-- Ensure the main character looks the same across all illustrations (same face, hair, clothes).
+- Ensure the main character ${characterName} looks the same across all illustrations (same face, hair, clothes).
 - Child-friendly, fun, and uncluttered design.`
 
     const { media } = await ai.generate({
@@ -106,7 +106,7 @@ export const createStoryAndColoringPagesFlow = ai.defineFlow(
     inputSchema: StoryAndPagesInputSchema,
     outputSchema: StoryAndPagesOutputSchema,
   },
-  async (input) => {
+  async (input): Promise<StoryAndPagesOutput> => {
     // 1. Generate all story text content and image descriptions first.
     const { output: storyContent } = await storyContentPrompt({
         childName: input.childName,
@@ -118,15 +118,20 @@ export const createStoryAndColoringPagesFlow = ai.defineFlow(
     if (!storyContent || !storyContent.chapters || storyContent.chapters.length === 0) {
       throw new Error('Story text generation failed to return any chapters.');
     }
+    
+    // Convert numPages from string to number and cap it at the number of generated chapters
+    const numPagesToGenerate = Math.min(parseInt(input.numberOfPages, 10), storyContent.chapters.length);
+    const chaptersToProcess = storyContent.chapters.slice(0, numPagesToGenerate);
+
 
     // 2. Generate an image for each chapter's description in parallel.
-    const imagePromises = storyContent.chapters.map(chapter => 
-        generateImageFromDescription(chapter.illustrationDescription)
+    const imagePromises = chaptersToProcess.map(chapter => 
+        generateImageFromDescription(chapter.illustrationDescription, input.childName)
     );
     const imageUrls = await Promise.all(imagePromises);
 
     // 3. Combine text and images into pages.
-    const pages = storyContent.chapters.map((chapter, index) => ({
+    const pages = chaptersToProcess.map((chapter, index) => ({
       pageNumber: index + 1,
       text: `${chapter.chapterTitle}\n\n${chapter.narrative}`,
       imageDataUri: imageUrls[index], // The corresponding image URL

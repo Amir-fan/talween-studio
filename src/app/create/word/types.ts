@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 
 export const GenerateColoringPageFromTextInputSchema = z.object({
@@ -7,6 +8,7 @@ export const GenerateColoringPageFromTextInputSchema = z.object({
   difficulty: z.enum(['Simple', 'Detailed'], {
     required_error: 'الرجاء اختيار مستوى الصعوبة.',
   }),
+  userId: z.string().optional(),
 });
 export type GenerateColoringPageFromTextInput = z.infer<typeof GenerateColoringPageFromTextInputSchema>;
 

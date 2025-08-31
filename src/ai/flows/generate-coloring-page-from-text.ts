@@ -5,6 +5,11 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { GenerateColoringPageFromTextInputSchema, GenerateColoringPageFromTextOutputSchema } from '@/app/create/word/types';
 import type { GenerateColoringPageFromTextInput, GenerateColoringPageFromTextOutput } from '@/app/create/word/types';
+import { dbAdmin } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
+import { v4 as uuidv4 } from 'uuid';
+import { checkAndDeductCredits } from '@/lib/credits';
+
 
 export const generateColoringPageFromTextFlow = ai.defineFlow(
     {
@@ -13,21 +18,24 @@ export const generateColoringPageFromTextFlow = ai.defineFlow(
         outputSchema: GenerateColoringPageFromTextOutputSchema,
     },
     async (input) => {
+        if (input.userId) {
+            const creditCheck = await checkAndDeductCredits(input.userId, 1);
+            if (!creditCheck.success) {
+                 throw new Error(creditCheck.error === 'Not enough credits' ? 'NotEnoughCredits' : 'Failed to process credits.');
+            }
+        }
+
         const prompt = `
-          You are an expert illustrator that creates black-and-white line art images for children’s coloring books. Your output must be a simple, clean, coloring book style image.
+          Create a black-and-white line art illustration for a children’s coloring book.
     
-          **Scene Description:** "${input.description}"
+          **Input Scene:** "${input.description}"
     
           **Rules:**
-          1.  **Style:** Black-and-white line art only.
-          2.  **Outlines:** Use simple, bold, and clear outlines.
-          3.  **Color:** Absolutely no colors, shading, or gray areas. The background must be white.
-          4.  **Simplicity:** Keep the drawing uncluttered with large empty spaces for coloring.
-          5.  **Clarity:** Objects and characters must be cute, child-friendly, and easy to recognize.
-          6.  **Difficulty Level:** ${input.difficulty}.
-              - If 'Simple', use very thick outlines and minimal detail, suitable for toddlers.
-              - If 'Detailed', use finer lines and more intricate details, suitable for older children.
-          7.  **Composition:** The overall image should be fun and inviting for children.
+          1.  **Style:** Bold outlines, no colors, no shading, no gray areas.
+          2.  **Simplicity:** Keep characters and objects simple and easy to recognize.
+          3.  **Clarity:** Leave large empty spaces for coloring.
+          4.  **Consistency:** Ensure the main character looks the same across all illustrations (same face, hair, clothes).
+          5.  **Design:** The final output should be fun, cute, and child-friendly.
         `;
     
         const { media } = await ai.generate({
@@ -41,6 +49,18 @@ export const generateColoringPageFromTextFlow = ai.defineFlow(
     
         if (!media?.url) {
           throw new Error('Image generation failed to return a valid image URL.');
+        }
+
+        if (input.userId) {
+            const creationId = uuidv4();
+            const creationRef = dbAdmin.collection('creations').doc(creationId);
+            await creationRef.set({
+                userId: input.userId,
+                description: input.description,
+                imageUrl: media.url,
+                difficulty: input.difficulty,
+                createdAt: FieldValue.serverTimestamp(),
+            });
         }
     
         return { coloringPageDataUri: media.url };

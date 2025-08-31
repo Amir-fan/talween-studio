@@ -51,7 +51,7 @@ export async function generateStoryAction(
     const pagePromises = finalStory.pages.map(page => {
       return pagesCollectionRef.doc(page.pageNumber.toString()).set({
         text: page.text,
-        imageUrl: page.imageDataUri, // Note: storing as imageUrl
+        imageUrl: page.imageDataUri,
         pageNumber: page.pageNumber,
       });
     });

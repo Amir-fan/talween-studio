@@ -1,3 +1,4 @@
+
 'use server';
 
 import { generateColoringPageFromText } from '@/ai/flows/generate-coloring-page-from-text';
@@ -18,6 +19,10 @@ export async function generateImageAction(
     console.error('Image generation failed:', error);
     const errorMessage =
       error instanceof Error ? error.message : 'فشلت عملية إنشاء الصورة. الرجاء المحاولة مرة أخرى.';
+    
+     if (errorMessage.includes('NotEnoughCredits')) {
+        return { success: false, error: 'NotEnoughCredits' };
+    }
     return { success: false, error: errorMessage };
   }
 }
