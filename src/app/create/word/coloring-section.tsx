@@ -16,7 +16,6 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -25,7 +24,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { GenerateColoringPageFromTextInputSchema } from './actions';
+import { GenerateColoringPageFromTextInputSchema } from './types';
 import { generateImageAction } from './server-actions';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';

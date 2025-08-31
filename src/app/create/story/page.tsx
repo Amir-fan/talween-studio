@@ -10,7 +10,6 @@ import {
   Sparkles,
   Heart,
   BookOpen,
-  Image as ImageIcon,
   CheckCircle,
   Loader2,
   Download,
@@ -38,7 +37,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { createStoryAndColoringPages } from './actions';
+import { createStoryAndColoringPages } from '@/ai/flows/create-story-and-coloring-pages';
 import React from 'react';
 import { useAuth } from '@/context/auth-context';
 import withAuth from '@/hoc/withAuth';
@@ -48,13 +47,11 @@ import { z } from 'zod';
 
 
 export const PageSchema = z.object({
-  pageNumber: z.number(),
   text: z.string(),
   imageDataUri: z.string(),
 });
 
 export const StoryAndPagesOutputSchema = z.object({
-  title: z.string(),
   pages: z.array(PageSchema),
 });
 export type StoryAndPagesOutput = z.infer<typeof StoryAndPagesOutputSchema>;
@@ -97,7 +94,7 @@ function CreateStoryPage() {
   // Form state
   const [childName, setChildName] = useState('');
   const [ageGroup, setAgeGroup] = useState<'3-5' | '6-8' | '9-12'>('6-8');
-  const [numberOfPages, setNumberOfPages] = useState<'4'| '8' | '12' | '16'>('4');
+  const [numberOfPages, setNumberOfPages] = useState<number>(4);
   const [setting, setSetting] = useState('');
   const [lesson, setLesson] = useState('');
 
@@ -128,24 +125,13 @@ function CreateStoryPage() {
     setStep(4); // Move to the story view step
 
     try {
-        const result = await createStoryAndColoringPages({ 
-            userId: user.uid,
-            childName,
-            ageGroup,
-            numberOfPages,
-            setting,
-            lesson
-        });
+        const topic = `A story about a child named ${childName}, who is ${ageGroup} years old, learns about ${lesson} while in ${setting}.`;
+        const result = await createStoryAndColoringPages({ topic: topic, numPages: numberOfPages });
 
-        if (result.success && result.data) {
-            setStory(result.data);
+        if (result.pages) {
+            setStory(result);
         } else {
-            if (result.error === 'NotEnoughCredits') {
-                setShowCreditsPopup(true);
-                setStep(3); // Go back to allow them to see the button again
-            } else {
-                throw new Error(result.error || "فشلت عملية إنشاء القصة.");
-            }
+            throw new Error("Failed to generate story.");
         }
     } catch (error) {
         toast({
@@ -305,7 +291,7 @@ function CreateStoryPage() {
                 <CardContent className="space-y-8 px-8 max-w-md mx-auto">
                     <div>
                         <Label htmlFor="num-pages" className="mb-2 block text-right font-semibold">عدد صفحات القصة</Label>
-                        <Select dir="rtl" value={numberOfPages} onValueChange={(v) => setNumberOfPages(v as any)}>
+                        <Select dir="rtl" value={String(numberOfPages)} onValueChange={(v) => setNumberOfPages(Number(v) as any)}>
                             <SelectTrigger id="num-pages">
                                 <SelectValue placeholder="اختر عدد الصفحات" />
                             </SelectTrigger>

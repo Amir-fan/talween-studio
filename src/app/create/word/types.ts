@@ -1,8 +1,4 @@
-
 import { z } from 'zod';
-
-// This file now ONLY defines the data structures (schemas and types)
-// that are shared between the client and server. It is NOT a server action file.
 
 export const GenerateColoringPageFromTextInputSchema = z.object({
   description: z.string().min(3, {
