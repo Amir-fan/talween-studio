@@ -23,6 +23,7 @@ const ChapterSchema = z.object({
 const StoryContentSchema = z.object({
     title: z.string().describe('The title of the entire story.'),
     chapters: z.array(ChapterSchema).describe('An array of chapters, each with text and an illustration description.'),
+    characterDescription: z.string().describe("A detailed description of the main character's appearance (face, hair, clothes) for a reference image."),
 });
 
 
@@ -46,23 +47,24 @@ Story Rules:
 Language: Arabic only.
 Story length: Short, divided into 3 chapters maximum.
 Each chapter must include: • Chapter Title (2–3 words). • Narrative (50–80 words) suitable for {{ageGroup}} years old. • Illustration Description: a single, simple scene description for coloring.
+
 Story Structure:
 
 Clear beginning, middle, and end.
 Fun, imaginative, and child-friendly tone.
 End of the story should reinforce the lesson/moral.
+**Character Description**: At the end, provide a single, detailed "characterDescription" of the main character's appearance (face, hair, clothes). This will be used to create a reference image.
+
 Illustration Description Rules:
 
 Describe only one scene per chapter.
 Keep it simple: (e.g., “Ali standing in front of the school with his backpack”).
 No colors mentioned — line art only.
-Keep the main character {{childName}} consistent across all chapters (same face, hair, and clothing).
-Output Format:
 
-Story Title
-Chapter 1: Title + Narrative + Illustration Description
-Chapter 2: Title + Narrative + Illustration Description
-Chapter 3: Title + Narrative + Illustration Description
+Output Format:
+- Story Title
+- Chapters: (Array of Title + Narrative + Illustration Description)
+- Character Description
 `,
     config: {
         model: 'googleai/gemini-2.0-flash',
@@ -70,36 +72,23 @@ Chapter 3: Title + Narrative + Illustration Description
     }
 });
 
-
-async function generateImageFromDescription(
+async function generateCharacterReferenceImage(
     description: string,
-    characterName: string,
-    referenceImageUrl?: string
+    characterName: string
 ): Promise<string> {
-
-    const textPrompt = `Create a black-and-white line art illustration for a children’s coloring book.
-
-Input Scene: ${description}
+    const prompt = `Create a black-and-white line art character sheet for a children’s coloring book.
+Character Name: ${characterName}
+Description: ${description}
 
 Rules:
-
-Style: Bold outlines, no colors, no shading, no gray areas.
-Keep characters and objects simple and easy to recognize.
-Leave large empty spaces for coloring.
-Ensure the main character ${characterName} looks the same across all illustrations (same face, hair, clothes).
-Child-friendly, fun, and uncluttered design.
-`;
-
-    const promptParts = referenceImageUrl
-        ? [
-            { media: { url: referenceImageUrl } },
-            { text: `Use the character from the provided image as a reference. The character's name is ${characterName}. Place this character in the following scene: "${description}". Ensure the character's face, hair, and clothing are consistent with the reference image.` },
-          ]
-        : [textPrompt];
+- Style: Simple, bold outlines. No colors, no shading, no gray areas.
+- Background: Plain white background.
+- Pose: Standing, facing forward, neutral expression.
+- The output should be a fun, cute, and child-friendly character design.`;
 
     const { media } = await ai.generate({
         model: 'googleai/gemini-2.0-flash-preview-image-generation',
-        prompt: promptParts,
+        prompt,
         config: {
             apiKey: process.env.STORY_IMAGE_KEY,
             responseModalities: ['TEXT', 'IMAGE'],
@@ -107,9 +96,41 @@ Child-friendly, fun, and uncluttered design.
     });
 
     if (!media?.url) {
-        throw new Error("Image generation failed to return a valid image URL.");
+        throw new Error("Character reference image generation failed.");
     }
-    
+    return media.url;
+}
+
+
+async function generatePageImage(
+    sceneDescription: string,
+    characterName: string,
+    referenceImageUrl: string
+): Promise<string> {
+    const prompt = `Take the character from the reference image and place them in the following scene: "${sceneDescription}".
+
+Rules:
+- Match the character's face, hair, and clothing exactly to the reference image.
+- The new illustration must be black-and-white line art for a coloring book.
+- Style: Bold outlines, no colors, no shading, no gray areas.
+- Keep the background simple and easy to color.
+- Child-friendly, fun, and uncluttered design.`;
+
+    const { media } = await ai.generate({
+        model: 'googleai/gemini-2.0-flash-preview-image-generation',
+        prompt: [
+            { media: { url: referenceImageUrl } },
+            { text: prompt },
+        ],
+        config: {
+            apiKey: process.env.STORY_IMAGE_KEY,
+            responseModalities: ['TEXT', 'IMAGE'],
+        },
+    });
+
+    if (!media?.url) {
+        throw new Error(`Image generation failed for scene: ${sceneDescription}`);
+    }
     return media.url;
 }
 
@@ -121,7 +142,7 @@ export const createStoryAndColoringPagesFlow = ai.defineFlow(
     outputSchema: StoryAndPagesOutputSchema,
   },
   async (input): Promise<StoryAndPagesOutput> => {
-    // 1. Generate all story text content and image descriptions first.
+    // 1. Generate all story text content and character description first.
     const { output: storyContent } = await storyContentPrompt({
         childName: input.childName,
         ageGroup: input.ageGroup,
@@ -129,33 +150,32 @@ export const createStoryAndColoringPagesFlow = ai.defineFlow(
         lesson: input.lesson,
     });
 
-    if (!storyContent || !storyContent.chapters || storyContent.chapters.length === 0) {
-      throw new Error('Story text generation failed to return any chapters.');
+    if (!storyContent || !storyContent.chapters || storyContent.chapters.length === 0 || !storyContent.characterDescription) {
+      throw new Error('Story text generation failed to return complete content.');
     }
     
-    // Convert numPages from string to number and cap it at the number of generated chapters
+    // 2. Generate the character reference image.
+    const characterReferenceImage = await generateCharacterReferenceImage(
+      storyContent.characterDescription,
+      input.childName
+    );
+
+    // 3. Generate images for each chapter using the reference image.
     const numPagesToGenerate = Math.min(parseInt(input.numberOfPages, 10), storyContent.chapters.length);
     const chaptersToProcess = storyContent.chapters.slice(0, numPagesToGenerate);
 
-    const imageUrls: string[] = [];
-    let characterReferenceImage: string | undefined = undefined;
+    const pageImagePromises = chaptersToProcess.map(chapter => 
+        generatePageImage(
+            chapter.illustrationDescription,
+            input.childName,
+            characterReferenceImage
+        )
+    );
 
-    // 2. Generate images for each chapter sequentially to maintain consistency.
-    for (const chapter of chaptersToProcess) {
-      const imageUrl = await generateImageFromDescription(
-        chapter.illustrationDescription,
-        input.childName,
-        characterReferenceImage
-      );
-      imageUrls.push(imageUrl);
-      
-      // After the first image is generated, use it as the reference for all subsequent images.
-      if (!characterReferenceImage) {
-        characterReferenceImage = imageUrl;
-      }
-    }
+    const imageUrls = await Promise.all(pageImagePromises);
 
-    // 3. Combine text and images into pages.
+
+    // 4. Combine text and images into pages.
     const pages = chaptersToProcess.map((chapter, index) => ({
       pageNumber: index + 1,
       text: `${chapter.chapterTitle}\n\n${chapter.narrative}`,
