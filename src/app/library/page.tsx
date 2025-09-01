@@ -1,8 +1,6 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   BookOpen,
   Eye,
@@ -18,12 +16,14 @@ import {
 import Link from 'next/link';
 import Image from 'next/image';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, QueryDocumentSnapshot, DocumentData, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/auth-context';
+import withAuth from '@/hoc/withAuth';
 
 interface Story {
   id: string;
@@ -44,18 +44,21 @@ const tabs = [
     { name: 'مشترياتي', icon: Download },
 ]
 
-export default function LibraryPage() {
+function LibraryPage() {
+  const { user } = useAuth();
   const [stories, setStories] = useState<Story[]>([]);
   const [creations, setCreations] = useState<Creation[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('إبداعاتي');
 
   useEffect(() => {
+    if (!user) return;
+
     async function fetchStories() {
       setLoading(true);
       try {
         const storiesCollection = collection(db, 'stories');
-        const q = query(storiesCollection, orderBy('createdAt', 'desc'));
+        const q = query(storiesCollection, where('userId', '==', user!.uid), orderBy('createdAt', 'desc'));
         const storySnapshot = await getDocs(q);
         const storiesList = storySnapshot.docs.map((doc: QueryDocumentSnapshot<DocumentData>) => ({
           id: doc.id,
@@ -73,7 +76,7 @@ export default function LibraryPage() {
       setLoading(true);
       try {
         const creationsCollection = collection(db, 'creations');
-        const q = query(creationsCollection, orderBy('createdAt', 'desc'));
+        const q = query(creationsCollection, where('userId', '==', user!.uid), orderBy('createdAt', 'desc'));
         const creationSnapshot = await getDocs(q);
         const creationsList = creationSnapshot.docs.map((doc: QueryDocumentSnapshot<DocumentData>) => ({
           id: doc.id,
@@ -86,10 +89,10 @@ export default function LibraryPage() {
         setLoading(false);
       }
     }
-
+    
     setStories([]);
     setCreations([]);
-
+    
     if(activeTab === 'قصصي') {
         fetchStories();
     } else if (activeTab === 'إبداعاتي') {
@@ -97,7 +100,7 @@ export default function LibraryPage() {
     } else {
         setLoading(false);
     }
-  }, [activeTab]);
+  }, [activeTab, user]);
 
   const renderContent = () => {
     if (loading) {
@@ -294,3 +297,6 @@ export default function LibraryPage() {
     </div>
   );
 }
+
+export default withAuth(LibraryPage);
+    
