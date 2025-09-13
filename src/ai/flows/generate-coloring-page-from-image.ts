@@ -18,7 +18,11 @@ async function convertImageToColoringPageServer(imageDataUri: string): Promise<s
   console.log('Converting uploaded image to coloring page using AI...');
   
   // First analyze the uploaded image to get accurate description
-  const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || 'AIzaSyCRr3YGRSsroF2Ub5Gsu4NDZhw5niARgUw');
+  if (!process.env.GOOGLE_API_KEY) {
+    throw new Error('GOOGLE_API_KEY environment variable is required');
+  }
+  
+  const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
   
   // Extract base64 data from data URI

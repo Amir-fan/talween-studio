@@ -9,6 +9,11 @@ Set these in cPanel → Node.js App → Environment Variables:
 GOOGLE_API_KEY=your_google_ai_api_key_here
 ```
 
+### Admin Access (Optional)
+```
+ADMIN_PASSWORD=your_secure_admin_password_here
+```
+
 ### Firebase (if you want to re-enable it later)
 ```
 FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account","project_id":"your-project",...}

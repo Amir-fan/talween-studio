@@ -150,7 +150,8 @@ export function createLocalUser(email: string, password: string, displayName?: s
 export function signInLocalUser(email: string, password: string): { success: boolean; user?: LocalUser; error?: string } {
   try {
     // Check admin credentials first
-    if (email === 'admin' && password === 'admin123') {
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    if (email === 'admin' && password === adminPassword) {
       saveLocalUser(ADMIN_USER);
       saveLocalUserData(ADMIN_USER_DATA);
       return { success: true, user: ADMIN_USER };
