@@ -1,0 +1,245 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 25 20% 20%; /* Dark brown from logo outline #6B4523 */
+    --card: 0 0% 100%;
+    --card-foreground: 25 20% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 25 20% 20%;
+    --primary: 60 50% 60%; /* Light yellow from logo #DDE04A */
+    --primary-foreground: 25 20% 20%;
+    --secondary: 45 14% 94%;
+    --secondary-foreground: 25 20% 20%;
+    --muted: 60 4.8% 95.9%;
+    --muted-foreground: 25 20% 40%;
+    --accent: 15 45% 50%; /* Rust/burnt orange from logo #A85542 */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 40 12% 90%;
+    --input: 40 12% 90%;
+    --ring: 60 50% 60%;
+    --radius: 0.8rem;
+    --background-start: 45 30% 95%; /* Light beige from logo #F5F0E6 */
+    --background-end: 200 100% 97%; /* Light blue */
+  }
+
+  .dark {
+    --background: 20 14% 8%;
+    --foreground: 40 25% 97%;
+    --card: 20 14% 8%;
+    --card-foreground: 40 25% 97%;
+    --popover: 20 14% 8%;
+    --popover-foreground: 40 25% 97%;
+    --primary: 44 94% 59%;
+    --primary-foreground: 45 100% 15%;
+    --secondary: 20 14% 12%;
+    --secondary-foreground: 40 25% 97%;
+    --muted: 20 14% 12%;
+    --muted-foreground: 45 6% 52%;
+    --accent: 35 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 20 14% 15%;
+    --input: 20 14% 15%;
+    --ring: 44 94% 59%;
+    --background-start: 330 80% 10%;
+    --background-end: 200 100% 10%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background-image: 
+        radial-gradient(circle at 15% 50%, hsl(var(--background-start)), rgba(255,255,255,0) 25%),
+        radial-gradient(circle at 85% 30%, hsl(var(--background-end)), rgba(255,255,255,0) 25%),
+        radial-gradient(circle at 60% 80%, hsl(var(--primary) / 0.2), rgba(255,255,255,0) 30%);
+    background-color: hsl(var(--background));
+    @apply bg-no-repeat;
+  }
+}
+
+@layer utilities {
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes shine {
+    from {
+      transform: translateX(-100%) skewX(-25deg);
+    }
+    to {
+      transform: translateX(200%) skewX(-25deg);
+    }
+  }
+
+  .shine-effect {
+    @apply relative overflow-hidden;
+  }
+
+  .shine-effect::after {
+    content: '';
+    @apply absolute top-0 block h-full w-1/2 -translate-x-full;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.4),
+      transparent
+    );
+    animation: shine 4s ease-in-out infinite;
+  }
+
+  /* New fun animations */
+  @keyframes bounce-slow {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+  .animate-bounce-slow {
+    animation: bounce-slow 3s ease-in-out infinite;
+  }
+
+  @keyframes wiggle {
+    0%, 100% {
+      transform: rotate(0deg);
+    }
+    25% {
+      transform: rotate(5deg);
+    }
+    75% {
+      transform: rotate(-5deg);
+    }
+  }
+  .animate-wiggle {
+    animation: wiggle 2s ease-in-out infinite;
+  }
+
+  @keyframes rainbow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .animate-rainbow {
+    background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+    background-size: 400% 400%;
+    animation: rainbow 3s ease infinite;
+  }
+
+  @keyframes glow {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(168, 85, 66, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(168, 85, 66, 0.8), 0 0 60px rgba(168, 85, 66, 0.4);
+    }
+  }
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite;
+  }
+
+  @keyframes sparkle {
+    0%, 100% {
+      opacity: 0;
+      transform: scale(0);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  .animate-sparkle {
+    animation: sparkle 1.5s ease-in-out infinite;
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-slide-up {
+    animation: slide-up 0.6s ease-out;
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  .animate-scale-in {
+    animation: scale-in 0.5s ease-out;
+  }
+
+  /* Gradient text animation */
+  @keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .animate-gradient {
+    background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+    background-size: 400% 400%;
+    animation: gradient-shift 3s ease infinite;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Floating elements */
+  .floating-element {
+    animation: float 6s ease-in-out infinite;
+  }
+  .floating-element:nth-child(2) {
+    animation-delay: 2s;
+  }
+  .floating-element:nth-child(3) {
+    animation-delay: 4s;
+  }
+
+  /* Hover effects */
+  .hover-lift {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Magic sparkle effect */
+  .magic-sparkle::before {
+    content: '✨';
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    animation: sparkle 2s ease-in-out infinite;
+  }
+}
