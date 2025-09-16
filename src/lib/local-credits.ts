@@ -83,6 +83,28 @@ export async function checkAndDeductCreditsForFeature(
         return { success: true, cost };
       }
       
+      // Try to find user by partial ID match (in case of ID format issues)
+      console.log('  - Trying to find user by partial ID match...');
+      const userByPartialId = allUsers.find(u => u.id.includes(userId) || userId.includes(u.id));
+      if (userByPartialId) {
+        console.log('  - Found user by partial ID match:', userByPartialId.email);
+        console.log('  - Using user ID:', userByPartialId.id);
+        
+        if (userByPartialId.credits < cost) {
+          console.log('❌ Not enough credits (partial ID fallback):', userByPartialId.credits, '<', cost);
+          return { success: false, error: 'Not enough credits' };
+        }
+        
+        // Use the found user's ID for credit operations
+        const deductResult = userDb.deductCredits(userByPartialId.id, cost);
+        if (!deductResult.success) {
+          console.log('❌ Failed to deduct credits:', deductResult.error);
+          return { success: false, error: deductResult.error || 'Failed to deduct credits' };
+        }
+        console.log('✅ Credits deducted successfully using partial ID fallback');
+        return { success: true, cost };
+      }
+      
       return { success: false, error: 'User not found' };
     }
     
