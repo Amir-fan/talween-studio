@@ -164,9 +164,13 @@ export default function AdminDashboard() {
       const response = await fetch('/api/admin/sync-sheets', { method: 'POST' });
       if (response.ok) {
         alert('تم مزامنة البيانات مع Google Sheets بنجاح');
+      } else {
+        const errorData = await response.json();
+        alert(`فشل في المزامنة: ${errorData.error || 'خطأ غير معروف'}`);
       }
     } catch (error) {
       console.error('Error syncing to sheets:', error);
+      alert('فشل في الاتصال بخدمة المزامنة. تأكد من إعداد Google Sheets.');
     }
   };
 
@@ -190,6 +194,33 @@ export default function AdminDashboard() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">لوحة تحكم الإدارة</h1>
           <p className="text-gray-600 mt-2">إدارة المستخدمين والطلبات والنظام</p>
+        </div>
+
+        {/* Google Sheets Status */}
+        <div className="mb-6">
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium">حالة Google Sheets</h3>
+                <p className="text-sm text-muted-foreground">
+                  {process.env.NODE_ENV === 'development' ? 
+                    'Google Sheets غير مُعد - استخدم تصدير CSV كبديل' : 
+                    'تحقق من إعدادات البيئة لـ Google Sheets'
+                  }
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => window.open('/api/admin/export-users', '_blank')} 
+                  variant="outline" 
+                  size="sm"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  تصدير CSV
+                </Button>
+              </div>
+            </div>
+          </Card>
         </div>
 
         {/* Stats Cards */}
@@ -273,6 +304,14 @@ export default function AdminDashboard() {
                     <Button onClick={handleSyncToSheets} variant="outline" size="sm">
                       <Download className="h-4 w-4 mr-2" />
                       مزامنة Google Sheets
+                    </Button>
+                    <Button 
+                      onClick={() => window.open('/api/admin/export-users', '_blank')} 
+                      variant="outline" 
+                      size="sm"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      تصدير CSV
                     </Button>
                   </div>
                 </div>
