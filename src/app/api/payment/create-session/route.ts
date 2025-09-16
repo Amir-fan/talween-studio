@@ -5,6 +5,18 @@ import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if MyFatoorah API key is configured
+    if (!process.env.MYFATOORAH_API_KEY) {
+      console.error('MyFatoorah API key not configured in environment variables');
+      return NextResponse.json(
+        { 
+          error: 'MyFatoorah API key not configured. Please check your Vercel environment variables.',
+          debug: 'MYFATOORAH_API_KEY is missing from environment variables'
+        },
+        { status: 500 }
+      );
+    }
+
     const { amount, currency, packageId, credits, userId } = await request.json();
 
     if (!amount || !currency || !packageId || !credits || !userId) {
