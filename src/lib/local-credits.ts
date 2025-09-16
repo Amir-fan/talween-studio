@@ -30,8 +30,23 @@ export async function checkAndDeductCreditsForFeature(
 
   const cost = PRICING_CONFIG.FEATURE_COSTS[feature];
   
-  // Server-side: Skip credit checking for now, handle on client side
+  // Server-side: Check credits in database
   if (typeof window === 'undefined') {
+    const { userDb } = await import('./simple-database');
+    const user = userDb.findById(userId);
+    
+    if (!user) {
+      return { success: false, error: 'User not found' };
+    }
+    
+    if (user.credits < cost) {
+      return { success: false, error: 'Not enough credits' };
+    }
+    
+    // Deduct credits from database
+    const newCredits = user.credits - cost;
+    userDb.updateCredits(userId, newCredits);
+    
     return { success: true, cost };
   }
   

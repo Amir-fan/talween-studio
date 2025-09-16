@@ -70,7 +70,14 @@ export function ColoringSection() {
       console.log('🔍 CREDIT CHECK DEBUG:');
       console.log('  - user exists?', !!user);
       console.log('  - isAdmin?', isAdmin);
+      console.log('  - user.id:', user?.id);
       console.log('  - Will check credits?', user && !isAdmin);
+      
+      // Debug admin status
+      if (user?.id === 'admin') {
+        console.log('🔍 ADMIN USER DETECTED - skipping credit check');
+        console.log('  - user.id is admin, isAdmin flag:', isAdmin);
+      }
       
       if (user && !isAdmin) {
         console.log('🔍 CLIENT CREDIT CHECK:');
@@ -79,25 +86,27 @@ export function ColoringSection() {
         console.log('  - user.credits:', user.credits);
         console.log('  - isAdmin:', isAdmin);
         
-        // Check localStorage directly
-        const storedUser = localStorage.getItem('talween_user');
-        const storedUserData = localStorage.getItem('talween_user_data');
-        console.log('  - storedUser (talween_user):', storedUser);
-        console.log('  - storedUserData (talween_user_data):', storedUserData);
-        
         const cost = PRICING_CONFIG.FEATURE_COSTS.TEXT_TO_COLORING;
         console.log('  - cost:', cost);
         
-        const creditResult = deductLocalUserCredits(user.id, cost);
-        console.log('  - creditResult:', creditResult);
-        
-        if (!creditResult.success) {
-          console.log('❌ Credit check failed, showing popup');
-          console.log('❌ Error details:', creditResult.error);
+        // First check: Use the credits from the auth context (most reliable)
+        if (user.credits < cost) {
+          console.log('❌ Not enough credits in auth context:', user.credits, '<', cost);
           setShowCreditsPopup(true);
           return;
         }
-        console.log('✅ Credit check passed, proceeding with generation');
+        
+        console.log('✅ Credit check passed in auth context, proceeding with generation');
+        
+        // Deduct credits from localStorage to keep it in sync
+        const creditResult = deductLocalUserCredits(user.id, cost);
+        console.log('  - creditResult:', creditResult);
+        
+        // Even if localStorage deduction fails, proceed if auth context has enough credits
+        if (!creditResult.success) {
+          console.log('⚠️ localStorage deduction failed, but proceeding anyway:', creditResult.error);
+        }
+        
         // Refresh user data to show updated credits
         refreshUserData();
       }
