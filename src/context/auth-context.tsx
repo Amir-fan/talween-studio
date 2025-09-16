@@ -168,8 +168,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           console.log('  - Final userWithId:', userWithId);
           
-          // Store user in localStorage for persistence - store the complete user object
-          localStorage.setItem('talween_user', JSON.stringify(userWithId));
+          // Store user in localStorage for persistence - include both id and uid for compatibility
+          const userForStorage = { ...userWithId, uid: userWithId.id };
+          localStorage.setItem('talween_user', JSON.stringify(userForStorage));
           setUser(userWithId);
           setUserData(userWithId);
           setIsAdmin(userWithId.id === 'admin');
@@ -212,9 +213,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         console.log('  - Final userWithId:', userWithId);
         
-        // Store user in localStorage for persistence - include both id and uid for compatibility
-        const userForStorage = { ...userWithId, uid: userWithId.id };
-        localStorage.setItem('talween_user', JSON.stringify(userForStorage));
         // Store user in localStorage for persistence - include both id and uid for compatibility
         const userForStorage = { ...userWithId, uid: userWithId.id };
         localStorage.setItem('talween_user', JSON.stringify(userForStorage));
