@@ -34,6 +34,7 @@ export async function checkAndDeductCreditsForFeature(
   if (typeof window === 'undefined') {
     console.log('🔍 SERVER-SIDE CREDIT CHECK:');
     console.log('  - userId:', userId);
+    console.log('  - userId type:', typeof userId);
     console.log('  - feature:', feature);
     console.log('  - cost:', cost);
     
@@ -52,6 +53,7 @@ export async function checkAndDeductCreditsForFeature(
     if (user) {
       console.log('  - user.credits:', user.credits);
       console.log('  - user.id:', user.id);
+      console.log('  - user.email:', user.email);
     }
     
     if (!user) {
