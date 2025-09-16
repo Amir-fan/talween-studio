@@ -206,8 +206,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         console.log('  - Final userWithId:', userWithId);
         
-        // Store user in localStorage for persistence - store the complete user object
-        localStorage.setItem('talween_user', JSON.stringify(userWithId));
+        // Store user in localStorage for persistence - include both id and uid for compatibility
+        const userForStorage = { ...userWithId, uid: userWithId.id };
+        localStorage.setItem('talween_user', JSON.stringify(userForStorage));
+        // Store user in localStorage for persistence - include both id and uid for compatibility
+        const userForStorage = { ...userWithId, uid: userWithId.id };
+        localStorage.setItem('talween_user', JSON.stringify(userForStorage));
         setUser(userWithId);
         setUserData(userWithId);
         setIsAdmin(userWithId.id === 'admin');
@@ -243,15 +247,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(adminUser);
           setUserData(adminUser);
           setIsAdmin(true);
-        } 
-        // Handle regular user - sync with server for latest credits
-        else if (userData.uid) {
+        } else {
+          // Handle regular user - sync with server for latest credits
+          const canonicalId = userData.id || userData.uid;
+          if (!canonicalId) {
+            return;
+          }
           try {
             // Try to sync with server first
             const response = await fetch('/api/user/sync-credits', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: userData.uid })
+              body: JSON.stringify({ userId: canonicalId })
             });
             
             if (response.ok) {
@@ -261,7 +268,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 
                 // Update localStorage with server data
                 const updatedUserData = {
-                  uid: userData.uid,
+                  uid: canonicalId,
                   email: serverData.user.email,
                   displayName: serverData.user.displayName,
                   credits: serverData.user.credits,
@@ -298,7 +305,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('  - Final credits:', credits);
           
           const regularUser = {
-            id: userData.uid, // This is the localStorage uid, should match database ID
+            id: canonicalId, // Prefer canonical ID
             email: userData.email,
             displayName: userData.displayName,
             credits: credits,

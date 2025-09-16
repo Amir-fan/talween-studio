@@ -231,19 +231,19 @@ export function deductLocalUserCredits(userId: string, amount: number): { succes
     }
 
     const newCredits = userData.credits - amount;
-    const updatedUser = { ...userData, credits: newCredits };
+    const updatedUser = { ...userData, credits: newCredits, uid: userData.id || userData.uid };
     
     // Update the main user localStorage key
     localStorage.setItem('talween_user', JSON.stringify(updatedUser));
     
     // Also update talween_user_data for backward compatibility
     const userDataForBackup = {
-      uid: userData.id || userData.uid,
-      email: userData.email,
-      name: userData.displayName,
+      uid: updatedUser.uid,
+      email: updatedUser.email,
+      name: updatedUser.displayName,
       credits: newCredits,
-      status: userData.status,
-      createdAt: userData.createdAt || new Date().toISOString(),
+      status: updatedUser.status,
+      createdAt: updatedUser.createdAt || new Date().toISOString(),
       lastLogin: new Date().toISOString()
     };
     localStorage.setItem('talween_user_data', JSON.stringify(userDataForBackup));

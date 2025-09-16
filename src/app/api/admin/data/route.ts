@@ -12,7 +12,9 @@ export async function GET(request: NextRequest) {
       console.log(`    ${index + 1}. ${user.email} (${user.id}) - ${user.credits} credits`);
     });
     
-    const orders = orderDb.findByUser(''); // Get all orders
+    // Get all orders
+    // In this implementation, expose all orders via a dedicated getter
+    const orders = orderDb.getAllOrders ? orderDb.getAllOrders() : [];
     const emailLogs = []; // You'll need to implement this in database.ts
     
     // Calculate stats
