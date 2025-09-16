@@ -55,6 +55,34 @@
       "created_at": 1758024137,
       "updated_at": 1758024137,
       "total_spent": 0
+    },
+    "c5740782-7244-4932-bea9-574e5e03b3f6": {
+      "id": "c5740782-7244-4932-bea9-574e5e03b3f6",
+      "email": "testgoogle@example.com",
+      "password": "$2a$10$gTGb8V6C5xEFyEu9adOXJuEE8pRidQu6M7.tIorrGgvz1KllmHMom",
+      "display_name": "Test Google User",
+      "credits": 50,
+      "status": "active",
+      "email_verified": true,
+      "verification_token": "488b93c5-5d25-4761-a0fb-eb14ebebbe63",
+      "subscription_tier": "FREE",
+      "created_at": 1758024541,
+      "updated_at": 1758024541,
+      "total_spent": 0
+    },
+    "00de1fa3-4cfb-4ab0-8f48-c1e085b17927": {
+      "id": "00de1fa3-4cfb-4ab0-8f48-c1e085b17927",
+      "email": "testgoogle2@example.com",
+      "password": "$2a$10$spG/qqcaTiosZF00PHxUNOwVnbmLNEWyYoHXuwVfdIqiNg3R00ILS",
+      "display_name": "Test Google User 2",
+      "credits": 50,
+      "status": "active",
+      "email_verified": true,
+      "verification_token": "c53d3a28-1411-41aa-acb6-07b928df053c",
+      "subscription_tier": "FREE",
+      "created_at": 1758024571,
+      "updated_at": 1758024571,
+      "total_spent": 0
     }
   },
   "orders": {
@@ -788,6 +816,24 @@
       "subject": "Email failed via Google Apps Script - welcomeAfterVerification",
       "status": "pending",
       "created_at": 1758024138
+    },
+    "5a2b3e4a-3e3f-49fd-8d54-e9143b0625ef": {
+      "id": "5a2b3e4a-3e3f-49fd-8d54-e9143b0625ef",
+      "user_id": "c5740782-7244-4932-bea9-574e5e03b3f6",
+      "email_type": "welcomeAfterVerification",
+      "recipient_email": "testgoogle@example.com",
+      "subject": "Email failed via Google Apps Script - welcomeAfterVerification",
+      "status": "pending",
+      "created_at": 1758024542
+    },
+    "d116b5eb-92ef-44a2-9ca7-6946f5627842": {
+      "id": "d116b5eb-92ef-44a2-9ca7-6946f5627842",
+      "user_id": "00de1fa3-4cfb-4ab0-8f48-c1e085b17927",
+      "email_type": "welcomeAfterVerification",
+      "recipient_email": "testgoogle2@example.com",
+      "subject": "Email failed via Google Apps Script - welcomeAfterVerification",
+      "status": "pending",
+      "created_at": 1758024572
     }
   },
   "adminUsers": {

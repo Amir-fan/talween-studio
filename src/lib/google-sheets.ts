@@ -50,13 +50,8 @@ export async function initializeSpreadsheet() {
 
 // Add user to Google Sheets
 export async function addUserToSheets(user: any) {
+  console.log('🔄 Attempting to add user to Google Sheets:', user.email);
   try {
-    // Check if Google Sheets is configured
-    if (!SPREADSHEET_ID || !process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
-      console.log('⚠️ Google Sheets not configured - skipping user sync');
-      return;
-    }
-
     const values = [[
       user.id,
       user.email,
@@ -88,6 +83,11 @@ export async function addUserToSheets(user: any) {
     console.log('✅ User added to Google Sheets:', user.email);
   } catch (error) {
     console.error('❌ Error adding user to sheets:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      status: error.status
+    });
     // Don't throw error - this is non-blocking
   }
 }
@@ -151,12 +151,6 @@ export async function addEmailLogToSheets(emailLog: any) {
 // Sync all users to Google Sheets
 export async function syncAllUsersToSheets() {
   try {
-    // Check if Google Sheets is configured
-    if (!SPREADSHEET_ID || !process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
-      console.log('⚠️ Google Sheets not configured - cannot sync users');
-      throw new Error('Google Sheets not configured');
-    }
-
     const users = userDb.getAllUsers();
     console.log(`🔄 Syncing ${users.length} users to Google Sheets...`);
     
