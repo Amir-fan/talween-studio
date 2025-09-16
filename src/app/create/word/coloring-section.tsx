@@ -68,12 +68,23 @@ export function ColoringSection() {
     try {
       // Check credits on client side first
       if (user && !isAdmin) {
+        console.log('🔍 CLIENT CREDIT CHECK:');
+        console.log('  - user:', user);
+        console.log('  - user.id:', user.id);
+        console.log('  - isAdmin:', isAdmin);
+        
         const cost = PRICING_CONFIG.FEATURE_COSTS.TEXT_TO_COLORING;
+        console.log('  - cost:', cost);
+        
         const creditResult = deductLocalUserCredits(user.id, cost);
+        console.log('  - creditResult:', creditResult);
+        
         if (!creditResult.success) {
+          console.log('❌ Credit check failed, showing popup');
           setShowCreditsPopup(true);
           return;
         }
+        console.log('✅ Credit check passed, proceeding with generation');
         // Refresh user data to show updated credits
         refreshUserData();
       }

@@ -202,21 +202,44 @@ export function updateLocalUserCredits(userId: string, newCredits: number): bool
 // Deduct credits
 export function deductLocalUserCredits(userId: string, amount: number): { success: boolean; newCredits?: number; error?: string } {
   try {
+    console.log('🔍 CREDIT DEBUG - deductLocalUserCredits called:');
+    console.log('  - userId:', userId);
+    console.log('  - amount:', amount);
+    
     const userData = getLocalUserData();
-    if (!userData || userData.uid !== userId) {
-      return { success: false, error: 'User not found' };
+    console.log('  - userData from localStorage:', userData);
+    
+    if (!userData) {
+      console.log('❌ No userData found in localStorage');
+      return { success: false, error: 'User not found in localStorage' };
+    }
+    
+    if (userData.uid !== userId) {
+      console.log('❌ User ID mismatch:');
+      console.log('  - Expected userId:', userId);
+      console.log('  - Found userData.uid:', userData.uid);
+      return { success: false, error: 'User ID mismatch' };
     }
 
+    console.log('  - Current credits:', userData.credits);
+    console.log('  - Required credits:', amount);
+    console.log('  - Has enough credits?', userData.credits >= amount);
+
     if (userData.credits < amount) {
+      console.log('❌ Not enough credits');
       return { success: false, error: 'Not enough credits' };
     }
 
     const newCredits = userData.credits - amount;
     const updatedUserData = { ...userData, credits: newCredits };
     saveLocalUserData(updatedUserData);
+    
+    console.log('✅ Credits deducted successfully');
+    console.log('  - New credits:', newCredits);
 
     return { success: true, newCredits };
-  } catch {
+  } catch (error) {
+    console.log('❌ Error in deductLocalUserCredits:', error);
     return { success: false, error: 'Failed to deduct credits' };
   }
 }
