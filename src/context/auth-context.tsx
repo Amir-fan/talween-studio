@@ -184,11 +184,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await response.json();
 
       if (data.success) {
-        // Convert uid to id for consistency
+        console.log('🔍 LOGIN SUCCESS - User data from server:');
+        console.log('  - data.user:', data.user);
+        console.log('  - data.user.id:', data.user.id);
+        console.log('  - data.user.uid:', data.user.uid);
+        
+        // Use the server's user.id directly (should match database)
         const userWithId = {
           ...data.user,
-          id: data.user.uid || data.user.id // Use uid as id if available
+          id: data.user.id // Use the server's id directly
         };
+        
+        console.log('  - Final userWithId:', userWithId);
         
         // Store user in localStorage for persistence
         localStorage.setItem('talween_user', JSON.stringify(data.user));
@@ -256,7 +263,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 localStorage.setItem('talween_user_data', JSON.stringify(updatedUserData));
                 
                 const regularUser = {
-                  id: userData.uid,
+                  id: serverData.user.id, // Use server's user ID (matches database)
                   email: serverData.user.email,
                   displayName: serverData.user.displayName,
                   credits: serverData.user.credits,
@@ -289,7 +296,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           
           const regularUser = {
-            id: userData.uid,
+            id: userData.uid, // This is the localStorage uid, should match database ID
             email: userData.email,
             displayName: userData.displayName,
             credits: credits,
