@@ -81,34 +81,27 @@ export function ColoringSection() {
       
       if (user && !isAdmin) {
         console.log('🔍 CLIENT CREDIT CHECK:');
-        console.log('  - user:', user);
-        console.log('  - user.id:', user.id);
         console.log('  - user.credits:', user.credits);
         console.log('  - isAdmin:', isAdmin);
         
         const cost = PRICING_CONFIG.FEATURE_COSTS.TEXT_TO_COLORING;
         console.log('  - cost:', cost);
         
-        // First check: Use the credits from the auth context (most reliable)
-        if (user.credits < cost) {
-          console.log('❌ Not enough credits in auth context:', user.credits, '<', cost);
+        // Simple credit check: if user has enough credits, proceed
+        if (user.credits >= cost) {
+          console.log('✅ User has enough credits, proceeding with generation');
+          
+          // Deduct credits from localStorage
+          const creditResult = deductLocalUserCredits(user.id, cost);
+          console.log('  - creditResult:', creditResult);
+          
+          // Refresh user data to show updated credits
+          refreshUserData();
+        } else {
+          console.log('❌ Not enough credits:', user.credits, '<', cost);
           setShowCreditsPopup(true);
           return;
         }
-        
-        console.log('✅ Credit check passed in auth context, proceeding with generation');
-        
-        // Deduct credits from localStorage to keep it in sync
-        const creditResult = deductLocalUserCredits(user.id, cost);
-        console.log('  - creditResult:', creditResult);
-        
-        // Even if localStorage deduction fails, proceed if auth context has enough credits
-        if (!creditResult.success) {
-          console.log('⚠️ localStorage deduction failed, but proceeding anyway:', creditResult.error);
-        }
-        
-        // Refresh user data to show updated credits
-        refreshUserData();
       }
 
       const finalValues = { ...values, userId: user?.id || 'admin' };
