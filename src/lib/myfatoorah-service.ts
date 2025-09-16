@@ -41,6 +41,8 @@ export async function createPaymentSession(paymentData: PaymentRequest): Promise
 
     console.log('MyFatoorah API Key (first 20 chars):', MYFATOORAH_API_KEY.substring(0, 20) + '...');
     console.log('MyFatoorah Base URL:', MYFATOORAH_BASE_URL);
+    console.log('API Key length:', MYFATOORAH_API_KEY.length);
+    console.log('API Key starts with:', MYFATOORAH_API_KEY.substring(0, 10));
 
     const payload = {
       InvoiceValue: paymentData.amount,
