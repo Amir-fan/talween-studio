@@ -201,7 +201,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const refreshUserData = () => {
+  const refreshUserData = async () => {
     // Refresh user data from localStorage
     const storedUser = localStorage.getItem('talween_user');
     const storedUserData = localStorage.getItem('talween_user_data');
@@ -225,11 +225,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUserData(adminUser);
           setIsAdmin(true);
         } 
-        // Handle regular user - convert uid to id and get latest credits
+        // Handle regular user - sync with server for latest credits
         else if (userData.uid) {
+          try {
+            // Try to sync with server first
+            const response = await fetch('/api/user/sync-credits', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: userData.uid })
+            });
+            
+            if (response.ok) {
+              const serverData = await response.json();
+              if (serverData.success) {
+                console.log('✅ Synced credits from server:', serverData.user.credits);
+                
+                // Update localStorage with server data
+                const updatedUserData = {
+                  uid: userData.uid,
+                  email: serverData.user.email,
+                  displayName: serverData.user.displayName,
+                  credits: serverData.user.credits,
+                  status: serverData.user.status,
+                  emailVerified: serverData.user.emailVerified,
+                  subscriptionTier: serverData.user.subscriptionTier
+                };
+                localStorage.setItem('talween_user_data', JSON.stringify(updatedUserData));
+                
+                const regularUser = {
+                  id: userData.uid,
+                  email: serverData.user.email,
+                  displayName: serverData.user.displayName,
+                  credits: serverData.user.credits,
+                  status: serverData.user.status,
+                  emailVerified: serverData.user.emailVerified,
+                  subscriptionTier: serverData.user.subscriptionTier
+                };
+                setUser(regularUser);
+                setUserData(regularUser);
+                setIsAdmin(false);
+                return;
+              }
+            }
+          } catch (error) {
+            console.error('Error syncing with server:', error);
+          }
+          
+          // Fallback to localStorage data
           let credits = userData.credits || 50;
           
-          // Get latest credits from user_data if available
           if (storedUserData) {
             try {
               const userDataFromStorage = JSON.parse(storedUserData);
@@ -242,7 +286,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           
           const regularUser = {
-            id: userData.uid, // Use uid as id
+            id: userData.uid,
             email: userData.email,
             displayName: userData.displayName,
             credits: credits,

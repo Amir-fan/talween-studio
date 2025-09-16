@@ -41,7 +41,7 @@ export default function Header() {
        
         <div className="flex items-center gap-4">
            {(user && userData) && (
-             <Button variant="outline" className="rounded-full hidden sm:flex border-talween-yellow/30 bg-talween-yellow/10 hover:bg-talween-yellow/20">
+             <Button variant="outline" className="rounded-full flex border-talween-yellow/30 bg-talween-yellow/10 hover:bg-talween-yellow/20">
                <Star className="h-4 w-4 ml-2 text-talween-yellow fill-talween-yellow" />
                <span className="font-bold text-talween-brown">{userData.credits}</span>
                <span className="mr-1 text-talween-brown">نقطة</span>
@@ -82,6 +82,18 @@ export default function Header() {
                         <SheetHeader>
                             <SheetTitle className="sr-only">القائمة</SheetTitle>
                         </SheetHeader>
+                        
+                        {/* Mobile Credit Display */}
+                        {(user && userData) && (
+                            <div className="mt-4 p-4 bg-talween-yellow/10 rounded-lg border border-talween-yellow/30">
+                                <div className="flex items-center justify-center gap-2">
+                                    <Star className="h-5 w-5 text-talween-yellow fill-talween-yellow" />
+                                    <span className="text-lg font-bold text-talween-brown">{userData.credits}</span>
+                                    <span className="text-talween-brown">نقطة</span>
+                                </div>
+                            </div>
+                        )}
+                        
                          <nav className="flex flex-col gap-4 mt-8">
                             {navLinks.map((link) => {
                                  if (link.auth && !user) return null;

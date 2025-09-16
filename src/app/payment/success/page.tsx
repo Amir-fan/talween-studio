@@ -6,10 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Download, ArrowRight, Coins } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/context/auth-context';
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { refreshUserData } = useAuth();
   const [paymentData, setPaymentData] = useState<any>(null);
 
   useEffect(() => {
@@ -23,6 +25,10 @@ function PaymentSuccessContent() {
         amount: parseFloat(amount),
         credits: parseInt(credits)
       });
+      
+      // Sync user data to get updated credits
+      console.log('🔄 Syncing user data after payment success...');
+      refreshUserData();
     } else {
       // Redirect to packages if no payment data
       router.push('/packages');
