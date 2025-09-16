@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   Trash2
 } from 'lucide-react';
+import { config } from '@/lib/config';
 
 interface User {
   id: string;
@@ -136,7 +137,7 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       // Load users from Google Sheets
-      const usersResponse = await fetch(`${process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL}?action=getUsers&apiKey=${process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY}`);
+      const usersResponse = await fetch(`${config.googleAppsScriptUrl}?action=getUsers&apiKey=${config.googleSheetsApiKey}`);
       const usersData = await usersResponse.json();
       
       if (usersData.success) {
@@ -176,12 +177,12 @@ export default function AdminDashboard() {
     if (!creditsToAdd || isNaN(Number(creditsToAdd))) return;
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL}?action=addCredits&apiKey=${process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY}`, {
+      const response = await fetch(`${config.googleAppsScriptUrl}?action=addCredits&apiKey=${config.googleSheetsApiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           action: 'addCredits',
-          apiKey: process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY,
+          apiKey: config.googleSheetsApiKey,
           userId, 
           amount: Number(creditsToAdd) 
         })
@@ -223,12 +224,12 @@ export default function AdminDashboard() {
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL}?action=deleteUser&apiKey=${process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY}`, {
+      const response = await fetch(`${config.googleAppsScriptUrl}?action=deleteUser&apiKey=${config.googleSheetsApiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           action: 'deleteUser',
-          apiKey: process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY,
+          apiKey: config.googleSheetsApiKey,
           userId 
         })
       });

@@ -1,8 +1,10 @@
 // Google Sheets API Service using Apps Script
 // This replaces the local database with Google Sheets as the primary database
 
-const GOOGLE_APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL;
-const GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY;
+import { config } from './config';
+
+const GOOGLE_APPS_SCRIPT_URL = config.googleAppsScriptUrl;
+const GOOGLE_SHEETS_API_KEY = config.googleSheetsApiKey;
 
 interface User {
   id: string;

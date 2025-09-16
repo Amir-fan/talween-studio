@@ -3,8 +3,8 @@
 // Copy this entire code into your Google Apps Script project
 
 // Configuration - Set these values in your Apps Script
-const API_KEY = '1e8H6MdRGfQQJNpNL0NvUJtwV89Wqk6hQsZ1ocpb-mI'; // Set this in your Apps Script
-const SPREADSHEET_ID = 'talween_2024_secure_key_xyz789abc123'; // Set this in your Apps Script
+const API_KEY = '4808f174cdf9c9aa94cdd80d02d3b069fa04b49b'; // Set this in your Apps Script
+const SPREADSHEET_ID = '1e8H6MdRGF0QJNpNL0NvUwJtWv89Wqk6hQsZIocpb-mI'; // Set this in your Apps Script
 const SHEET_NAME = 'Users';
 
 // Main entry point for GET requests (Database API)
