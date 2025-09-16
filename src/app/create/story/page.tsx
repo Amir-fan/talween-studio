@@ -4,7 +4,9 @@
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/context/auth-context';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -41,10 +43,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import React from 'react';
-import { useAuth } from '@/context/auth-context';
 import withAuth from '@/hoc/withAuth';
 import { InsufficientCreditsPopup } from '@/components/popups/insufficient-credits-popup';
-import { TenorGIF } from '@/components/tenor-gif';
+// import { TenorGIF } from '@/components/tenor-gif';
 import type { StoryAndPagesOutput, StoryAndPagesInput } from './types';
 import { generateStoryAction } from './actions';
 
@@ -69,8 +70,15 @@ const lessons = [
 ];
 
 function CreateStoryPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [step, setStep] = useState(1);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/signup');
+    }
+  }, [user, authLoading, router]);
 
   // Form state
   const [childName, setChildName] = useState('');
@@ -131,7 +139,7 @@ function CreateStoryPage() {
 
     try {
         const input: StoryAndPagesInput = {
-            userId: user.uid,
+            userId: user.id,
             childName,
             ageGroup,
             numberOfPages,
@@ -163,6 +171,21 @@ function CreateStoryPage() {
     }
   };
 
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // Will redirect
+  }
 
   return (
     <div className="min-h-screen bg-yellow-50/30">
@@ -398,25 +421,76 @@ function CreateStoryPage() {
                 </CardHeader>
                 <CardContent className="px-8">
                     {loading && (
-                        <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-muted-foreground">
-                            <TenorGIF />
+                        <div className="flex min-h-[500px] flex-col items-center justify-center gap-8 text-talween-brown">
+                            <div className="relative">
+                                {/* Animated Magic Wand */}
+                                <div className="w-20 h-20 bg-gradient-to-r from-talween-pink via-talween-purple to-talween-teal rounded-full flex items-center justify-center animate-spin">
+                                    <Wand2 className="h-10 w-10 text-white animate-pulse" />
+                                </div>
+                                {/* Floating Sparkles */}
+                                <div className="absolute -top-2 -right-2 w-4 h-4 bg-talween-yellow rounded-full animate-bounce"></div>
+                                <div className="absolute -bottom-2 -left-2 w-3 h-3 bg-talween-orange rounded-full animate-bounce delay-300"></div>
+                                <div className="absolute top-1/2 -left-4 w-2 h-2 bg-talween-green rounded-full animate-bounce delay-500"></div>
+                            </div>
+                            
+                            <div className="text-center space-y-4">
+                                <h3 className="text-2xl font-bold text-talween-brown">لحظات سحرية...</h3>
+                                <p className="text-lg text-talween-brown/70 max-w-md">
+                                    يقوم الذكاء الاصطناعي بنسج الكلمات والصور معاً لإنشاء قصة فريدة لـ <strong>{childName}</strong>
+                                </p>
+                                
+                                {/* Progress Steps */}
+                                <div className="flex items-center gap-4 mt-8">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 bg-talween-green rounded-full animate-pulse"></div>
+                                        <span className="text-sm text-talween-brown/70">كتابة القصة</span>
+                                    </div>
+                                    <div className="w-8 h-0.5 bg-talween-yellow/30"></div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 bg-talween-yellow rounded-full animate-pulse"></div>
+                                        <span className="text-sm text-talween-brown/70">رسم الصور</span>
+                                    </div>
+                                    <div className="w-8 h-0.5 bg-talween-yellow/30"></div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 bg-talween-yellow/30 rounded-full"></div>
+                                        <span className="text-sm text-talween-brown/50">التجميع النهائي</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
                     {story && story.pages && (
-                        <div className="space-y-12">
+                        <div className="space-y-8">
                            {story.pages.map((page, index) => (
-                               <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                                   <div className={`order-2 ${index % 2 === 0 ? 'md:order-1' : 'md:order-2'}`}>
-                                        <p className="leading-loose text-xl">{page.text}</p>
-                                   </div>
-                                   <div className={`order-1 ${index % 2 === 0 ? 'md:order-2' : 'md:order-1'}`}>
-                                       <Image
-                                            src={page.imageDataUri}
-                                            alt={`Illustration for page ${index + 1}`}
-                                            width={500}
-                                            height={500}
-                                            className="rounded-lg border bg-white shadow-sm w-full object-contain aspect-square"
-                                        />
+                               <div key={index} className="w-full">
+                                   {/* Mobile: Stack vertically, Desktop: Side by side */}
+                                   <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 lg:gap-8 items-start">
+                                       {/* Text Content */}
+                                       <div className={`w-full ${index % 2 === 0 ? 'lg:order-1' : 'lg:order-2'}`}>
+                                            <div className="bg-talween-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-talween-yellow/20">
+                                                <div className="flex items-center gap-3 mb-4">
+                                                    <div className="w-8 h-8 bg-gradient-to-r from-talween-pink to-talween-purple rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                                        {index + 1}
+                                                    </div>
+                                                    <h3 className="font-bold text-talween-brown text-lg">الصفحة {index + 1}</h3>
+                                                </div>
+                                                <p className="leading-relaxed text-talween-brown/80 text-lg">{page.text}</p>
+                                            </div>
+                                       </div>
+                                       
+                                       {/* Image Content */}
+                                       <div className={`w-full ${index % 2 === 0 ? 'lg:order-2' : 'lg:order-1'}`}>
+                                           <div className="relative group">
+                                               <Image
+                                                    src={page.imageDataUri}
+                                                    alt={`Illustration for page ${index + 1}`}
+                                                    width={600}
+                                                    height={600}
+                                                    className="rounded-2xl border-2 border-talween-yellow/30 bg-talween-white shadow-xl w-full h-auto object-contain aspect-square group-hover:scale-105 transition-transform duration-300"
+                                                />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                           </div>
+                                       </div>
                                    </div>
                                </div>
                            ))}

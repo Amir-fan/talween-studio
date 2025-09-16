@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   BookOpen,
   Eye,
@@ -12,6 +12,7 @@ import {
   Palette,
   Library as LibraryIcon,
   Plus,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +20,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
+import { useToast } from '@/hooks/use-toast';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -27,46 +29,49 @@ interface LibraryItem {
   id: string;
   title: string;
   type: 'story' | 'coloring' | 'image';
-  thumbnail: string;
-  createdAt: string;
+  thumbnail_url?: string;
+  created_at: number;
   status: 'draft' | 'published' | 'favorite';
+  content: any;
 }
 
 export default function LibraryPage() {
   const { user, userData } = useAuth();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('newest');
+  const [items, setItems] = useState<LibraryItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data for demonstration
-  const mockItems: LibraryItem[] = [
-    {
-      id: '1',
-      title: 'مغامرة أحمد في الغابة',
-      type: 'story',
-      thumbnail: '/api/placeholder/300/200',
-      createdAt: '2024-01-15',
-      status: 'published'
-    },
-    {
-      id: '2',
-      title: 'صفحة تلوين - تنين',
-      type: 'coloring',
-      thumbnail: '/api/placeholder/300/200',
-      createdAt: '2024-01-14',
-      status: 'favorite'
-    },
-    {
-      id: '3',
-      title: 'تحويل صورة عائلية',
-      type: 'image',
-      thumbnail: '/api/placeholder/300/200',
-      createdAt: '2024-01-13',
-      status: 'draft'
-    }
-  ];
+  // Fetch user content
+  useEffect(() => {
+    const fetchContent = async () => {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
 
-  const filteredItems = mockItems.filter(item => {
+      try {
+        const response = await fetch(`/api/user/content?userId=${user.id}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          setItems(data.content);
+        } else {
+          console.error('Failed to fetch content:', data.error);
+        }
+      } catch (error) {
+        console.error('Error fetching content:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchContent();
+  }, [user?.id]);
+
+  const filteredItems = items.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterType === 'all' || item.type === filterType;
     return matchesSearch && matchesFilter;
@@ -75,15 +80,75 @@ export default function LibraryPage() {
   const sortedItems = [...filteredItems].sort((a, b) => {
     switch (sortBy) {
       case 'newest':
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        return b.created_at - a.created_at;
       case 'oldest':
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        return a.created_at - b.created_at;
       case 'title':
         return a.title.localeCompare(b.title);
       default:
         return 0;
     }
   });
+
+  // Handle favorite toggle
+  const handleToggleFavorite = async (itemId: string) => {
+    try {
+      const response = await fetch(`/api/user/content/${itemId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'toggle-favorite' })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setItems(prev => prev.map(item => 
+          item.id === itemId ? data.content : item
+        ));
+        toast({
+          title: data.content.status === 'favorite' ? 'تم إضافة للمفضلة' : 'تم إزالة من المفضلة',
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'خطأ',
+        description: 'فشل في تحديث المفضلة',
+      });
+    }
+  };
+
+  // Handle delete
+  const handleDelete = async (itemId: string) => {
+    try {
+      const response = await fetch(`/api/user/content/${itemId}`, {
+        method: 'DELETE'
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setItems(prev => prev.filter(item => item.id !== itemId));
+        toast({
+          title: 'تم الحذف',
+          description: 'تم حذف المحتوى بنجاح',
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'خطأ',
+        description: 'فشل في حذف المحتوى',
+      });
+    }
+  };
+
+  // Calculate stats
+  const stats = {
+    stories: items.filter(item => item.type === 'story').length,
+    coloring: items.filter(item => item.type === 'coloring').length,
+    favorites: items.filter(item => item.status === 'favorite').length,
+  };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -111,7 +176,7 @@ export default function LibraryPage() {
     }
   };
 
-  return (
+      return (
     <div className="min-h-screen bg-gray-50/30">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
@@ -124,15 +189,15 @@ export default function LibraryPage() {
               <p className="mt-2 text-muted-foreground">
                 جميع قصصك وصفحات التلوين في مكان واحد
               </p>
-            </div>
+        </div>
             <Button asChild className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
               <a href="/create">
                 <Plus className="ml-2 h-4 w-4" />
                 إنشاء جديد
               </a>
-            </Button>
-          </div>
-        </div>
+                                    </Button>
+                                </div>
+                            </div>
 
         {/* Stats */}
         <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -142,7 +207,7 @@ export default function LibraryPage() {
                 <BookOpen className="h-8 w-8 text-blue-500" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-muted-foreground">القصص</p>
-                  <p className="text-2xl font-bold">1</p>
+                  <p className="text-2xl font-bold">{stats.stories}</p>
                 </div>
               </div>
             </CardContent>
@@ -153,7 +218,7 @@ export default function LibraryPage() {
                 <Palette className="h-8 w-8 text-green-500" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-muted-foreground">صفحات التلوين</p>
-                  <p className="text-2xl font-bold">1</p>
+                  <p className="text-2xl font-bold">{stats.coloring}</p>
                 </div>
               </div>
             </CardContent>
@@ -164,7 +229,7 @@ export default function LibraryPage() {
                 <Heart className="h-8 w-8 text-red-500" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-muted-foreground">المفضلة</p>
-                  <p className="text-2xl font-bold">1</p>
+                  <p className="text-2xl font-bold">{stats.favorites}</p>
                 </div>
               </div>
             </CardContent>
@@ -182,7 +247,7 @@ export default function LibraryPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
-            </div>
+        </div>
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="w-40">
                 <Filter className="ml-2 h-4 w-4" />
@@ -195,21 +260,38 @@ export default function LibraryPage() {
                 <SelectItem value="image">الصور</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+            </div>
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-40">
               <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
+                </SelectTrigger>
+                <SelectContent>
               <SelectItem value="newest">الأحدث</SelectItem>
-              <SelectItem value="oldest">الأقدم</SelectItem>
+                    <SelectItem value="oldest">الأقدم</SelectItem>
               <SelectItem value="title">الاسم</SelectItem>
-            </SelectContent>
-          </Select>
+                </SelectContent>
+            </Select>
         </div>
 
         {/* Content Grid */}
-        {sortedItems.length === 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="overflow-hidden">
+                <div className="aspect-video bg-gray-200 animate-pulse" />
+                <CardHeader className="pb-3">
+                  <div className="h-4 bg-gray-200 rounded animate-pulse mb-2" />
+                  <div className="h-6 bg-gray-200 rounded animate-pulse mb-2" />
+                  <div className="h-3 bg-gray-200 rounded animate-pulse w-1/2" />
+                </CardHeader>
+                <CardFooter className="flex gap-2">
+                  <div className="h-8 bg-gray-200 rounded flex-1 animate-pulse" />
+                  <div className="h-8 w-8 bg-gray-200 rounded animate-pulse" />
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        ) : sortedItems.length === 0 ? (
           <Card className="p-12 text-center">
             <LibraryIcon className="mx-auto h-12 w-12 text-muted-foreground" />
             <h3 className="mt-4 text-lg font-semibold">لا توجد عناصر</h3>
@@ -226,7 +308,7 @@ export default function LibraryPage() {
               <Card key={item.id} className="group overflow-hidden transition-all hover:shadow-lg">
                 <div className="aspect-video overflow-hidden">
                   <img
-                    src={item.thumbnail}
+                    src={item.thumbnail_url || '/api/placeholder/300/200'}
                     alt={item.title}
                     className="h-full w-full object-cover transition-transform group-hover:scale-105"
                   />
@@ -237,13 +319,28 @@ export default function LibraryPage() {
                     <span className="text-sm text-muted-foreground">
                       {getTypeLabel(item.type)}
                     </span>
-                    {item.status === 'favorite' && (
-                      <Heart className="ml-auto h-4 w-4 fill-red-500 text-red-500" />
-                    )}
+                    <div className="ml-auto flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleToggleFavorite(item.id)}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Heart className={`h-4 w-4 ${item.status === 'favorite' ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(item.id)}
+                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   <CardTitle className="line-clamp-2">{item.title}</CardTitle>
                   <CardDescription>
-                    {new Date(item.createdAt).toLocaleDateString('ar-SA')}
+                    {new Date(item.created_at * 1000).toLocaleDateString('ar-SA')}
                   </CardDescription>
                 </CardHeader>
                 <CardFooter className="flex gap-2">

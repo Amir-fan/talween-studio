@@ -9,6 +9,12 @@ Set these in cPanel → Node.js App → Environment Variables:
 GOOGLE_API_KEY=your_google_ai_api_key_here
 ```
 
+### MyFatoorah Payment Integration
+```
+MYFATOORAH_API_KEY=your_myfatoorah_api_key_here
+MYFATOORAH_BASE_URL=https://api.myfatoorah.com
+```
+
 ### Admin Access (Optional)
 ```
 ADMIN_PASSWORD=your_secure_admin_password_here
@@ -37,6 +43,13 @@ PORT=3000
 1. Go to [Google AI Studio](https://aistudio.google.com/)
 2. Create a new API key
 3. Copy the key to `GOOGLE_API_KEY`
+
+### MyFatoorah API Key
+1. Go to [MyFatoorah Developer Portal](https://portal.myfatoorah.com/)
+2. Sign up for a developer account
+3. Create a new API key in your dashboard
+4. Copy the key to `MYFATOORAH_API_KEY`
+5. Use `https://api.myfatoorah.com` for production or `https://apitest.myfatoorah.com` for testing
 
 ### Firebase (Optional - currently disabled)
 1. Go to [Firebase Console](https://console.firebase.google.com/)

@@ -11,11 +11,11 @@ export default function Footer() {
         <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
           <div className="flex items-center gap-2">
             <Image
-              src="/talween logo.png"
+              src="/talween logo new.png"
               alt="Talween Studio Logo"
-              width={24}
-              height={24}
-              className="h-6 w-6"
+              width={32}
+              height={32}
+              className="h-8 w-8"
             />
             <span className="font-headline text-lg font-bold">Talween Studio</span>
           </div>

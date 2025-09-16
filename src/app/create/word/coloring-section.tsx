@@ -48,14 +48,14 @@ export function ColoringSection() {
     defaultValues: {
       description: '',
       difficulty: 'Simple',
-      userId: user?.uid || 'admin'
+      userId: user?.id || 'admin'
     },
   });
 
   // Watch for user changes to update the form's default userId
   useState(() => {
     if (user) {
-      form.setValue('userId', user.uid);
+      form.setValue('userId', user.id);
     } else {
         form.setValue('userId', 'admin');
     }
@@ -69,7 +69,7 @@ export function ColoringSection() {
       // Check credits on client side first
       if (user && !isAdmin) {
         const cost = PRICING_CONFIG.FEATURE_COSTS.TEXT_TO_COLORING;
-        const creditResult = deductLocalUserCredits(user.uid, cost);
+        const creditResult = deductLocalUserCredits(user.id, cost);
         if (!creditResult.success) {
           setShowCreditsPopup(true);
           return;
@@ -78,7 +78,7 @@ export function ColoringSection() {
         refreshUserData();
       }
 
-      const finalValues = { ...values, userId: user?.uid || 'admin' };
+      const finalValues = { ...values, userId: user?.id || 'admin' };
       const result = await generateImageAction(finalValues);
       if (result.success && result.data) {
         setImageDataUri(result.data.coloringPageDataUri);

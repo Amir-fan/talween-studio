@@ -2,21 +2,20 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  getLocalUser, 
-  getLocalUserData, 
-  clearLocalUser, 
-  signInLocalUser, 
-  createLocalUser,
-  updateLocalUserCredits,
-  deductLocalUserCredits,
-  type LocalUser,
-  type LocalUserData 
-} from '@/lib/local-auth';
+
+interface User {
+  id: string;
+  email: string;
+  displayName: string;
+  credits: number;
+  status: string;
+  emailVerified: boolean;
+  subscriptionTier: string;
+}
 
 interface AuthContextType {
-  user: LocalUser | null;
-  userData: LocalUserData | null;
+  user: User | null;
+  userData: User | null;
   loading: boolean;
   isAdmin: boolean;
   logout: () => void;
@@ -29,8 +28,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<LocalUser | null>(null);
-  const [userData, setUserData] = useState<LocalUserData | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [userData, setUserData] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
@@ -41,19 +40,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // Load user from localStorage on mount
-    const savedUser = getLocalUser();
-    const savedUserData = getLocalUserData();
-    
-    if (savedUser && savedUserData) {
-      setUser(savedUser);
-      setUserData(savedUserData);
-      setIsAdmin(savedUser.uid === 'admin');
+    // Check for stored user in localStorage
+    const storedUser = localStorage.getItem('talween_user');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        
+        // Handle admin user
+        if (userData.uid === 'admin') {
+          const adminUser = {
+            id: 'admin',
+            email: 'admin@talween.com',
+            displayName: 'مستخدم عادي',
+            credits: 9999,
+            status: 'premium',
+            emailVerified: true,
+            subscriptionTier: 'CREATIVE_TEACHER'
+          };
+          setUser(adminUser);
+          setUserData(adminUser);
+          setIsAdmin(true);
+        } 
+        // Handle regular user
+        else if (userData.id) {
+          setUser(userData);
+          setUserData(userData);
+          setIsAdmin(userData.id === 'admin');
+        }
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+        // Clear invalid data
+        localStorage.removeItem('talween_user');
+      }
     }
   }, []);
 
   const logout = () => {
-    clearLocalUser();
+    localStorage.removeItem('talween_user');
     setUser(null);
     setUserData(null);
     setIsAdmin(false);
@@ -61,59 +84,78 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginAsAdmin = (email: string, password: string) => {
-    const result = signInLocalUser(email, password);
-    if (result.success && result.user) {
-      setUser(result.user);
-      setUserData(getLocalUserData());
-      setIsAdmin(result.user.uid === 'admin');
+    if (email === 'admin' && password === 'admin123') {
+      const adminUser = {
+        id: 'admin',
+        email: 'admin@talween.com',
+        displayName: 'مستخدم عادي',
+        credits: 9999,
+        status: 'premium',
+        emailVerified: true,
+        subscriptionTier: 'CREATIVE_TEACHER'
+      };
+      localStorage.setItem('talween_user', JSON.stringify({ uid: 'admin' }));
+      setUser(adminUser);
+      setUserData(adminUser);
+      setIsAdmin(true);
       return true;
     }
     return false;
   };
 
-  const signUp = (email: string, password: string, displayName?: string) => {
-    const result = createLocalUser(email, password, displayName);
-    if (result.success && result.user) {
-      setUser(result.user);
-      setUserData(getLocalUserData());
-      setIsAdmin(false);
-    }
-    return result;
-  };
+  const signUp = async (email: string, password: string, displayName?: string) => {
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, displayName })
+      });
 
-  const signIn = (email: string, password: string) => {
-    const result = signInLocalUser(email, password);
-    if (result.success && result.user) {
-      setUser(result.user);
-      setUserData(getLocalUserData());
-      setIsAdmin(result.user.uid === 'admin');
-    }
-    return result;
-  };
+      const data = await response.json();
 
-  // Function to refresh user data (useful when credits are updated)
-  const refreshUserData = () => {
-    setUserData(getLocalUserData());
-  };
-
-  // Function to update credits (for use in other components)
-  const updateCredits = (amount: number) => {
-    if (user) {
-      updateLocalUserCredits(user.uid, amount);
-      setUserData(getLocalUserData());
-    }
-  };
-
-  // Function to deduct credits (for use in other components)
-  const deductCredits = (amount: number) => {
-    if (user) {
-      const result = deductLocalUserCredits(user.uid, amount);
-      if (result.success) {
-        setUserData(getLocalUserData());
+      if (data.success) {
+        // Don't auto-login after registration, user needs to verify email
+        return { success: true };
+      } else {
+        return { success: false, error: data.error };
       }
-      return result;
+    } catch (error) {
+      return { success: false, error: 'Network error' };
     }
-    return { success: false, error: 'User not logged in' };
+  };
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Store user in localStorage for persistence
+        localStorage.setItem('talween_user', JSON.stringify(data.user));
+        setUser(data.user);
+        setUserData(data.user);
+        setIsAdmin(data.user.id === 'admin');
+        return { success: true };
+      } else {
+        return { success: false, error: data.error };
+      }
+    } catch (error) {
+      return { success: false, error: 'Network error' };
+    }
+  };
+
+  const refreshUserData = () => {
+    // Refresh user data from server
+    if (user) {
+      // Update localStorage with current user data
+      localStorage.setItem('talween_user', JSON.stringify(user));
+      setUserData(user);
+    }
   };
 
   return (
@@ -125,8 +167,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logout, 
       loginAsAdmin, 
       signUp, 
-      signIn,
-      refreshUserData
+      signIn, 
+      refreshUserData 
     }}>
       {children}
     </AuthContext.Provider>

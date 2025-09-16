@@ -17,8 +17,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        body: ['Poppins', 'sans-serif'],
-        headline: ['Poppins', 'sans-serif'],
+        body: ['Cairo', 'sans-serif'],
+        headline: ['Cairo', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {
@@ -61,6 +61,18 @@ export default {
           '3': 'hsl(var(--chart-3))',
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
+        },
+        // Talween brand colors
+        'talween': {
+          'brown': 'hsl(var(--talween-brown))',
+          'yellow': 'hsl(var(--talween-yellow))',
+          'white': 'hsl(var(--talween-white))',
+          'pink': 'hsl(var(--talween-pink))',
+          'green': 'hsl(var(--talween-green))',
+          'orange': 'hsl(var(--talween-orange))',
+          'red': 'hsl(var(--talween-red))',
+          'teal': 'hsl(var(--talween-teal))',
+          'purple': 'hsl(var(--talween-purple))',
         },
       },
       borderRadius: {

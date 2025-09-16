@@ -29,6 +29,8 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+    // Keep unoptimized for better performance
+    unoptimized: true,
   },
   // Performance optimizations
   experimental: {

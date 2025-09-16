@@ -2,9 +2,11 @@
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Image as ImageIcon, Sparkles, Type, FileImage, Bot } from 'lucide-react';
+import { BookOpen, Image as ImageIcon, Sparkles, Type, FileImage, Bot, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 const creationOptions = [
   {
@@ -72,7 +74,30 @@ const creationOptions = [
 ];
 
 function CreatePage() {
-    const { user, userData, isAdmin } = useAuth();
+  const { user, userData, isAdmin, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/signup');
+    }
+  }, [user, loading, router]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // Will redirect
+  }
+
   return (
     <div className="bg-yellow-50/50">
       <div className="container mx-auto max-w-5xl px-4 py-16 sm:py-24">

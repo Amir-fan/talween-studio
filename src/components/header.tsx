@@ -19,32 +19,32 @@ export default function Header() {
     ];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b border-talween-yellow/20 bg-talween-white/95 backdrop-blur supports-[backdrop-filter]:bg-talween-white/60">
       <div className="container flex h-20 items-center justify-between">
         <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center">
                 <Image
-                  src="/talween logo.png"
+                  src="/talween logo new.png"
                   alt="Talween Studio Logo"
-                  width={40}
-                  height={40}
-                  className="h-10 w-10"
+                  width={70}
+                  height={70}
+                  className="h-18 w-18"
                 />
             </Link>
              <nav className="hidden items-center gap-6 text-sm lg:flex">
                 {navLinks.map(link => {
                     if (link.auth && !user) return null;
-                    return <Link key={link.label} href={link.href} className="font-semibold text-muted-foreground transition-colors hover:text-primary">{link.label}</Link>
+                    return <Link key={link.label} href={link.href} className="font-semibold text-talween-brown/70 transition-colors hover:text-talween-orange">{link.label}</Link>
                 })}
             </nav>
         </div>
        
         <div className="flex items-center gap-4">
            {(user && userData) && (
-             <Button variant="outline" className="rounded-full hidden sm:flex">
-               <Star className="h-4 w-4 ml-2 text-yellow-500 fill-yellow-400" />
-               <span className="font-bold">{userData.credits}</span>
-               <span className="mr-1">نقطة</span>
+             <Button variant="outline" className="rounded-full hidden sm:flex border-talween-yellow/30 bg-talween-yellow/10 hover:bg-talween-yellow/20">
+               <Star className="h-4 w-4 ml-2 text-talween-yellow fill-talween-yellow" />
+               <span className="font-bold text-talween-brown">{userData.credits}</span>
+               <span className="mr-1 text-talween-brown">نقطة</span>
              </Button>
            )}
             {user ? (
@@ -53,17 +53,20 @@ export default function Header() {
                     خروج
                 </Button>
             ) : (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                     <Button asChild variant="ghost" size="sm" className="hidden md:flex">
                         <Link href="/login">
                             <LogIn className="ml-2 h-4 w-4" />
                             دخول
                         </Link>
                     </Button>
+                    <Button asChild size="lg" className="hidden md:flex bg-gradient-to-r from-talween-green to-talween-teal hover:from-talween-green/90 hover:to-talween-teal/90 text-white font-bold px-6 py-3 text-base shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
+                        <Link href="/signup">إنشاء حساب</Link>
+                    </Button>
                 </div>
             )}
-            <Button asChild size="sm" className="hidden md:flex">
-                <Link href="/create">أنشئ قصة</Link>
+            <Button asChild size="lg" className="hidden md:flex bg-gradient-to-r from-talween-pink to-talween-purple hover:from-talween-pink/90 hover:to-talween-purple/90 text-white font-bold px-6 py-3 text-base shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
+                <Link href="/signup">أنشئ قصة</Link>
             </Button>
             
             {/* Mobile Menu */}
@@ -102,18 +105,27 @@ export default function Header() {
                                     خروج
                                 </Button>
                              ) : (
-                                <SheetClose asChild>
-                                    <Link href="/login" className='w-full'>
-                                        <Button variant="outline" className="w-full justify-center">
-                                            <LogIn className="ml-2 h-4 w-4" />
-                                            دخول
-                                        </Button>
-                                    </Link>
-                                </SheetClose>
+                                <>
+                                    <SheetClose asChild>
+                                        <Link href="/login" className='w-full'>
+                                            <Button variant="outline" className="w-full justify-center">
+                                                <LogIn className="ml-2 h-4 w-4" />
+                                                دخول
+                                            </Button>
+                                        </Link>
+                                    </SheetClose>
+                                    <SheetClose asChild>
+                                        <Link href="/signup" className='w-full'>
+                                            <Button className="w-full justify-center bg-gradient-to-r from-talween-green to-talween-teal hover:from-talween-green/90 hover:to-talween-teal/90 text-white font-bold">
+                                                إنشاء حساب
+                                            </Button>
+                                        </Link>
+                                    </SheetClose>
+                                </>
                              )}
                              <SheetClose asChild>
-                                <Button asChild className="w-full">
-                                    <Link href="/create">أنشئ قصة</Link>
+                                <Button asChild className="w-full bg-gradient-to-r from-talween-pink to-talween-purple hover:from-talween-pink/90 hover:to-talween-purple/90 text-white font-bold">
+                                    <Link href="/signup">أنشئ قصة</Link>
                                 </Button>
                              </SheetClose>
                         </div>

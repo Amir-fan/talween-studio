@@ -12,23 +12,77 @@ import { useAuth } from '@/context/auth-context';
 import { PRICING_CONFIG } from '@/lib/pricing';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
+
+interface UserStats {
+  stories: number;
+  coloring: number;
+  images: number;
+  totalContent: number;
+  creditsUsed: number;
+  creditsRemaining: number;
+  totalPurchased: number;
+  joinDate: number;
+  lastLogin?: number;
+  subscriptionTier: string;
+  emailVerified: boolean;
+}
+
+interface Transaction {
+  id: string;
+  type: 'purchase' | 'deduction';
+  amount: number;
+  description: string;
+  date: Date;
+  status: string;
+}
 
 export default function AccountPage() {
   const { user, userData } = useAuth();
-  const [recentTransactions, setRecentTransactions] = useState([]);
+  const { toast } = useToast();
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock recent transactions - replace with real data from Firestore
+  // Fetch user statistics and transactions
   useEffect(() => {
-    const mockTransactions = [
-      { id: 1, type: 'deduction', amount: -66, description: 'قصة باسم أحمد (4 صفحات)', date: new Date() },
-      { id: 2, type: 'deduction', amount: -27, description: 'تحويل صورة شخصية إلى تلوين', date: new Date(Date.now() - 86400000) },
-      { id: 3, type: 'deduction', amount: -35, description: 'تحويل فكرة نصية إلى تلوين', date: new Date(Date.now() - 172800000) },
-      { id: 4, type: 'purchase', amount: 1368, description: 'اشتراك باقة المكتشف', date: new Date(Date.now() - 259200000) },
-    ];
-    setRecentTransactions(mockTransactions);
-  }, []);
+    const fetchUserStats = async () => {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
 
-  if (!user || !userData) {
+      try {
+        const response = await fetch(`/api/user/stats?userId=${user.id}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          setStats(data.stats);
+          setRecentTransactions(data.recentTransactions);
+        } else {
+          console.error('Failed to fetch user stats:', data.error);
+          toast({
+            variant: 'destructive',
+            title: 'خطأ',
+            description: 'فشل في تحميل بيانات الحساب',
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching user stats:', error);
+        toast({
+          variant: 'destructive',
+          title: 'خطأ',
+          description: 'فشل في تحميل بيانات الحساب',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserStats();
+  }, [user?.id, toast]);
+
+  if (!user || !userData || loading) {
     return (
       <div className="min-h-screen bg-yellow-50/30 flex items-center justify-center">
         <div className="text-center">
@@ -39,7 +93,17 @@ export default function AccountPage() {
     );
   }
 
-  const currentCredits = userData.credits || 0;
+  if (!stats) {
+    return (
+      <div className="min-h-screen bg-yellow-50/30 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">فشل في تحميل بيانات الحساب</p>
+        </div>
+      </div>
+    );
+  }
+
+  const currentCredits = stats.creditsRemaining;
   const creditValueUSD = currentCredits * PRICING_CONFIG.CREDIT_TO_USD;
 
   // Determine subscription tier based on credits
@@ -61,7 +125,7 @@ export default function AccountPage() {
             حسابي الشخصي
           </h1>
           <p className="text-muted-foreground">
-            مرحباً {userData.name || user.email}، إدارة رصيدك ومتابعة نشاطك
+            مرحباً {userData.displayName || user.email}، إدارة رصيدك ومتابعة نشاطك
           </p>
         </div>
 
@@ -134,19 +198,23 @@ export default function AccountPage() {
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">القصص المنشأة</span>
-                  <Badge variant="secondary">12</Badge>
+                  <Badge variant="secondary">{stats.stories}</Badge>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">صفحات التلوين</span>
-                  <Badge variant="secondary">45</Badge>
+                  <Badge variant="secondary">{stats.coloring}</Badge>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">التحويلات</span>
-                  <Badge variant="secondary">8</Badge>
+                  <Badge variant="secondary">{stats.images}</Badge>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">النقاط المستخدمة</span>
-                  <Badge variant="outline">1,234</Badge>
+                  <Badge variant="outline">{stats.creditsUsed.toLocaleString()}</Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">إجمالي المحتوى</span>
+                  <Badge variant="secondary">{stats.totalContent}</Badge>
                 </div>
               </CardContent>
             </Card>
@@ -246,30 +314,40 @@ export default function AccountPage() {
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">الاسم</label>
-                  <div className="mt-1 text-lg">{userData.name || 'غير محدد'}</div>
+                  <div className="mt-1 text-lg">{userData.displayName || 'غير محدد'}</div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">البريد الإلكتروني</label>
-                  <div className="mt-1 text-lg">{user.email}</div>
+                  <div className="mt-1 text-lg flex items-center gap-2">
+                    {user.email}
+                    {stats.emailVerified ? (
+                      <Badge variant="secondary" className="text-green-600">✓ مفعل</Badge>
+                    ) : (
+                      <Badge variant="destructive">غير مفعل</Badge>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">تاريخ الانضمام</label>
                   <div className="mt-1 text-lg">
-                    {user.metadata?.creationTime ? 
-                      new Date(user.metadata.creationTime).toLocaleDateString('ar-SA') : 
-                      'غير محدد'
-                    }
+                    {new Date(stats.joinDate * 1000).toLocaleDateString('ar-SA')}
                   </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">آخر تسجيل دخول</label>
                   <div className="mt-1 text-lg">
-                    {user.metadata?.lastSignInTime ? 
-                      new Date(user.metadata.lastSignInTime).toLocaleDateString('ar-SA') : 
+                    {stats.lastLogin ? 
+                      new Date(stats.lastLogin * 1000).toLocaleDateString('ar-SA') : 
                       'غير محدد'
                     }
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">الباقة الحالية</label>
+                  <div className="mt-1 text-lg">
+                    <Badge variant="outline">{stats.subscriptionTier}</Badge>
                   </div>
                 </div>
               </div>

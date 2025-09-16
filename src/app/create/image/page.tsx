@@ -8,11 +8,12 @@ import { ArrowRight, Camera, Loader2, Upload, Lightbulb, Wand2, Download } from 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { generateImageFromPhotoAction } from './actions';
 import { useAuth } from '@/context/auth-context';
+import { useRouter } from 'next/navigation';
 
 export default function CreateWithImagePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -21,7 +22,14 @@ export default function CreateWithImagePage() {
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/signup');
+    }
+  }, [user, authLoading, router]);
 
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,7 +57,7 @@ export default function CreateWithImagePage() {
     try {
         const result = await generateImageFromPhotoAction({ 
           photoDataUri: previewUrl,
-          userId: user?.uid 
+          userId: user?.id 
         });
         if (result.success && result.data) {
             setColoringPageUrl(result.data.coloringPageDataUri);
@@ -67,6 +75,21 @@ export default function CreateWithImagePage() {
     }
   };
 
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // Will redirect
+  }
 
   return (
     <div className="min-h-screen bg-yellow-50/30">

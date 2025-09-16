@@ -56,14 +56,14 @@ export default function SignUpPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     try {
-      const result = signUp(values.email, values.password, values.displayName);
+      const result = await signUp(values.email, values.password, values.displayName);
       
       if (result.success) {
         toast({
           title: 'تم إنشاء الحساب بنجاح!',
-          description: 'مرحباً بك في تلوين ستوديو',
+          description: 'يرجى التحقق من بريدك الإلكتروني لتأكيد الحساب',
         });
-        router.push('/create');
+        router.push('/login');
       } else {
         toast({
           variant: 'destructive',

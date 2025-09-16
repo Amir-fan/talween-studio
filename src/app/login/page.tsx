@@ -61,7 +61,7 @@ export default function LoginPage() {
       }
 
       // Try regular sign in
-      const result = signIn(values.email, values.password);
+      const result = await signIn(values.email, values.password);
       
       if (result.success) {
         toast({
