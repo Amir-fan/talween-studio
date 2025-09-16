@@ -24,7 +24,8 @@ export async function POST(request: NextRequest) {
     if (result.success) {
       return NextResponse.json({
         success: true,
-        message: 'تم إنشاء الحساب بنجاح. يرجى التحقق من بريدك الإلكتروني لتأكيد الحساب.'
+        message: 'تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.',
+        user: result.user
       });
     } else {
       return NextResponse.json(

@@ -145,7 +145,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await response.json();
 
       if (data.success) {
-        // Don't auto-login after registration, user needs to verify email
+        // Auto-login user after successful registration (no verification needed)
+        if (data.user) {
+          // Convert uid to id for consistency
+          const userWithId = {
+            ...data.user,
+            id: data.user.uid || data.user.id // Use uid as id if available
+          };
+          
+          // Store user in localStorage for persistence
+          localStorage.setItem('talween_user', JSON.stringify(data.user));
+          setUser(userWithId);
+          setUserData(userWithId);
+          setIsAdmin(userWithId.id === 'admin');
+          
+          console.log('✅ User registered and logged in automatically');
+        }
         return { success: true };
       } else {
         return { success: false, error: data.error };

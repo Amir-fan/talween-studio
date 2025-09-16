@@ -61,9 +61,9 @@ export default function SignUpPage() {
       if (result.success) {
         toast({
           title: 'تم إنشاء الحساب بنجاح!',
-          description: 'يرجى التحقق من بريدك الإلكتروني لتأكيد الحساب',
+          description: 'تم تسجيل دخولك تلقائياً. مرحباً بك!',
         });
-        router.push('/login');
+        router.push('/');
       } else {
         toast({
           variant: 'destructive',

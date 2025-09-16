@@ -44,25 +44,30 @@ export async function registerUser(
 
     const user = result.user!;
 
-    // Send verification email (non-blocking)
-    const verificationLink = `${process.env.NEXT_PUBLIC_APP_URL}/verify-email?token=${user.verificationToken}`;
+    // Auto-verify user immediately (no email verification needed)
+    userDb.updateUser(user.id, {
+      email_verified: true,
+      status: 'active'
+    });
+
+    // Send welcome email (non-blocking)
     sendEmail(
       email,
-      'emailVerification',
-      { name: displayName, verificationLink },
+      'welcomeAfterVerification',
+      { name: displayName },
       user.id
     ).catch(error => {
       console.error('Email sending failed (non-blocking):', error);
     });
 
-    // Add to Google Sheets (non-blocking)
+    // Add to Google Sheets with verified status (non-blocking)
     addUserToSheets({
       id: user.id,
       email: user.email,
       display_name: user.displayName,
       credits: 50,
-      status: 'pending',
-      email_verified: false,
+      status: 'active',
+      email_verified: true,
       subscription_tier: 'FREE',
       created_at: Math.floor(Date.now() / 1000),
       total_spent: 0
@@ -77,8 +82,8 @@ export async function registerUser(
         email: user.email,
         displayName: user.displayName,
         credits: 50,
-        status: 'pending',
-        emailVerified: false,
+        status: 'active',
+        emailVerified: true,
         subscriptionTier: 'FREE'
       }
     };
@@ -102,10 +107,7 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
       return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
     }
 
-    // Check if email is verified
-    if (!user.email_verified) {
-      return { success: false, error: 'يرجى تأكيد بريدك الإلكتروني أولاً' };
-    }
+    // No email verification required - users are auto-verified on signup
 
     // Update last login
     userDb.updateUser(user.id, { last_login: Math.floor(Date.now() / 1000) });
