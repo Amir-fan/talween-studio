@@ -112,6 +112,12 @@ export function ColoringSection() {
       }
 
       const finalValues = { ...values, userId: user?.id || 'admin' };
+      console.log('🔍 CLIENT - Calling generateImageAction with:');
+      console.log('  - finalValues.userId:', finalValues.userId);
+      console.log('  - user?.id:', user?.id);
+      console.log('  - user?.credits:', user?.credits);
+      console.log('  - isAdmin:', isAdmin);
+      
       const result = await generateImageAction(finalValues);
       if (result.success && result.data) {
         setImageDataUri(result.data.coloringPageDataUri);

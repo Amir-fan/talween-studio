@@ -38,6 +38,14 @@ export async function checkAndDeductCreditsForFeature(
     console.log('  - cost:', cost);
     
     const { userDb } = await import('./simple-database');
+    
+    // List all users in database for debugging
+    console.log('  - All users in database:');
+    const allUsers = userDb.getAllUsers();
+    allUsers.forEach(u => {
+      console.log(`    - ${u.id}: ${u.email} (${u.credits} credits)`);
+    });
+    
     const user = userDb.findById(userId);
     
     console.log('  - user found:', !!user);
@@ -48,6 +56,8 @@ export async function checkAndDeductCreditsForFeature(
     
     if (!user) {
       console.log('❌ User not found in database');
+      console.log('  - Tried to find userId:', userId);
+      console.log('  - Available user IDs:', allUsers.map(u => u.id));
       return { success: false, error: 'User not found' };
     }
     
