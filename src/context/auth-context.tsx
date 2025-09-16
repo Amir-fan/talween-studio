@@ -287,19 +287,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.error('Error syncing with server:', error);
           }
           
-          // Fallback to localStorage data
+          // Use credits from the main user data (which should be updated)
           let credits = userData.credits || 50;
           
-          if (storedUserData) {
-            try {
-              const userDataFromStorage = JSON.parse(storedUserData);
-              if (userDataFromStorage.uid === userData.uid) {
-                credits = userDataFromStorage.credits || credits;
-              }
-            } catch (error) {
-              console.error('Error parsing user_data:', error);
-            }
-          }
+          console.log('🔍 REFRESH USER DATA:');
+          console.log('  - userData.credits:', userData.credits);
+          console.log('  - Final credits:', credits);
           
           const regularUser = {
             id: userData.uid, // This is the localStorage uid, should match database ID

@@ -230,8 +230,24 @@ export function deductLocalUserCredits(userId: string, amount: number): { succes
     const updatedUserData = { ...userData, credits: newCredits };
     saveLocalUserData(updatedUserData);
     
+    // Also update the main user localStorage key for consistency
+    const storedUser = localStorage.getItem('talween_user');
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        const updatedUser = { ...user, credits: newCredits };
+        localStorage.setItem('talween_user', JSON.stringify(updatedUser));
+        console.log('  - Updated talween_user with new credits:', newCredits);
+      } catch (error) {
+        console.log('  - Error updating talween_user:', error);
+      }
+    }
+    
     console.log('✅ Credits deducted successfully');
+    console.log('  - Old credits:', userData.credits);
+    console.log('  - Amount deducted:', amount);
     console.log('  - New credits:', newCredits);
+    console.log('  - Updated userData saved:', updatedUserData);
 
     return { success: true, newCredits };
   } catch (error) {
