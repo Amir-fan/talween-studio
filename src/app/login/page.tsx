@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,11 +32,14 @@ const formSchema = z.object({
   password: z.string().min(6, 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'),
 });
 
-export default function LoginPage() {
+function LoginPageContent() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { loginAsAdmin, signIn } = useAuth();
+  
+  const redirectTo = searchParams.get('redirect') || '/create';
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -54,9 +57,10 @@ export default function LoginPage() {
         setLoading(false);
         toast({
           title: "تم تسجيل الدخول بنجاح",
-          description: "مرحباً بك في تلوين ستوديو",
+          description: "مرحباً بك في لوحة تحكم الإدارة",
         });
-        router.push('/');
+        // Always redirect admin to /admin, ignore redirect parameter
+        router.push('/admin');
         return;
       }
 
@@ -68,7 +72,7 @@ export default function LoginPage() {
           title: 'تم تسجيل الدخول بنجاح!',
           description: 'مرحباً بعودتك.',
         });
-        router.push('/create');
+        router.push(redirectTo);
       } else {
         toast({
           variant: 'destructive',
@@ -176,5 +180,20 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-[calc(100vh-140px)] items-center justify-center bg-gray-50/50 px-4 py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">جاري التحميل...</p>
+        </div>
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
   );
 }
