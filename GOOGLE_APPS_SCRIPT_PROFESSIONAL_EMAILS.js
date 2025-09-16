@@ -1,14 +1,518 @@
-// Professional Email Templates for Talween Studio
+// Talween Studio - Google Apps Script
+// Combined Email Service + Google Sheets Database API
 // Copy this entire code into your Google Apps Script project
 
+// Configuration - Set these values in your Apps Script
+const API_KEY = 'YOUR_API_KEY_HERE'; // Set this in your Apps Script
+const SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID_HERE'; // Set this in your Apps Script
+const SHEET_NAME = 'Users';
+
+// Main entry point for GET requests (Database API)
+function doGet(e) {
+  try {
+    // Check API key for database operations
+    const apiKey = e.parameter.apiKey || e.parameter.key;
+    if (!apiKey || apiKey !== API_KEY) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ 
+          success: false, 
+          error: 'Invalid or missing API key' 
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const action = e.parameter.action || 'health';
+    
+    switch (action) {
+      case 'health':
+        return handleHealthCheck();
+      case 'getUsers':
+        return handleGetUsers();
+      case 'getUser':
+        return handleGetUser(e.parameter.userId);
+      case 'syncCredits':
+        return handleSyncCredits(e.parameter.userId);
+      default:
+        return ContentService
+          .createTextOutput(JSON.stringify({ 
+            success: false, 
+            error: 'Invalid action' 
+          }))
+          .setMimeType(ContentService.MimeType.JSON);
+    }
+  } catch (error) {
+    console.error('doGet error:', error);
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Main entry point for POST requests (Email + Database API)
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+    
+    // Check if this is a database operation
+    if (data.action && data.apiKey) {
+      if (data.apiKey !== API_KEY) {
+        return ContentService
+          .createTextOutput(JSON.stringify({ 
+            success: false, 
+            error: 'Invalid API key' 
+          }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      return handleDatabaseAction(data);
+    }
+    
+    // Otherwise, handle as email request
+    return handleEmailRequest(data);
+    
+  } catch (error) {
+    console.error('doPost error:', error);
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Database Actions Handler
+function handleDatabaseAction(data) {
+  const { action } = data;
+  
+  switch (action) {
+    case 'createUser':
+      return handleCreateUser(data);
+    case 'updateUser':
+      return handleUpdateUser(data);
+    case 'deleteUser':
+      return handleDeleteUser(data.userId);
+    case 'addCredits':
+      return handleAddCredits(data.userId, data.amount);
+    case 'deductCredits':
+      return handleDeductCredits(data.userId, data.amount);
+    case 'updateCredits':
+      return handleUpdateCredits(data.userId, data.credits);
+    default:
+      return ContentService
+        .createTextOutput(JSON.stringify({ 
+          success: false, 
+          error: 'Invalid database action' 
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Health Check
+function handleHealthCheck() {
+  try {
+    const sheet = getSheet();
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: true, 
+        message: 'Google Sheets API is working',
+        spreadsheetId: SPREADSHEET_ID,
+        sheetName: SHEET_NAME,
+        totalUsers: sheet.getLastRow() - 1
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'Health check failed: ' + error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Get All Users
+function handleGetUsers() {
+  try {
+    const sheet = getSheet();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const users = [];
+    
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const user = {};
+      headers.forEach((header, index) => {
+        user[header] = row[index];
+      });
+      users.push(user);
+    }
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: true, 
+        users: users,
+        total: users.length
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'Failed to get users: ' + error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Get Single User
+function handleGetUser(userId) {
+  try {
+    const sheet = getSheet();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const idColumnIndex = headers.indexOf('المعرف');
+    
+    if (idColumnIndex === -1) {
+      throw new Error('المعرف column not found');
+    }
+    
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (row[idColumnIndex] === userId) {
+        const user = {};
+        headers.forEach((header, index) => {
+          user[header] = row[index];
+        });
+        return ContentService
+          .createTextOutput(JSON.stringify({ 
+            success: true, 
+            user: user
+          }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'User not found' 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'Failed to get user: ' + error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Create User
+function handleCreateUser(data) {
+  try {
+    const sheet = getSheet();
+    
+    // Check if user already exists
+    const existingUser = findUserByEmail(sheet, data.email);
+    if (existingUser) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ 
+          success: false, 
+          error: 'User already exists with this email' 
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // Prepare user data
+    const userData = [
+      data.id || generateId(),
+      data.email || '',
+      data.displayName || '',
+      data.password || '',
+      data.credits || 50,
+      data.status || 'active',
+      data.emailVerified || true,
+      new Date().toISOString(),
+      data.phone || '',
+      data.country || '',
+      data.city || '',
+      data.age || '',
+      data.gender || '',
+      data.interests || '',
+      data.source || 'website',
+      data.notes || ''
+    ];
+    
+    sheet.appendRow(userData);
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: true, 
+        message: 'User created successfully',
+        userId: userData[0]
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'Failed to create user: ' + error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Update User
+function handleUpdateUser(data) {
+  try {
+    const sheet = getSheet();
+    const userRow = findUserRow(sheet, data.userId);
+    
+    if (!userRow) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ 
+          success: false, 
+          error: 'User not found' 
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // Update specific fields
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    
+    Object.keys(data).forEach(key => {
+      const columnIndex = headers.indexOf(key);
+      if (columnIndex !== -1 && key !== 'userId') {
+        sheet.getRange(userRow, columnIndex + 1).setValue(data[key]);
+      }
+    });
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: true, 
+        message: 'User updated successfully' 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'Failed to update user: ' + error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Delete User
+function handleDeleteUser(userId) {
+  try {
+    const sheet = getSheet();
+    const userRow = findUserRow(sheet, userId);
+    
+    if (!userRow) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ 
+          success: false, 
+          error: 'User not found' 
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    sheet.deleteRow(userRow);
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: true, 
+        message: 'User deleted successfully' 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'Failed to delete user: ' + error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Add Credits
+function handleAddCredits(userId, amount) {
+  try {
+    const sheet = getSheet();
+    const userRow = findUserRow(sheet, userId);
+    
+    if (!userRow) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ 
+          success: false, 
+          error: 'User not found' 
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const creditsColumnIndex = getColumnIndex(sheet, 'النقاط');
+    const currentCredits = sheet.getRange(userRow, creditsColumnIndex).getValue();
+    const newCredits = currentCredits + parseInt(amount);
+    
+    sheet.getRange(userRow, creditsColumnIndex).setValue(newCredits);
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: true, 
+        message: 'Credits added successfully',
+        newCredits: newCredits
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'Failed to add credits: ' + error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Deduct Credits
+function handleDeductCredits(userId, amount) {
+  try {
+    const sheet = getSheet();
+    const userRow = findUserRow(sheet, userId);
+    
+    if (!userRow) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ 
+          success: false, 
+          error: 'User not found' 
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const creditsColumnIndex = getColumnIndex(sheet, 'النقاط');
+    const currentCredits = sheet.getRange(userRow, creditsColumnIndex).getValue();
+    const deductAmount = parseInt(amount);
+    
+    if (currentCredits < deductAmount) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ 
+          success: false, 
+          error: 'Insufficient credits' 
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const newCredits = currentCredits - deductAmount;
+    sheet.getRange(userRow, creditsColumnIndex).setValue(newCredits);
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: true, 
+        message: 'Credits deducted successfully',
+        newCredits: newCredits
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'Failed to deduct credits: ' + error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Update Credits (set specific amount)
+function handleUpdateCredits(userId, credits) {
+  try {
+    const sheet = getSheet();
+    const userRow = findUserRow(sheet, userId);
+    
+    if (!userRow) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ 
+          success: false, 
+          error: 'User not found' 
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const creditsColumnIndex = getColumnIndex(sheet, 'النقاط');
+    sheet.getRange(userRow, creditsColumnIndex).setValue(parseInt(credits));
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: true, 
+        message: 'Credits updated successfully',
+        newCredits: credits
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'Failed to update credits: ' + error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Sync Credits
+function handleSyncCredits(userId) {
+  try {
+    const sheet = getSheet();
+    const userRow = findUserRow(sheet, userId);
+    
+    if (!userRow) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ 
+          success: false, 
+          error: 'User not found' 
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const userData = data[userRow - 1];
+    const user = {};
+    
+    headers.forEach((header, index) => {
+      user[header] = userData[index];
+    });
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: true, 
+        user: user
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'Failed to sync credits: ' + error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Email Request Handler
+function handleEmailRequest(data) {
+  try {
     const { recipientEmail, emailType, templateData, userId } = data;
     
     if (!recipientEmail || !emailType) {
       return ContentService
-        .createTextOutput(JSON.stringify({ success: false, error: 'Missing required fields' }))
+        .createTextOutput(JSON.stringify({ 
+          success: false, 
+          error: 'Missing required fields' 
+        }))
         .setMimeType(ContentService.MimeType.JSON);
     }
     
@@ -51,11 +555,6 @@ function doPost(e) {
         htmlBody = getCreditsAddedTemplate(templateData);
         break;
         
-      case 'paymentSuccess':
-        subject = 'تم الدفع بنجاح - تلوين ستوديو';
-        htmlBody = getPaymentSuccessTemplate(templateData);
-        break;
-        
       default:
         subject = 'رسالة من تلوين ستوديو';
         htmlBody = getDefaultEmailTemplate(templateData);
@@ -93,7 +592,77 @@ function doPost(e) {
   }
 }
 
-// Email Verification Template
+// Helper Functions
+function getSheet() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = spreadsheet.getSheetByName(SHEET_NAME);
+  
+  if (!sheet) {
+    // Create sheet with Arabic headers if it doesn't exist
+    sheet = spreadsheet.insertSheet(SHEET_NAME);
+    const headers = [
+      'المعرف',
+      'البريد الإلكتروني',
+      'الاسم',
+      'كلمة المرور',
+      'النقاط',
+      'الحالة',
+      'البريد الإلكتروني مؤكد',
+      'تاريخ الإنشاء',
+      'رقم الهاتف',
+      'البلد',
+      'المدينة',
+      'العمر',
+      'الجنس',
+      'الاهتمامات',
+      'المصدر',
+      'ملاحظات'
+    ];
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+  
+  return sheet;
+}
+
+function findUserByEmail(sheet, email) {
+  const data = sheet.getDataRange().getValues();
+  const emailColumnIndex = data[0].indexOf('البريد الإلكتروني');
+  
+  if (emailColumnIndex === -1) return null;
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][emailColumnIndex] === email) {
+      return data[i];
+    }
+  }
+  return null;
+}
+
+function findUserRow(sheet, userId) {
+  const data = sheet.getDataRange().getValues();
+  const idColumnIndex = data[0].indexOf('المعرف');
+  
+  if (idColumnIndex === -1) return null;
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][idColumnIndex] === userId) {
+      return i + 1; // Return 1-based row number
+    }
+  }
+  return null;
+}
+
+function getColumnIndex(sheet, columnName) {
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const index = headers.indexOf(columnName);
+  return index === -1 ? 0 : index + 1; // Return 1-based column number
+}
+
+function generateId() {
+  return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// Email Templates (same as before)
 function getVerificationEmailTemplate(data) {
   return `
     <!DOCTYPE html>
@@ -105,13 +674,10 @@ function getVerificationEmailTemplate(data) {
     </head>
     <body style="margin: 0; padding: 0; font-family: 'Cairo', Arial, sans-serif; background-color: #f8f9fa;">
       <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-        <!-- Header -->
         <div style="background: linear-gradient(135deg, #ff6b6b, #4ecdc4, #45b7d1); padding: 40px 20px; text-align: center; border-radius: 0 0 20px 20px;">
           <h1 style="color: white; margin: 0; font-size: 32px; font-weight: bold;">تلوين ستوديو</h1>
           <p style="color: white; margin: 10px 0 0 0; font-size: 18px; opacity: 0.9;">مرحباً بك في عالم الإبداع!</p>
         </div>
-        
-        <!-- Main Content -->
         <div style="padding: 40px 30px;">
           <div style="text-align: center; margin-bottom: 30px;">
             <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #4ecdc4, #45b7d1); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
@@ -123,39 +689,10 @@ function getVerificationEmailTemplate(data) {
               شكراً لك على التسجيل في تلوين ستوديو! يرجى النقر على الزر أدناه لتأكيد بريدك الإلكتروني والبدء في رحلة الإبداع.
             </p>
           </div>
-          
-          <!-- CTA Button -->
           <div style="text-align: center; margin: 40px 0;">
-            <a href="${data.verificationLink}" style="display: inline-block; background: linear-gradient(135deg, #ff6b6b, #4ecdc4); color: white; padding: 18px 40px; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 18px; box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3); transition: all 0.3s ease;">
+            <a href="${data.verificationLink}" style="display: inline-block; background: linear-gradient(135deg, #ff6b6b, #4ecdc4); color: white; padding: 18px 40px; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 18px; box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);">
               تأكيد البريد الإلكتروني
             </a>
-          </div>
-          
-          <!-- Features -->
-          <div style="background: #f8f9fa; padding: 30px; border-radius: 15px; margin: 30px 0;">
-            <h3 style="color: #2c3e50; margin: 0 0 20px 0; text-align: center; font-size: 20px;">ما ينتظرك في تلوين ستوديو:</h3>
-            <div style="display: flex; flex-direction: column; gap: 15px;">
-              <div style="display: flex; align-items: center; gap: 15px;">
-                <span style="font-size: 24px;">🎨</span>
-                <span style="color: #2c3e50; font-size: 16px;">إنشاء قصص شخصية مذهلة</span>
-              </div>
-              <div style="display: flex; align-items: center; gap: 15px;">
-                <span style="font-size: 24px;">🖼️</span>
-                <span style="color: #2c3e50; font-size: 16px;">تحويل الصور إلى صفحات تلوين</span>
-              </div>
-              <div style="display: flex; align-items: center; gap: 15px;">
-                <span style="font-size: 24px;">✨</span>
-                <span style="color: #2c3e50; font-size: 16px;">50 نقطة مجانية للبدء</span>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Footer -->
-          <div style="text-align: center; margin-top: 40px; padding-top: 30px; border-top: 1px solid #ecf0f1;">
-            <p style="color: #95a5a6; font-size: 14px; margin: 0;">
-              إذا لم تقم بإنشاء حساب في تلوين ستوديو، يرجى تجاهل هذا البريد.<br>
-              هذا البريد تم إرساله تلقائياً، يرجى عدم الرد عليه.
-            </p>
           </div>
         </div>
       </div>
@@ -164,7 +701,6 @@ function getVerificationEmailTemplate(data) {
   `;
 }
 
-// Welcome Email Template
 function getWelcomeEmailTemplate(data) {
   return `
     <!DOCTYPE html>
@@ -176,13 +712,10 @@ function getWelcomeEmailTemplate(data) {
     </head>
     <body style="margin: 0; padding: 0; font-family: 'Cairo', Arial, sans-serif; background-color: #f8f9fa;">
       <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-        <!-- Header -->
         <div style="background: linear-gradient(135deg, #4ecdc4, #45b7d1); padding: 40px 20px; text-align: center; border-radius: 0 0 20px 20px;">
           <h1 style="color: white; margin: 0; font-size: 32px; font-weight: bold;">مرحباً بك! 🎉</h1>
           <p style="color: white; margin: 10px 0 0 0; font-size: 18px; opacity: 0.9;">تم تأكيد حسابك بنجاح</p>
         </div>
-        
-        <!-- Main Content -->
         <div style="padding: 40px 30px;">
           <div style="text-align: center; margin-bottom: 30px;">
             <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #4ecdc4, #45b7d1); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
@@ -193,33 +726,10 @@ function getWelcomeEmailTemplate(data) {
               تم تأكيد بريدك الإلكتروني بنجاح! يمكنك الآن الاستمتاع بجميع ميزات تلوين ستوديو وبدء رحلة الإبداع مع طفلك.
             </p>
           </div>
-          
-          <!-- Credits Card -->
           <div style="background: linear-gradient(135deg, #ffeaa7, #fab1a0); padding: 25px; border-radius: 15px; margin: 30px 0; text-align: center;">
             <h3 style="color: #2c3e50; margin: 0 0 10px 0; font-size: 24px;">🎁 هديتك المجانية</h3>
             <p style="color: #2c3e50; margin: 0; font-size: 18px; font-weight: bold;">50 نقطة مجانية</p>
             <p style="color: #2c3e50; margin: 10px 0 0 0; font-size: 14px;">يمكنك استخدام هذه النقاط لإنشاء قصص وصور تلوين مخصصة!</p>
-          </div>
-          
-          <!-- CTA Button -->
-          <div style="text-align: center; margin: 40px 0;">
-            <a href="https://your-domain.com/create" style="display: inline-block; background: linear-gradient(135deg, #4ecdc4, #45b7d1); color: white; padding: 18px 40px; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 18px; box-shadow: 0 8px 25px rgba(78, 205, 196, 0.3);">
-              ابدأ الإبداع الآن
-            </a>
-          </div>
-          
-          <!-- Features Grid -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 30px 0;">
-            <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 15px;">
-              <div style="font-size: 32px; margin-bottom: 10px;">📚</div>
-              <h4 style="color: #2c3e50; margin: 0 0 10px 0;">قصص شخصية</h4>
-              <p style="color: #7f8c8d; margin: 0; font-size: 14px;">أنشئ قصص مخصصة لطفلك</p>
-            </div>
-            <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 15px;">
-              <div style="font-size: 32px; margin-bottom: 10px;">🖼️</div>
-              <h4 style="color: #2c3e50; margin: 0 0 10px 0;">صفحات تلوين</h4>
-              <p style="color: #7f8c8d; margin: 0; font-size: 14px;">حوّل الصور إلى صفحات تلوين</p>
-            </div>
           </div>
         </div>
       </div>
@@ -228,7 +738,6 @@ function getWelcomeEmailTemplate(data) {
   `;
 }
 
-// Password Reset Template
 function getPasswordResetEmailTemplate(data) {
   return `
     <!DOCTYPE html>
@@ -240,12 +749,9 @@ function getPasswordResetEmailTemplate(data) {
     </head>
     <body style="margin: 0; padding: 0; font-family: 'Cairo', Arial, sans-serif; background-color: #f8f9fa;">
       <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-        <!-- Header -->
         <div style="background: linear-gradient(135deg, #ff6b6b, #ffa726); padding: 40px 20px; text-align: center; border-radius: 0 0 20px 20px;">
           <h1 style="color: white; margin: 0; font-size: 32px; font-weight: bold;">إعادة تعيين كلمة المرور</h1>
         </div>
-        
-        <!-- Main Content -->
         <div style="padding: 40px 30px;">
           <div style="text-align: center; margin-bottom: 30px;">
             <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #ff6b6b, #ffa726); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
@@ -257,21 +763,10 @@ function getPasswordResetEmailTemplate(data) {
               تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك. انقر على الزر أدناه لإعادة تعيين كلمة المرور.
             </p>
           </div>
-          
-          <!-- CTA Button -->
           <div style="text-align: center; margin: 40px 0;">
-            <a href="${data.resetLink}" style="display: inline-block; background: linear-gradient(135deg, #ff6b6b, #ffa726); color: white; padding: 18px 40px; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 18px; box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);">
+            <a href="${data.resetLink}" style="display: inline-block; background: linear-gradient(135deg, #ff6b6b, #ffa726); color: white; padding: 18px 40px; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 18px;">
               إعادة تعيين كلمة المرور
             </a>
-          </div>
-          
-          <!-- Security Notice -->
-          <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; border-radius: 10px; margin: 30px 0;">
-            <h4 style="color: #856404; margin: 0 0 10px 0; font-size: 16px;">🔒 ملاحظة أمنية</h4>
-            <p style="color: #856404; margin: 0; font-size: 14px;">
-              إذا لم تطلب إعادة تعيين كلمة المرور، يرجى تجاهل هذا البريد. 
-              رابط إعادة التعيين صالح لمدة 24 ساعة فقط.
-            </p>
           </div>
         </div>
       </div>
@@ -280,7 +775,6 @@ function getPasswordResetEmailTemplate(data) {
   `;
 }
 
-// Order Confirmation Template
 function getOrderConfirmationTemplate(data) {
   return `
     <!DOCTYPE html>
@@ -292,36 +786,14 @@ function getOrderConfirmationTemplate(data) {
     </head>
     <body style="margin: 0; padding: 0; font-family: 'Cairo', Arial, sans-serif; background-color: #f8f9fa;">
       <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-        <!-- Header -->
         <div style="background: linear-gradient(135deg, #00b894, #00cec9); padding: 40px 20px; text-align: center; border-radius: 0 0 20px 20px;">
           <h1 style="color: white; margin: 0; font-size: 32px; font-weight: bold;">تم تأكيد طلبك! ✅</h1>
         </div>
-        
-        <!-- Main Content -->
         <div style="padding: 40px 30px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h2 style="color: #2c3e50; margin: 0 0 15px 0; font-size: 28px;">شكراً لك على طلبك!</h2>
-            <p style="color: #7f8c8d; font-size: 16px; line-height: 1.6; margin: 0;">
-              تم تأكيد طلبك بنجاح. يمكنك الآن الاستمتاع بجميع الميزات المدفوعة.
-            </p>
-          </div>
-          
-          <!-- Order Details -->
-          <div style="background: #f8f9fa; padding: 25px; border-radius: 15px; margin: 30px 0;">
-            <h3 style="color: #2c3e50; margin: 0 0 20px 0; text-align: center;">تفاصيل الطلب</h3>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-              <span style="color: #7f8c8d;">رقم الطلب:</span>
-              <span style="color: #2c3e50; font-weight: bold;">${data.orderId || 'N/A'}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-              <span style="color: #7f8c8d;">المبلغ:</span>
-              <span style="color: #2c3e50; font-weight: bold;">${data.amount || 'N/A'}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-              <span style="color: #7f8c8d;">تاريخ الطلب:</span>
-              <span style="color: #2c3e50; font-weight: bold;">${new Date().toLocaleDateString('ar-SA')}</span>
-            </div>
-          </div>
+          <h2 style="color: #2c3e50; margin: 0 0 15px 0; font-size: 28px;">شكراً لك على طلبك!</h2>
+          <p style="color: #7f8c8d; font-size: 16px; line-height: 1.6; margin: 0;">
+            تم تأكيد طلبك بنجاح. يمكنك الآن الاستمتاع بجميع الميزات المدفوعة.
+          </p>
         </div>
       </div>
     </body>
@@ -329,7 +801,6 @@ function getOrderConfirmationTemplate(data) {
   `;
 }
 
-// Payment Success Template
 function getPaymentSuccessTemplate(data) {
   return `
     <!DOCTYPE html>
@@ -341,12 +812,9 @@ function getPaymentSuccessTemplate(data) {
     </head>
     <body style="margin: 0; padding: 0; font-family: 'Cairo', Arial, sans-serif; background-color: #f8f9fa;">
       <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-        <!-- Header -->
         <div style="background: linear-gradient(135deg, #00b894, #00cec9); padding: 40px 20px; text-align: center; border-radius: 0 0 20px 20px;">
           <h1 style="color: white; margin: 0; font-size: 32px; font-weight: bold;">تم الدفع بنجاح! 💳</h1>
         </div>
-        
-        <!-- Main Content -->
         <div style="padding: 40px 30px;">
           <div style="text-align: center; margin-bottom: 30px;">
             <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #00b894, #00cec9); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
@@ -364,7 +832,6 @@ function getPaymentSuccessTemplate(data) {
   `;
 }
 
-// Credits Added Template
 function getCreditsAddedTemplate(data) {
   return `
     <!DOCTYPE html>
@@ -376,12 +843,9 @@ function getCreditsAddedTemplate(data) {
     </head>
     <body style="margin: 0; padding: 0; font-family: 'Cairo', Arial, sans-serif; background-color: #f8f9fa;">
       <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-        <!-- Header -->
         <div style="background: linear-gradient(135deg, #fdcb6e, #e17055); padding: 40px 20px; text-align: center; border-radius: 0 0 20px 20px;">
           <h1 style="color: white; margin: 0; font-size: 32px; font-weight: bold;">تم إضافة النقاط! ⭐</h1>
         </div>
-        
-        <!-- Main Content -->
         <div style="padding: 40px 30px;">
           <div style="text-align: center; margin-bottom: 30px;">
             <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #fdcb6e, #e17055); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
@@ -399,7 +863,6 @@ function getCreditsAddedTemplate(data) {
   `;
 }
 
-// Default Template
 function getDefaultEmailTemplate(data) {
   return `
     <!DOCTYPE html>
@@ -433,6 +896,25 @@ function testEmail() {
       verificationLink: 'https://your-domain.com/verify-email?token=test123'
     },
     userId: 'test123'
+  };
+  
+  const result = doPost({
+    postData: {
+      contents: JSON.stringify(testData)
+    }
+  });
+  
+  console.log(result.getContent());
+}
+
+// Test database function
+function testDatabase() {
+  const testData = {
+    action: 'createUser',
+    apiKey: API_KEY,
+    email: 'test@example.com',
+    displayName: 'Test User',
+    credits: 50
   };
   
   const result = doPost({
