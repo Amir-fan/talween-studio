@@ -92,14 +92,29 @@ export async function registerUser(
 // Login user
 export async function loginUser(email: string, password: string): Promise<AuthResult> {
   try {
+    console.log('🔍 LOGIN ATTEMPT:');
+    console.log('  - email:', email);
+    console.log('  - password length:', password.length);
+    
     const user = userDb.findByEmail(email);
+    console.log('  - user found:', !!user);
+    if (user) {
+      console.log('  - user id:', user.id);
+      console.log('  - user email:', user.email);
+      console.log('  - user status:', user.status);
+    }
+    
     if (!user) {
+      console.log('❌ User not found');
       return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
     }
 
     // Check password
     const isValidPassword = bcrypt.compareSync(password, user.password);
+    console.log('  - password valid:', isValidPassword);
+    
     if (!isValidPassword) {
+      console.log('❌ Invalid password');
       return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
     }
 

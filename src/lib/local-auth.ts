@@ -206,7 +206,14 @@ export function deductLocalUserCredits(userId: string, amount: number): { succes
     console.log('  - userId:', userId);
     console.log('  - amount:', amount);
     
-    const userData = getLocalUserData();
+    // Get user data from the main talween_user localStorage key
+    const storedUser = localStorage.getItem('talween_user');
+    if (!storedUser) {
+      console.log('❌ No user found in localStorage');
+      return { success: false, error: 'User not found in localStorage' };
+    }
+    
+    const userData = JSON.parse(storedUser);
     console.log('  - userData from localStorage:', userData);
     
     if (!userData) {
@@ -214,9 +221,6 @@ export function deductLocalUserCredits(userId: string, amount: number): { succes
       return { success: false, error: 'User not found in localStorage' };
     }
     
-    // Skip user ID check - just use the user data if it exists
-    console.log('  - User ID check skipped, proceeding with credit deduction');
-
     console.log('  - Current credits:', userData.credits);
     console.log('  - Required credits:', amount);
     console.log('  - Has enough credits?', userData.credits >= amount);
@@ -227,27 +231,28 @@ export function deductLocalUserCredits(userId: string, amount: number): { succes
     }
 
     const newCredits = userData.credits - amount;
-    const updatedUserData = { ...userData, credits: newCredits };
-    saveLocalUserData(updatedUserData);
+    const updatedUser = { ...userData, credits: newCredits };
     
-    // Also update the main user localStorage key for consistency
-    const storedUser = localStorage.getItem('talween_user');
-    if (storedUser) {
-      try {
-        const user = JSON.parse(storedUser);
-        const updatedUser = { ...user, credits: newCredits };
-        localStorage.setItem('talween_user', JSON.stringify(updatedUser));
-        console.log('  - Updated talween_user with new credits:', newCredits);
-      } catch (error) {
-        console.log('  - Error updating talween_user:', error);
-      }
-    }
+    // Update the main user localStorage key
+    localStorage.setItem('talween_user', JSON.stringify(updatedUser));
+    
+    // Also update talween_user_data for backward compatibility
+    const userDataForBackup = {
+      uid: userData.id || userData.uid,
+      email: userData.email,
+      name: userData.displayName,
+      credits: newCredits,
+      status: userData.status,
+      createdAt: userData.createdAt || new Date().toISOString(),
+      lastLogin: new Date().toISOString()
+    };
+    localStorage.setItem('talween_user_data', JSON.stringify(userDataForBackup));
     
     console.log('✅ Credits deducted successfully');
     console.log('  - Old credits:', userData.credits);
     console.log('  - Amount deducted:', amount);
     console.log('  - New credits:', newCredits);
-    console.log('  - Updated userData saved:', updatedUserData);
+    console.log('  - Updated user saved:', updatedUser);
 
     return { success: true, newCredits };
   } catch (error) {
