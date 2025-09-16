@@ -10,10 +10,18 @@ export function middleware(request: NextRequest) {
     // This is a basic check - in production you'd want more robust auth
     const adminToken = request.cookies.get('admin_token');
     
+    console.log('🔍 MIDDLEWARE - Admin route check:');
+    console.log('  - pathname:', pathname);
+    console.log('  - adminToken:', adminToken?.value);
+    console.log('  - all cookies:', request.cookies.getAll());
+    
     if (!adminToken) {
+      console.log('❌ No admin token found - redirecting to login');
       // Redirect to login with admin redirect
       return NextResponse.redirect(new URL('/login?redirect=/admin', request.url));
     }
+    
+    console.log('✅ Admin token found - allowing access');
   }
   
   // Protect API admin routes

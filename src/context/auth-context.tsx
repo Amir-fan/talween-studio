@@ -124,9 +124,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsAdmin(true);
       
       // Set admin token for middleware
-      document.cookie = `admin_token=admin_${Date.now()}; path=/; max-age=86400`; // 24 hours
+      const adminToken = `admin_${Date.now()}`;
+      document.cookie = `admin_token=${adminToken}; path=/; max-age=86400; SameSite=Lax`; // 24 hours
       
       console.log('✅ Admin login successful');
+      console.log('🔍 Admin token set:', adminToken);
+      console.log('🔍 Current cookies:', document.cookie);
       return true;
     }
     

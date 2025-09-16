@@ -73,12 +73,21 @@ export default function AdminDashboard() {
 
   // Security check - redirect if not admin
   useEffect(() => {
+    console.log('🔍 ADMIN PAGE - Auth check:');
+    console.log('  - authLoading:', authLoading);
+    console.log('  - user:', user);
+    console.log('  - isAdmin:', isAdmin);
+    console.log('  - user?.id:', user?.id);
+    
     if (!authLoading) {
       if (!user || !isAdmin) {
         console.log('🚫 Unauthorized access to admin panel - redirecting to login');
+        console.log('  - user exists:', !!user);
+        console.log('  - isAdmin:', isAdmin);
         router.push('/login?redirect=/admin');
         return;
       }
+      console.log('✅ Admin access granted');
     }
   }, [user, isAdmin, authLoading, router]);
 
