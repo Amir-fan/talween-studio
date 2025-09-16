@@ -148,13 +148,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await response.json();
 
       if (data.success) {
+        console.log('🔍 REGISTRATION SUCCESS - User data from server:');
+        console.log('  - data.user:', data.user);
+        console.log('  - data.user.id:', data.user.id);
+        
         // Auto-login user after successful registration (no verification needed)
         if (data.user) {
-          // Convert uid to id for consistency
+          // Use server's user.id directly (matches database)
           const userWithId = {
             ...data.user,
-            id: data.user.uid || data.user.id // Use uid as id if available
+            id: data.user.id // Use server's id directly
           };
+          
+          console.log('  - Final userWithId:', userWithId);
           
           // Store user in localStorage for persistence
           localStorage.setItem('talween_user', JSON.stringify(data.user));

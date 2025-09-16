@@ -55,9 +55,32 @@ export async function checkAndDeductCreditsForFeature(
     }
     
     if (!user) {
-      console.log('❌ User not found in database');
+      console.log('❌ User not found in database by ID');
       console.log('  - Tried to find userId:', userId);
       console.log('  - Available user IDs:', allUsers.map(u => u.id));
+      
+      // Try to find user by email as fallback (in case of ID mismatch)
+      console.log('  - Trying to find user by email...');
+      const userByEmail = allUsers.find(u => u.email === userId);
+      if (userByEmail) {
+        console.log('  - Found user by email:', userByEmail.email);
+        console.log('  - Using user ID:', userByEmail.id);
+        
+        if (userByEmail.credits < cost) {
+          console.log('❌ Not enough credits (email fallback):', userByEmail.credits, '<', cost);
+          return { success: false, error: 'Not enough credits' };
+        }
+        
+        // Use the found user's ID for credit operations
+        const deductResult = userDb.deductCredits(userByEmail.id, cost);
+        if (!deductResult.success) {
+          console.log('❌ Failed to deduct credits:', deductResult.error);
+          return { success: false, error: deductResult.error || 'Failed to deduct credits' };
+        }
+        console.log('✅ Credits deducted successfully using email fallback');
+        return { success: true, cost };
+      }
+      
       return { success: false, error: 'User not found' };
     }
     
