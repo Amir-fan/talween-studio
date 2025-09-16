@@ -44,11 +44,7 @@ export async function registerUser(
 
     const user = result.user!;
 
-    // Auto-verify user immediately (no email verification needed)
-    userDb.updateUser(user.id, {
-      email_verified: true,
-      status: 'active'
-    });
+    // User is already auto-verified in database creation
 
     // Send welcome email (non-blocking)
     sendEmail(

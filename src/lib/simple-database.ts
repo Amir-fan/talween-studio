@@ -141,8 +141,8 @@ export const userDb = {
       password: hashedPassword,
       display_name: displayName,
       credits: 50,
-      status: 'pending',
-      email_verified: false,
+      status: 'active', // Auto-verify users immediately
+      email_verified: true, // Auto-verify users immediately
       verification_token: verificationToken,
       subscription_tier: 'FREE',
       created_at: Math.floor(Date.now() / 1000),

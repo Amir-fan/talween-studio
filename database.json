@@ -41,6 +41,20 @@
       "created_at": 1757980927,
       "updated_at": 1757980927,
       "total_spent": 0
+    },
+    "919aafac-3963-49fe-818e-d9e99350380a": {
+      "id": "919aafac-3963-49fe-818e-d9e99350380a",
+      "email": "testnew@example.com",
+      "password": "$2a$10$Pqr7wE2QB0KrMmHWHDPTce5CE46M0eQ.2WPjCy9OycrM8O7xAKmIW",
+      "display_name": "Test New User",
+      "credits": 50,
+      "status": "active",
+      "email_verified": true,
+      "verification_token": "22f12713-aba6-4402-9889-2047d514af21",
+      "subscription_tier": "FREE",
+      "created_at": 1758024137,
+      "updated_at": 1758024137,
+      "total_spent": 0
     }
   },
   "orders": {
@@ -765,6 +779,15 @@
       "subject": "Email sent via Google Apps Script - emailVerification",
       "status": "pending",
       "created_at": 1757980930
+    },
+    "1882cbe0-0fe1-41e2-8478-8dedb181dc16": {
+      "id": "1882cbe0-0fe1-41e2-8478-8dedb181dc16",
+      "user_id": "919aafac-3963-49fe-818e-d9e99350380a",
+      "email_type": "welcomeAfterVerification",
+      "recipient_email": "testnew@example.com",
+      "subject": "Email failed via Google Apps Script - welcomeAfterVerification",
+      "status": "pending",
+      "created_at": 1758024138
     }
   },
   "adminUsers": {
