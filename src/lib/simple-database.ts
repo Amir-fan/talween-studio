@@ -96,9 +96,15 @@ function loadDatabase() {
 // Save database to file
 function saveDatabase() {
   try {
+    console.log('🔍 SAVING DATABASE:');
+    console.log('  - dbPath:', dbPath);
+    console.log('  - users count:', Object.keys(db.users).length);
+    console.log('  - users:', Object.keys(db.users));
+    
     fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+    console.log('✅ Database saved successfully');
   } catch (error) {
-    console.error('Error saving database:', error);
+    console.error('❌ Error saving database:', error);
   }
 }
 
@@ -158,6 +164,11 @@ export const userDb = {
     };
     
     db.users[id] = newUser;
+    console.log('✅ User added to database:');
+    console.log('  - User ID:', id);
+    console.log('  - Email:', email);
+    console.log('  - Total users now:', Object.keys(db.users).length);
+    
     saveDatabase();
     
     return { success: true, user: { id, email, displayName, verificationToken } };
