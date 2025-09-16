@@ -61,11 +61,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUserData(adminUser);
           setIsAdmin(true);
         } 
-        // Handle regular user
-        else if (userData.id) {
-          setUser(userData);
-          setUserData(userData);
-          setIsAdmin(userData.id === 'admin');
+        // Handle regular user - convert uid to id
+        else if (userData.uid) {
+          const regularUser = {
+            id: userData.uid, // Use uid as id
+            email: userData.email,
+            displayName: userData.displayName,
+            credits: userData.credits || 50,
+            status: userData.status || 'active',
+            emailVerified: userData.emailVerified || false,
+            subscriptionTier: userData.subscriptionTier || 'FREE'
+          };
+          setUser(regularUser);
+          setUserData(regularUser);
+          setIsAdmin(false);
         }
       } catch (error) {
         console.error('Error parsing stored user:', error);
@@ -135,11 +144,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await response.json();
 
       if (data.success) {
+        // Convert uid to id for consistency
+        const userWithId = {
+          ...data.user,
+          id: data.user.uid || data.user.id // Use uid as id if available
+        };
+        
         // Store user in localStorage for persistence
         localStorage.setItem('talween_user', JSON.stringify(data.user));
-        setUser(data.user);
-        setUserData(data.user);
-        setIsAdmin(data.user.id === 'admin');
+        setUser(userWithId);
+        setUserData(userWithId);
+        setIsAdmin(userWithId.id === 'admin');
         return { success: true };
       } else {
         return { success: false, error: data.error };
@@ -150,11 +165,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshUserData = () => {
-    // Refresh user data from server
-    if (user) {
-      // Update localStorage with current user data
-      localStorage.setItem('talween_user', JSON.stringify(user));
-      setUserData(user);
+    // Refresh user data from localStorage
+    const storedUser = localStorage.getItem('talween_user');
+    const storedUserData = localStorage.getItem('talween_user_data');
+    
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        
+        // Handle admin user
+        if (userData.uid === 'admin') {
+          const adminUser = {
+            id: 'admin',
+            email: 'admin@talween.com',
+            displayName: 'مستخدم عادي',
+            credits: 9999,
+            status: 'premium',
+            emailVerified: true,
+            subscriptionTier: 'CREATIVE_TEACHER'
+          };
+          setUser(adminUser);
+          setUserData(adminUser);
+          setIsAdmin(true);
+        } 
+        // Handle regular user - convert uid to id and get latest credits
+        else if (userData.uid) {
+          let credits = userData.credits || 50;
+          
+          // Get latest credits from user_data if available
+          if (storedUserData) {
+            try {
+              const userDataFromStorage = JSON.parse(storedUserData);
+              if (userDataFromStorage.uid === userData.uid) {
+                credits = userDataFromStorage.credits || credits;
+              }
+            } catch (error) {
+              console.error('Error parsing user_data:', error);
+            }
+          }
+          
+          const regularUser = {
+            id: userData.uid, // Use uid as id
+            email: userData.email,
+            displayName: userData.displayName,
+            credits: credits,
+            status: userData.status || 'active',
+            emailVerified: userData.emailVerified || false,
+            subscriptionTier: userData.subscriptionTier || 'FREE'
+          };
+          setUser(regularUser);
+          setUserData(regularUser);
+          setIsAdmin(false);
+        }
+      } catch (error) {
+        console.error('Error refreshing user data:', error);
+      }
     }
   };
 
