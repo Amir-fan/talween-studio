@@ -22,7 +22,8 @@ import {
   Search,
   Filter,
   Shield,
-  AlertTriangle
+  AlertTriangle,
+  Trash2
 } from 'lucide-react';
 
 interface User {
@@ -171,6 +172,31 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Error syncing to sheets:', error);
       alert('فشل في الاتصال بخدمة المزامنة. تأكد من إعداد Google Sheets.');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!confirm(`هل أنت متأكد من حذف المستخدم "${userName}"؟ هذا الإجراء لا يمكن التراجع عنه.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/delete-user', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+
+      if (response.ok) {
+        alert('تم حذف المستخدم بنجاح');
+        loadData(); // Refresh the data
+      } else {
+        const errorData = await response.json();
+        alert(`فشل في حذف المستخدم: ${errorData.error || 'خطأ غير معروف'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert('فشل في حذف المستخدم');
     }
   };
 
@@ -359,13 +385,22 @@ export default function AdminDashboard() {
                           {new Date(user.created_at * 1000).toLocaleDateString('ar-SA')}
                         </TableCell>
                         <TableCell>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setSelectedUser(user)}
-                          >
-                            إضافة نقاط
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setSelectedUser(user)}
+                            >
+                              إضافة نقاط
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDeleteUser(user.id, user.display_name)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

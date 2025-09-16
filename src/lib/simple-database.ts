@@ -208,6 +208,15 @@ export const userDb = {
       user.updated_at = Math.floor(Date.now() / 1000);
       saveDatabase();
     }
+  },
+
+  deleteUser: (id: string) => {
+    if (db.users[id]) {
+      delete db.users[id];
+      saveDatabase();
+      return { success: true };
+    }
+    return { success: false, error: 'User not found' };
   }
 };
 
