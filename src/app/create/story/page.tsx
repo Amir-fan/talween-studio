@@ -48,6 +48,7 @@ import { InsufficientCreditsPopup } from '@/components/popups/insufficient-credi
 // import { TenorGIF } from '@/components/tenor-gif';
 import type { StoryAndPagesOutput, StoryAndPagesInput } from './types';
 import { generateStoryAction } from './actions';
+import { PRICING_CONFIG } from '@/lib/pricing';
 
 
 const steps = [
@@ -392,10 +393,10 @@ function CreateStoryPage() {
                                 <SelectValue placeholder="اختر عدد الصفحات" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="4">4 صفحات (66 نقطة - $3.00)</SelectItem>
-                                <SelectItem value="8">8 صفحات (66 نقطة - $3.00)</SelectItem>
-                                <SelectItem value="12">12 صفحة (66 نقطة - $3.00)</SelectItem>
-                                <SelectItem value="16">16 صفحة (66 نقطة - $3.00)</SelectItem>
+                                <SelectItem value="4">4 صفحات ({PRICING_CONFIG.FEATURE_COSTS.STORY_WITH_CHILD_NAME} نقطة - $3.00)</SelectItem>
+                                <SelectItem value="8">8 صفحات ({PRICING_CONFIG.FEATURE_COSTS.STORY_WITH_CHILD_NAME} نقطة - $3.00)</SelectItem>
+                                <SelectItem value="12">12 صفحة ({PRICING_CONFIG.FEATURE_COSTS.STORY_WITH_CHILD_NAME} نقطة - $3.00)</SelectItem>
+                                <SelectItem value="16">16 صفحة ({PRICING_CONFIG.FEATURE_COSTS.STORY_WITH_CHILD_NAME} نقطة - $3.00)</SelectItem>
                             </SelectContent>
                         </Select>
                    </div>
@@ -407,7 +408,7 @@ function CreateStoryPage() {
                     </Button>
                         <Button onClick={handleGenerateStory} size="lg" className="bg-gradient-to-l from-rose-400 to-red-500 font-bold text-white hover:to-red-600 shine-effect" disabled={loading}>
                         {loading ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Sparkles className="ml-2 h-5 w-5" />}
-                        {loading ? '...جاري إنشاء القصة' : 'أنشئ القصة الآن (66 نقطة)'}
+                        {loading ? '...جاري إنشاء القصة' : `أنشئ القصة الآن (${PRICING_CONFIG.FEATURE_COSTS.STORY_WITH_CHILD_NAME} نقطة)`}
                     </Button>
                 </CardFooter>
             </Card>
@@ -505,7 +506,7 @@ function CreateStoryPage() {
                     <div className="flex gap-4">
                         <Button onClick={handleGenerateStory} size="lg" variant="outline" disabled={loading} className="bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100">
                             <Wand2 className="ml-2 h-5 w-5" />
-                            إعادة إنشاء (66 نقطة)
+                            إعادة إنشاء ({PRICING_CONFIG.FEATURE_COSTS.STORY_WITH_CHILD_NAME} نقطة)
                         </Button>
                         <Button onClick={nextStep} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500" disabled={loading || !story}>
                             التالي

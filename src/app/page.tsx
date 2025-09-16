@@ -2,6 +2,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PRICING_CONFIG } from '@/lib/pricing';
 import { 
   BookOpen, 
   Camera, 
@@ -225,7 +226,7 @@ export default function Home() {
               </p>
               <div className="mt-6 flex items-center gap-2 text-sm text-talween-teal font-semibold">
                 <Sparkles className="h-4 w-4" />
-                <span>66 نقطة</span>
+                <span>{PRICING_CONFIG.FEATURE_COSTS.STORY_WITH_CHILD_NAME} نقطة</span>
               </div>
             </Card>
 

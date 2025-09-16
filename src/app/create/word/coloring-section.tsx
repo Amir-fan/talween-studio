@@ -140,7 +140,7 @@ export function ColoringSection() {
                       <div className="flex flex-col items-center gap-3">
                           <Button onClick={generateColoringPage} size="lg" variant="outline" disabled={loading} className="bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100">
                               <Wand2 className="ml-2 h-5 w-5" />
-                              إعادة إنشاء (1 نقطة)
+                              إعادة إنشاء ({PRICING_CONFIG.FEATURE_COSTS.TEXT_TO_COLORING} نقطة)
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => {
                               const link = document.createElement('a');
@@ -244,7 +244,7 @@ export function ColoringSection() {
                           ) : (
                               <Sparkles className="ml-2 h-4 w-4" />
                           )}
-                          {loading ? '...جاري الإنشاء' : 'إنشاء الصورة (1 نقطة)'}
+                          {loading ? '...جاري الإنشاء' : `إنشاء الصورة (${PRICING_CONFIG.FEATURE_COSTS.TEXT_TO_COLORING} نقطة)`}
                           </Button>
                       </form>
                       </Form>

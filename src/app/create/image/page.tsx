@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateImageFromPhotoAction } from './actions';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
+import { PRICING_CONFIG } from '@/lib/pricing';
 
 export default function CreateWithImagePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -150,7 +151,7 @@ export default function CreateWithImagePage() {
                                 <div className="flex flex-col items-center gap-3">
                                     <Button onClick={generateColoringPage} size="lg" variant="outline" disabled={loading} className="bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100">
                                         <Wand2 className="ml-2 h-5 w-5" />
-                                        إعادة إنشاء (27 نقطة)
+                                        إعادة إنشاء ({PRICING_CONFIG.FEATURE_COSTS.PHOTO_TO_COLORING} نقطة)
                                     </Button>
                                     <Button size="sm" variant="outline" onClick={() => {
                                         const link = document.createElement('a');
@@ -201,7 +202,7 @@ export default function CreateWithImagePage() {
                       <h3 className="font-bold mb-2 text-center">الصورة المحددة</h3>
                       <Image src={previewUrl} alt="Selected preview" width={200} height={200} className="rounded-lg w-full" />
                        <Button onClick={generateColoringPage} size="lg" className="w-full mt-4 bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500" disabled={loading}>
-                        {loading ? '...جاري التحويل' : 'تحويل إلى صفحة تلوين (27 نقطة)'}
+                        {loading ? '...جاري التحويل' : `تحويل إلى صفحة تلوين (${PRICING_CONFIG.FEATURE_COSTS.PHOTO_TO_COLORING} نقطة)`}
                         </Button>
                     </CardContent>
                   </Card>
