@@ -30,20 +30,24 @@ export async function checkAndDeductCreditsForFeature(
 
   const cost = PRICING_CONFIG.FEATURE_COSTS[feature];
   
-  // Server-side: Skip credit checking - let client handle it
-  if (typeof window === 'undefined') {
-    console.log('🔍 SERVER-SIDE: Skipping credit check, allowing generation');
-    return { success: true, cost };
+  // Prefer server database update so admin dashboard stays in sync
+  try {
+    const resp = await fetch('/api/user/deduct-credits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, amount: cost })
+    });
+    if (resp.ok) {
+      // Also update local cache so UI reflects change immediately
+      const result = deductLocalUserCredits(userId, cost);
+      return { success: result.success, error: result.error, cost };
+    }
+  } catch {
+    // Fall back to client-only deduction if server not reachable
   }
-  
-  // Client-side: Handle credit checking and deduction
+
   const result = deductLocalUserCredits(userId, cost);
-  
-  return {
-    success: result.success,
-    error: result.error,
-    cost: result.success ? cost : undefined
-  };
+  return { success: result.success, error: result.error, cost: result.success ? cost : undefined };
 }
 
 /**

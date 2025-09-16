@@ -302,6 +302,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } catch (error) {
             console.error('Error syncing with server:', error);
           }
+
+          // Ensure dashboard consistency even when only local changed
+          try {
+            if (storedUserData) {
+              const cached = JSON.parse(storedUserData);
+              const delta = (userData.credits ?? 0) - (cached.credits ?? 0);
+              if (delta < 0) {
+                await fetch('/api/user/deduct-credits', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ userId: canonicalId, amount: Math.abs(delta) })
+                });
+              }
+            }
+          } catch {}
           
           // Use credits from the main user data (which should be updated)
           let credits = userData.credits || 50;
