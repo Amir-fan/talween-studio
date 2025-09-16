@@ -51,6 +51,8 @@ export async function initializeSpreadsheet() {
 // Add user to Google Sheets
 export async function addUserToSheets(user: any) {
   console.log('🔄 Attempting to add user to Google Sheets:', user.email);
+  console.log('User data:', user);
+  
   try {
     const values = [[
       user.id,
@@ -65,12 +67,14 @@ export async function addUserToSheets(user: any) {
       user.total_spent
     ]];
 
+    console.log('Values to add:', values);
+
     // Add timeout to prevent hanging
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Google Sheets timeout')), 10000);
     });
 
-    await Promise.race([
+    const result = await Promise.race([
       sheets.spreadsheets.values.append({
         spreadsheetId: SPREADSHEET_ID,
         range: `${SHEET_NAME}!A:J`,
@@ -80,13 +84,15 @@ export async function addUserToSheets(user: any) {
       timeoutPromise
     ]);
 
-    console.log('✅ User added to Google Sheets:', user.email);
+    console.log('✅ User added to Google Sheets successfully:', user.email);
+    console.log('Google Sheets response:', result.data);
   } catch (error) {
     console.error('❌ Error adding user to sheets:', error);
     console.error('Error details:', {
       message: error.message,
       code: error.code,
-      status: error.status
+      status: error.status,
+      response: error.response?.data
     });
     // Don't throw error - this is non-blocking
   }
@@ -155,9 +161,32 @@ export async function syncAllUsersToSheets() {
     console.log(`🔄 Syncing ${users.length} users to Google Sheets...`);
     
     // Clear existing data (except headers)
+    console.log('🧹 Clearing existing data from Google Sheets...');
     await sheets.spreadsheets.values.clear({
       spreadsheetId: SPREADSHEET_ID,
       range: `${SHEET_NAME}!A2:J1000`
+    });
+
+    // Add headers first
+    console.log('📝 Adding headers to Google Sheets...');
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!A1:J1`,
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [[
+          'ID',
+          'البريد الإلكتروني',
+          'الاسم',
+          'النقاط',
+          'الحالة',
+          'تم التحقق من البريد',
+          'مستوى الاشتراك',
+          'تاريخ الإنشاء',
+          'آخر دخول',
+          'إجمالي المدفوع'
+        ]]
+      }
     });
 
     // Add all users
@@ -174,7 +203,10 @@ export async function syncAllUsersToSheets() {
       user.total_spent
     ]);
 
+    console.log('📊 User data to sync:', values);
+
     if (values.length > 0) {
+      console.log('📤 Adding users to Google Sheets...');
       await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
         range: `${SHEET_NAME}!A2:J${values.length + 1}`,
@@ -186,6 +218,12 @@ export async function syncAllUsersToSheets() {
     console.log(`✅ Successfully synced ${users.length} users to Google Sheets`);
   } catch (error) {
     console.error('❌ Error syncing users to sheets:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      status: error.status,
+      response: error.response?.data
+    });
     throw error; // Re-throw so admin can see the error
   }
 }
