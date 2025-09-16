@@ -67,11 +67,23 @@ export function ColoringSection() {
     setImageDataUri(null);
     try {
       // Check credits on client side first
+      console.log('🔍 CREDIT CHECK DEBUG:');
+      console.log('  - user exists?', !!user);
+      console.log('  - isAdmin?', isAdmin);
+      console.log('  - Will check credits?', user && !isAdmin);
+      
       if (user && !isAdmin) {
         console.log('🔍 CLIENT CREDIT CHECK:');
         console.log('  - user:', user);
         console.log('  - user.id:', user.id);
+        console.log('  - user.credits:', user.credits);
         console.log('  - isAdmin:', isAdmin);
+        
+        // Check localStorage directly
+        const storedUser = localStorage.getItem('talween_user');
+        const storedUserData = localStorage.getItem('talween_user_data');
+        console.log('  - storedUser (talween_user):', storedUser);
+        console.log('  - storedUserData (talween_user_data):', storedUserData);
         
         const cost = PRICING_CONFIG.FEATURE_COSTS.TEXT_TO_COLORING;
         console.log('  - cost:', cost);
@@ -81,6 +93,7 @@ export function ColoringSection() {
         
         if (!creditResult.success) {
           console.log('❌ Credit check failed, showing popup');
+          console.log('❌ Error details:', creditResult.error);
           setShowCreditsPopup(true);
           return;
         }
