@@ -61,10 +61,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUserData(adminUser);
           setIsAdmin(true);
         } 
-        // Handle regular user - convert uid to id
-        else if (userData.uid) {
+        // Handle regular user - use id or uid
+        else if (userData.id || userData.uid) {
           const regularUser = {
-            id: userData.uid, // Use uid as id
+            id: userData.id || userData.uid, // Use id if available, otherwise uid
             email: userData.email,
             displayName: userData.displayName,
             credits: userData.credits || 50,
@@ -72,6 +72,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             emailVerified: userData.emailVerified || false,
             subscriptionTier: userData.subscriptionTier || 'FREE'
           };
+          console.log('🔍 RESTORING USER FROM LOCALSTORAGE:');
+          console.log('  - userData:', userData);
+          console.log('  - regularUser:', regularUser);
           setUser(regularUser);
           setUserData(regularUser);
           setIsAdmin(false);

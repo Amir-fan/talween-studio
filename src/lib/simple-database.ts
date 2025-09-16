@@ -125,13 +125,20 @@ function initializeDatabase() {
 // User management functions
 export const userDb = {
   create: (email: string, password: string, displayName: string) => {
+    console.log('🔍 DATABASE CREATE - Attempting to create user:');
+    console.log('  - email:', email);
+    console.log('  - displayName:', displayName);
+    
     const id = uuidv4();
     const hashedPassword = bcrypt.hashSync(password, 10);
     const verificationToken = uuidv4();
     
     // Check if user already exists
     const existingUser = Object.values(db.users).find(user => user.email === email);
+    console.log('  - existingUser found:', !!existingUser);
     if (existingUser) {
+      console.log('  - existingUser email:', existingUser.email);
+      console.log('❌ User already exists');
       return { success: false, error: 'Email already exists' };
     }
     
