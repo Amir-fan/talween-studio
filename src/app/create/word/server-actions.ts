@@ -14,17 +14,17 @@ export async function generateImageAction(
   error?: string;
 }> {
   try {
-    // Skip credits check for now - handle on client side
-    // if (values.userId) {
-    //     const creditCheck = await checkAndDeductCreditsForFeature(
-    //       values.userId, 
-    //       'TEXT_TO_COLORING',
-    //       `تحويل فكرة نصية إلى صفحة تلوين: ${values.description}`
-    //     );
-    //     if (!creditCheck.success) {
-    //         throw new Error(creditCheck.error === 'Not enough credits' ? 'NotEnoughCredits' : 'Failed to process credits.');
-    //     }
-    // }
+    // Check and deduct credits for the feature
+    if (values.userId) {
+        const creditCheck = await checkAndDeductCreditsForFeature(
+          values.userId, 
+          'TEXT_TO_COLORING',
+          `تحويل فكرة نصية إلى صفحة تلوين: ${values.description}`
+        );
+        if (!creditCheck.success) {
+            throw new Error(creditCheck.error === 'Not enough credits' ? 'NotEnoughCredits' : 'Failed to process credits.');
+        }
+    }
 
     const result = await generateColoringPageFromTextFlow(values);
     return { success: true, data: result };

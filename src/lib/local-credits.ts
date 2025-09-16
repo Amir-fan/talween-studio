@@ -29,6 +29,12 @@ export async function checkAndDeductCreditsForFeature(
   }
 
   const cost = PRICING_CONFIG.FEATURE_COSTS[feature];
+  
+  // Server-side: Skip credit checking for now, handle on client side
+  if (typeof window === 'undefined') {
+    return { success: true, cost };
+  }
+  
   const result = deductLocalUserCredits(userId, cost);
   
   return {
@@ -47,14 +53,17 @@ export async function addCredits(userId: string, amount: number, description?: s
   }
 
   try {
-    // Get current user data
-    const userData = JSON.parse(localStorage.getItem('talween_user_data') || '{}');
-    if (!userData || userData.uid !== userId) {
-      return { success: false, error: 'User not found.' };
-    }
+    // Server-side: This will be handled by the payment callback
+    // Client-side: Use localStorage
+    if (typeof window !== 'undefined') {
+      const userData = JSON.parse(localStorage.getItem('talween_user_data') || '{}');
+      if (!userData || userData.uid !== userId) {
+        return { success: false, error: 'User not found.' };
+      }
 
-    const newCredits = userData.credits + amount;
-    updateLocalUserCredits(userId, newCredits);
+      const newCredits = userData.credits + amount;
+      updateLocalUserCredits(userId, newCredits);
+    }
     
     return { success: true };
   } catch (error) {

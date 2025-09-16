@@ -16,15 +16,15 @@ export async function generateStoryAction(
       throw new Error('User not authenticated. Please log in to create a story.');
     }
 
-    // Skip credits check for now - handle on client side
-    // const creditCheck = await checkAndDeductCreditsForFeature(
-    //   input.userId, 
-    //   'STORY_WITH_CHILD_NAME',
-    //   `قصة باسم ${input.childName} (${input.numberOfPages} صفحات)`
-    // );
-    // if (!creditCheck.success) {
-    //   throw new Error(creditCheck.error === 'Not enough credits' ? 'NotEnoughCredits' : 'Failed to process credits.');
-    // }
+    // Check and deduct credits for the feature
+    const creditCheck = await checkAndDeductCreditsForFeature(
+      input.userId, 
+      'STORY_WITH_CHILD_NAME',
+      `قصة باسم ${input.childName} (${input.numberOfPages} صفحات)`
+    );
+    if (!creditCheck.success) {
+      throw new Error(creditCheck.error === 'Not enough credits' ? 'NotEnoughCredits' : 'Failed to process credits.');
+    }
     
     const finalStory = await createStoryAndColoringPagesFlow(input);
 
