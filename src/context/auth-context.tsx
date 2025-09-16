@@ -86,18 +86,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     localStorage.removeItem('talween_user');
+    localStorage.removeItem('talween_user_data');
     setUser(null);
     setUserData(null);
     setIsAdmin(false);
+    
+    // Clear admin token
+    document.cookie = 'admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    
     router.push('/');
   };
 
   const loginAsAdmin = (email: string, password: string) => {
-    if (email === 'admin' && password === 'admin123') {
+    // Use environment variables for admin credentials
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@talween.com';
+    const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123';
+    
+    // Also allow the old hardcoded credentials for backward compatibility
+    const validCredentials = (
+      (email === 'admin' && password === 'admin123') ||
+      (email === adminEmail && password === adminPassword)
+    );
+    
+    if (validCredentials) {
       const adminUser = {
         id: 'admin',
-        email: 'admin@talween.com',
-        displayName: 'مستخدم عادي',
+        email: adminEmail,
+        displayName: 'مدير النظام',
         credits: 9999,
         status: 'premium',
         emailVerified: true,
@@ -107,8 +122,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(adminUser);
       setUserData(adminUser);
       setIsAdmin(true);
+      
+      // Set admin token for middleware
+      document.cookie = `admin_token=admin_${Date.now()}; path=/; max-age=86400`; // 24 hours
+      
+      console.log('✅ Admin login successful');
       return true;
     }
+    
+    console.log('❌ Invalid admin credentials');
     return false;
   };
 

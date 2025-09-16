@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/context/auth-context';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +20,9 @@ import {
   Download,
   RefreshCw,
   Search,
-  Filter
+  Filter,
+  Shield,
+  AlertTriangle
 } from 'lucide-react';
 
 interface User {
@@ -55,6 +59,8 @@ interface EmailLog {
 }
 
 export default function AdminDashboard() {
+  const { user, isAdmin, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
@@ -63,6 +69,53 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [creditsToAdd, setCreditsToAdd] = useState('');
+
+  // Security check - redirect if not admin
+  useEffect(() => {
+    if (!authLoading) {
+      if (!user || !isAdmin) {
+        console.log('🚫 Unauthorized access to admin panel - redirecting to login');
+        router.push('/login?redirect=/admin');
+        return;
+      }
+    }
+  }, [user, isAdmin, authLoading, router]);
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50/30 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">جاري التحقق من الصلاحيات...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show unauthorized message if not admin
+  if (!user || !isAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50/30 flex items-center justify-center">
+        <Card className="max-w-md mx-auto">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <Shield className="h-8 w-8 text-red-600" />
+            </div>
+            <CardTitle className="text-red-600">غير مصرح لك بالوصول</CardTitle>
+            <CardDescription>
+              هذه الصفحة مخصصة للمديرين فقط. يرجى تسجيل الدخول بحساب مدير.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <Button onClick={() => router.push('/login')} className="w-full">
+              تسجيل الدخول
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Load data
   useEffect(() => {
