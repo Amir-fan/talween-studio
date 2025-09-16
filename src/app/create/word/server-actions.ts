@@ -14,16 +14,25 @@ export async function generateImageAction(
   error?: string;
 }> {
   try {
+    console.log('🔍 SERVER ACTION - generateImageAction:');
+    console.log('  - values.userId:', values.userId);
+    console.log('  - values.description:', values.description);
+    
     // Check and deduct credits for the feature
     if (values.userId) {
+        console.log('🔍 Calling checkAndDeductCreditsForFeature...');
         const creditCheck = await checkAndDeductCreditsForFeature(
           values.userId, 
           'TEXT_TO_COLORING',
           `تحويل فكرة نصية إلى صفحة تلوين: ${values.description}`
         );
+        console.log('  - creditCheck result:', creditCheck);
+        
         if (!creditCheck.success) {
+            console.log('❌ Credit check failed:', creditCheck.error);
             throw new Error(creditCheck.error === 'Not enough credits' ? 'NotEnoughCredits' : 'Failed to process credits.');
         }
+        console.log('✅ Credit check passed');
     }
 
     const result = await generateColoringPageFromTextFlow(values);

@@ -32,21 +32,41 @@ export async function checkAndDeductCreditsForFeature(
   
   // Server-side: Check credits in database
   if (typeof window === 'undefined') {
+    console.log('🔍 SERVER-SIDE CREDIT CHECK:');
+    console.log('  - userId:', userId);
+    console.log('  - feature:', feature);
+    console.log('  - cost:', cost);
+    
     const { userDb } = await import('./simple-database');
     const user = userDb.findById(userId);
     
+    console.log('  - user found:', !!user);
+    if (user) {
+      console.log('  - user.credits:', user.credits);
+      console.log('  - user.id:', user.id);
+    }
+    
     if (!user) {
+      console.log('❌ User not found in database');
       return { success: false, error: 'User not found' };
     }
     
     if (user.credits < cost) {
+      console.log('❌ Not enough credits:', user.credits, '<', cost);
       return { success: false, error: 'Not enough credits' };
     }
     
     // Deduct credits from database
-    const newCredits = user.credits - cost;
-    userDb.updateCredits(userId, newCredits);
+    console.log('✅ Deducting credits from database');
+    const deductResult = userDb.deductCredits(userId, cost);
+    console.log('  - deductResult:', deductResult);
     
+    if (!deductResult.success) {
+      console.log('❌ Failed to deduct credits:', deductResult.error);
+      return { success: false, error: deductResult.error || 'Failed to deduct credits' };
+    }
+    
+    console.log('✅ Credits deducted successfully');
     return { success: true, cost };
   }
   
