@@ -135,13 +135,36 @@ export default function AdminDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/admin/data');
-      const data = await response.json();
+      // Load users from Google Sheets
+      const usersResponse = await fetch(`${process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL}?action=getUsers&apiKey=${process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY}`);
+      const usersData = await usersResponse.json();
       
-      setUsers(data.users || []);
-      setOrders(data.orders || []);
-      setEmailLogs(data.emailLogs || []);
-      setStats(data.stats || null);
+      if (usersData.success) {
+        setUsers(usersData.users || []);
+        
+        // Calculate stats from users data
+        const users = usersData.users || [];
+        const stats = {
+          totalUsers: users.length,
+          verifiedUsers: users.filter((u: any) => u['البريد الإلكتروني مؤكد'] === 'نعم').length,
+          activeUsers: users.filter((u: any) => u['الحالة'] === 'active').length,
+          totalCredits: users.reduce((sum: number, u: any) => sum + parseInt(u['النقاط'] || '0'), 0),
+          totalSpent: users.reduce((sum: number, u: any) => sum + parseInt(u['إجمالي المدفوع'] || '0'), 0),
+          subscriptionTiers: {
+            FREE: users.filter((u: any) => u['مستوى الاشتراك'] === 'FREE').length,
+            EXPLORER: users.filter((u: any) => u['مستوى الاشتراك'] === 'EXPLORER').length,
+            CREATIVE_WORLD: users.filter((u: any) => u['مستوى الاشتراك'] === 'CREATIVE_WORLD').length,
+            CREATIVE_TEACHER: users.filter((u: any) => u['مستوى الاشتراك'] === 'CREATIVE_TEACHER').length,
+          }
+        };
+        setStats(stats);
+      } else {
+        console.error('Failed to load users:', usersData.error);
+      }
+      
+      // For now, set empty arrays for orders and email logs
+      setOrders([]);
+      setEmailLogs([]);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -153,19 +176,29 @@ export default function AdminDashboard() {
     if (!creditsToAdd || isNaN(Number(creditsToAdd))) return;
     
     try {
-      const response = await fetch('/api/admin/add-credits', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL}?action=addCredits&apiKey=${process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, credits: Number(creditsToAdd) })
+        body: JSON.stringify({ 
+          action: 'addCredits',
+          apiKey: process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY,
+          userId, 
+          amount: Number(creditsToAdd) 
+        })
       });
       
-      if (response.ok) {
+      const data = await response.json();
+      if (data.success) {
+        alert('تم إضافة النقاط بنجاح');
         setCreditsToAdd('');
         setSelectedUser(null);
         loadData();
+      } else {
+        alert(`فشل في إضافة النقاط: ${data.error}`);
       }
     } catch (error) {
       console.error('Error adding credits:', error);
+      alert('حدث خطأ أثناء إضافة النقاط');
     }
   };
 
@@ -190,18 +223,22 @@ export default function AdminDashboard() {
     }
 
     try {
-      const response = await fetch('/api/admin/delete-user', {
-        method: 'DELETE',
+      const response = await fetch(`${process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL}?action=deleteUser&apiKey=${process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY}`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId })
+        body: JSON.stringify({ 
+          action: 'deleteUser',
+          apiKey: process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY,
+          userId 
+        })
       });
 
-      if (response.ok) {
+      const data = await response.json();
+      if (data.success) {
         alert('تم حذف المستخدم بنجاح');
         loadData(); // Refresh the data
       } else {
-        const errorData = await response.json();
-        alert(`فشل في حذف المستخدم: ${errorData.error || 'خطأ غير معروف'}`);
+        alert(`فشل في حذف المستخدم: ${data.error || 'خطأ غير معروف'}`);
       }
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -210,8 +247,8 @@ export default function AdminDashboard() {
   };
 
   const filteredUsers = users.filter(user => 
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.display_name.toLowerCase().includes(searchTerm.toLowerCase())
+    (user['البريد الإلكتروني'] || user.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user['الاسم'] || user.display_name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -378,20 +415,20 @@ export default function AdminDashboard() {
                   </TableHeader>
                   <TableBody>
                     {filteredUsers.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.display_name}</TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>{user.credits}</TableCell>
+                      <TableRow key={user['المعرف'] || user.id}>
+                        <TableCell className="font-medium">{user['الاسم'] || user.display_name || 'غير محدد'}</TableCell>
+                        <TableCell>{user['البريد الإلكتروني'] || user.email || 'غير محدد'}</TableCell>
+                        <TableCell>{user['النقاط'] || user.credits || 0}</TableCell>
                         <TableCell>
-                          <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
-                            {user.status === 'active' ? 'نشط' : 'غير نشط'}
+                          <Badge variant={(user['الحالة'] || user.status) === 'active' ? 'default' : 'secondary'}>
+                            {(user['الحالة'] || user.status) === 'active' ? 'نشط' : 'غير نشط'}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{user.subscription_tier}</Badge>
+                          <Badge variant="outline">{user['مستوى الاشتراك'] || user.subscription_tier || 'FREE'}</Badge>
                         </TableCell>
                         <TableCell>
-                          {new Date(user.created_at * 1000).toLocaleDateString('ar-SA')}
+                          {user['تاريخ الإنشاء'] || (user.created_at ? new Date(user.created_at * 1000).toLocaleDateString('ar-SA') : 'غير محدد')}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
@@ -405,7 +442,7 @@ export default function AdminDashboard() {
                             <Button
                               size="sm"
                               variant="destructive"
-                              onClick={() => handleDeleteUser(user.id, user.display_name)}
+                              onClick={() => handleDeleteUser(user['المعرف'] || user.id, user['الاسم'] || user.display_name || 'المستخدم')}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

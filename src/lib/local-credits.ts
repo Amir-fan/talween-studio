@@ -1,9 +1,9 @@
 /**
- * Local credits system using localStorage
- * Replaces Firebase credits system
+ * Credits system using Google Sheets API
+ * Replaces local database with Google Sheets as primary database
  */
 
-import { deductLocalUserCredits, updateLocalUserCredits } from './local-auth';
+import { googleSheetsUserDb } from './google-sheets-api';
 import { PRICING_CONFIG, type FeatureType } from './pricing';
 
 export async function checkAndDeductCredits(userId: string, amount: number): Promise<{ success: boolean; error?: string }> {
@@ -11,8 +11,13 @@ export async function checkAndDeductCredits(userId: string, amount: number): Pro
     return { success: false, error: 'User not authenticated.' };
   }
 
-  const result = deductLocalUserCredits(userId, amount);
-  return result;
+  try {
+    const result = await googleSheetsUserDb.deductCredits(userId, amount);
+    return { success: result.success, error: result.error };
+  } catch (error) {
+    console.error('Error deducting credits:', error);
+    return { success: false, error: 'Failed to deduct credits.' };
+  }
 }
 
 /**
@@ -30,24 +35,13 @@ export async function checkAndDeductCreditsForFeature(
 
   const cost = PRICING_CONFIG.FEATURE_COSTS[feature];
   
-  // Prefer server database update so admin dashboard stays in sync
   try {
-    const resp = await fetch('/api/user/deduct-credits', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, amount: cost })
-    });
-    if (resp.ok) {
-      // Also update local cache so UI reflects change immediately
-      const result = deductLocalUserCredits(userId, cost);
-      return { success: result.success, error: result.error, cost };
-    }
-  } catch {
-    // Fall back to client-only deduction if server not reachable
+    const result = await googleSheetsUserDb.deductCredits(userId, cost);
+    return { success: result.success, error: result.error, cost: result.success ? cost : undefined };
+  } catch (error) {
+    console.error('Error deducting credits for feature:', error);
+    return { success: false, error: 'Failed to process credits.' };
   }
-
-  const result = deductLocalUserCredits(userId, cost);
-  return { success: result.success, error: result.error, cost: result.success ? cost : undefined };
 }
 
 /**
@@ -59,20 +53,10 @@ export async function addCredits(userId: string, amount: number, description?: s
   }
 
   try {
-    // Server-side: This will be handled by the payment callback
-    // Client-side: Use localStorage
-    if (typeof window !== 'undefined') {
-      const userData = JSON.parse(localStorage.getItem('talween_user_data') || '{}');
-      if (!userData || userData.uid !== userId) {
-        return { success: false, error: 'User not found.' };
-      }
-
-      const newCredits = userData.credits + amount;
-      updateLocalUserCredits(userId, newCredits);
-    }
-    
-    return { success: true };
+    const result = await googleSheetsUserDb.addCredits(userId, amount);
+    return { success: result.success, error: result.error };
   } catch (error) {
+    console.error('Error adding credits:', error);
     return { success: false, error: 'Failed to add credits.' };
   }
 }
@@ -86,13 +70,15 @@ export async function getUserCredits(userId: string): Promise<{ success: boolean
   }
 
   try {
-    const userData = JSON.parse(localStorage.getItem('talween_user_data') || '{}');
-    if (!userData || userData.uid !== userId) {
+    const user = await googleSheetsUserDb.findById(userId);
+    if (!user) {
       return { success: false, error: 'User not found.' };
     }
 
-    return { success: true, credits: userData.credits };
+    const credits = parseInt(user['النقاط'] || user.credits || '0');
+    return { success: true, credits };
   } catch (error) {
+    console.error('Error getting user credits:', error);
     return { success: false, error: 'Failed to get credits.' };
   }
 }
