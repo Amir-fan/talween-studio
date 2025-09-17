@@ -101,6 +101,289 @@ function CreateStoryPage() {
   const nextStep = () => setStep((prev) => (prev < steps.length ? prev + 1 : prev));
   const prevStep = () => setStep((prev) => (prev > 1 ? prev - 1 : prev));
 
+  // Download story as PDF
+  const downloadStory = () => {
+    if (!story) return;
+    
+    // Create a new window with just the story content
+    const storyWindow = window.open('', '_blank');
+    if (!storyWindow) return;
+    
+    const storyHTML = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${story.title}</title>
+        <style>
+          body { 
+            font-family: 'Arial', sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: white;
+            direction: rtl;
+            text-align: right;
+          }
+          .story-page { 
+            page-break-after: always; 
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 80vh;
+          }
+          .story-page:last-child { page-break-after: avoid; }
+          .story-text { 
+            background: #f9f9f9; 
+            padding: 20px; 
+            border-radius: 10px; 
+            margin: 20px 0;
+            font-size: 18px;
+            line-height: 1.6;
+            max-width: 600px;
+            text-align: center;
+          }
+          .story-image { 
+            max-width: 100%; 
+            height: auto; 
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+          }
+          .page-number {
+            background: #4f46e5;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+          }
+          @media print {
+            body { margin: 0; padding: 10px; }
+            .story-page { page-break-after: always; }
+          }
+        </style>
+      </head>
+      <body>
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #4f46e5; margin-bottom: 10px;">${story.title}</h1>
+          <p style="color: #666; font-size: 16px;">قصة من إنشاء Talween Studio</p>
+        </div>
+        ${story.pages.map((page, index) => `
+          <div class="story-page">
+            <div class="page-number">${index + 1}</div>
+            <div class="story-text">${page.text}</div>
+            <img src="${page.imageDataUri}" alt="صفحة ${index + 1}" class="story-image" />
+          </div>
+        `).join('')}
+      </body>
+      </html>
+    `;
+    
+    storyWindow.document.write(storyHTML);
+    storyWindow.document.close();
+    
+    // Wait for images to load, then print
+    storyWindow.onload = () => {
+      setTimeout(() => {
+        storyWindow.print();
+      }, 1000);
+    };
+  };
+
+  // Download story vertically (portrait)
+  const downloadStoryVertical = () => {
+    if (!story) return;
+    
+    const storyWindow = window.open('', '_blank');
+    if (!storyWindow) return;
+    
+    const storyHTML = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${story.title} - عمودي</title>
+        <style>
+          body { 
+            font-family: 'Arial', sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: white;
+            direction: rtl;
+            text-align: right;
+          }
+          .story-page { 
+            page-break-after: always; 
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 90vh;
+          }
+          .story-page:last-child { page-break-after: avoid; }
+          .story-text { 
+            background: #f9f9f9; 
+            padding: 20px; 
+            border-radius: 10px; 
+            margin: 20px 0;
+            font-size: 18px;
+            line-height: 1.6;
+            max-width: 500px;
+            text-align: center;
+          }
+          .story-image { 
+            max-width: 100%; 
+            height: auto; 
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+          }
+          .page-number {
+            background: #4f46e5;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+          }
+          @media print {
+            body { margin: 0; padding: 10px; }
+            .story-page { page-break-after: always; }
+            @page { size: A4 portrait; }
+          }
+        </style>
+      </head>
+      <body>
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #4f46e5; margin-bottom: 10px;">${story.title}</h1>
+          <p style="color: #666; font-size: 16px;">قصة من إنشاء Talween Studio</p>
+        </div>
+        ${story.pages.map((page, index) => `
+          <div class="story-page">
+            <div class="page-number">${index + 1}</div>
+            <div class="story-text">${page.text}</div>
+            <img src="${page.imageDataUri}" alt="صفحة ${index + 1}" class="story-image" />
+          </div>
+        `).join('')}
+      </body>
+      </html>
+    `;
+    
+    storyWindow.document.write(storyHTML);
+    storyWindow.document.close();
+    
+    storyWindow.onload = () => {
+      setTimeout(() => {
+        storyWindow.print();
+      }, 1000);
+    };
+  };
+
+  // Download story horizontally (landscape)
+  const downloadStoryHorizontal = () => {
+    if (!story) return;
+    
+    const storyWindow = window.open('', '_blank');
+    if (!storyWindow) return;
+    
+    const storyHTML = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${story.title} - أفقي</title>
+        <style>
+          body { 
+            font-family: 'Arial', sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: white;
+            direction: rtl;
+            text-align: right;
+          }
+          .story-page { 
+            page-break-after: always; 
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 80vh;
+            gap: 20px;
+          }
+          .story-page:last-child { page-break-after: avoid; }
+          .story-text { 
+            background: #f9f9f9; 
+            padding: 20px; 
+            border-radius: 10px; 
+            font-size: 16px;
+            line-height: 1.6;
+            flex: 1;
+            text-align: center;
+          }
+          .story-image { 
+            max-width: 50%; 
+            height: auto; 
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+          }
+          .page-number {
+            background: #4f46e5;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+          }
+          @media print {
+            body { margin: 0; padding: 10px; }
+            .story-page { page-break-after: always; }
+            @page { size: A4 landscape; }
+          }
+        </style>
+      </head>
+      <body>
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #4f46e5; margin-bottom: 10px;">${story.title}</h1>
+          <p style="color: #666; font-size: 16px;">قصة من إنشاء Talween Studio</p>
+        </div>
+        ${story.pages.map((page, index) => `
+          <div class="story-page">
+            <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
+              <div class="page-number">${index + 1}</div>
+              <div class="story-text">${page.text}</div>
+            </div>
+            <img src="${page.imageDataUri}" alt="صفحة ${index + 1}" class="story-image" />
+          </div>
+        `).join('')}
+      </body>
+      </html>
+    `;
+    
+    storyWindow.document.write(storyHTML);
+    storyWindow.document.close();
+    
+    storyWindow.onload = () => {
+      setTimeout(() => {
+        storyWindow.print();
+      }, 1000);
+    };
+  };
+
 
   const handleGenerateStory = async () => {
     if (!user) {
@@ -576,7 +859,7 @@ function CreateStoryPage() {
                                  <Save className="ml-2 h-5 w-5" />
                                 حفظ في مكتبتي
                             </Button>
-                             <Button size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500">
+                             <Button size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500" onClick={downloadStory}>
                                 <Download className="ml-2 h-5 w-5" />
                                 تحميل القصة
                             </Button>
@@ -584,11 +867,11 @@ function CreateStoryPage() {
                         <div className="text-center">
                             <p className="text-sm text-muted-foreground mb-2">خيارات التحميل:</p>
                             <div className="flex justify-center gap-2">
-                                <Button size="sm" variant="outline" onClick={() => window.print()}>
+                                <Button size="sm" variant="outline" onClick={downloadStoryVertical}>
                                     <Download className="ml-2 h-4 w-4" />
                                     عمودي
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={() => window.print()}>
+                                <Button size="sm" variant="outline" onClick={downloadStoryHorizontal}>
                                     <Download className="ml-2 h-4 w-4" />
                                     أفقي
                                 </Button>
