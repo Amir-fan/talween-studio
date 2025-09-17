@@ -25,6 +25,33 @@
       "subject": "Email failed via Google Apps Script - welcomeAfterVerification",
       "status": "pending",
       "created_at": 1758024914
+    },
+    "392932b1-1fb0-4467-bf89-ab551b8cb208": {
+      "id": "392932b1-1fb0-4467-bf89-ab551b8cb208",
+      "user_id": "user_1758056749495_xdryylqfd",
+      "email_type": "welcomeAfterVerification",
+      "recipient_email": "localtest@example.com",
+      "subject": "Email failed via Google Apps Script - welcomeAfterVerification",
+      "status": "pending",
+      "created_at": 1758056750
+    },
+    "dfaf814c-9101-4e67-949c-9c1f90b0106c": {
+      "id": "dfaf814c-9101-4e67-949c-9c1f90b0106c",
+      "user_id": "user_1758133157484_6a44j0y0j",
+      "email_type": "welcomeAfterVerification",
+      "recipient_email": "test2@example.com",
+      "subject": "Email failed via Google Apps Script - welcomeAfterVerification",
+      "status": "pending",
+      "created_at": 1758133161
+    },
+    "a2cfb252-d409-4aeb-a0e9-3a74819edb55": {
+      "id": "a2cfb252-d409-4aeb-a0e9-3a74819edb55",
+      "user_id": "user_1758133442113_bxui733li",
+      "email_type": "welcomeAfterVerification",
+      "recipient_email": "test3@example.com",
+      "subject": "Email failed via Google Apps Script - welcomeAfterVerification",
+      "status": "pending",
+      "created_at": 1758133447
     }
   },
   "userContent": {},

@@ -39,26 +39,61 @@ interface ApiResponse {
 // Helper function to make API calls to Google Apps Script
 async function callGoogleSheetsAPI(action: string, data: any = {}): Promise<ApiResponse> {
   try {
-    const url = `${GOOGLE_APPS_SCRIPT_URL}?action=${action}&apiKey=${GOOGLE_SHEETS_API_KEY}`;
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        action,
-        apiKey: GOOGLE_SHEETS_API_KEY,
-        ...data
-      })
-    });
+    // Use GET for getUsers action since it works, POST for others
+    if (action === 'getUsers') {
+      const url = `${GOOGLE_APPS_SCRIPT_URL}?action=${action}&apiKey=${GOOGLE_SHEETS_API_KEY}`;
+      
+      console.log(`🔍 GOOGLE SHEETS API CALL (GET) - ${action}:`);
+      console.log('  - URL:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      console.log('  - Response status:', response.status);
+      console.log('  - Response ok:', response.ok);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('  - Result:', JSON.stringify(result, null, 2));
+      return result;
+    } else {
+      // Use POST for other actions
+      const url = `${GOOGLE_APPS_SCRIPT_URL}?action=${action}&apiKey=${GOOGLE_SHEETS_API_KEY}`;
+      
+      console.log(`🔍 GOOGLE SHEETS API CALL (POST) - ${action}:`);
+      console.log('  - URL:', url);
+      console.log('  - Data:', JSON.stringify({ action, apiKey: GOOGLE_SHEETS_API_KEY, ...data }, null, 2));
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          apiKey: GOOGLE_SHEETS_API_KEY,
+          ...data
+        })
+      });
+
+      console.log('  - Response status:', response.status);
+      console.log('  - Response ok:', response.ok);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('  - Result:', JSON.stringify(result, null, 2));
+      return result;
     }
-
-    const result = await response.json();
-    return result;
   } catch (error) {
     console.error(`Error calling Google Sheets API for action ${action}:`, error);
     return {
@@ -75,6 +110,7 @@ export const googleSheetsUserDb = {
     console.log('🔍 GOOGLE SHEETS CREATE - Attempting to create user:');
     console.log('  - email:', email);
     console.log('  - displayName:', displayName);
+    console.log('  - password length:', password.length);
     
     const result = await callGoogleSheetsAPI('createUser', {
       email,
@@ -89,6 +125,7 @@ export const googleSheetsUserDb = {
 
     console.log('  - result.success:', result.success);
     console.log('  - result.error:', result.error);
+    console.log('  - result.userId:', result.userId);
 
     if (result.success) {
       return {
@@ -110,11 +147,29 @@ export const googleSheetsUserDb = {
 
   // Find user by email
   findByEmail: async (email: string) => {
+    console.log('🔍 GOOGLE SHEETS FIND BY EMAIL - Looking for:', email);
     const result = await callGoogleSheetsAPI('getUsers');
     
     if (result.success && result.users) {
-      return result.users.find((user: any) => user['البريد الإلكتروني'] === email);
+      console.log('  - Total users found:', result.users.length);
+      console.log('  - First user keys:', Object.keys(result.users[0] || {}));
+      
+      const user = result.users.find((user: any) => {
+        const userEmail = user['البريد الإلكتروني'];
+        console.log('  - Checking user email:', userEmail, '===', email, '?', userEmail === email);
+        return userEmail === email;
+      });
+      
+      if (user) {
+        console.log('  - User found with keys:', Object.keys(user));
+        console.log('  - User password field:', user['كلمة المرور'] ? 'EXISTS' : 'MISSING');
+      } else {
+        console.log('  - No user found with matching email');
+      }
+      
+      return user;
     }
+    console.log('  - Failed to get users or no users array');
     return null;
   },
 

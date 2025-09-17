@@ -5,7 +5,7 @@
 // Configuration - Set these values in your Apps Script
 const API_KEY = '4808f174cdf9c9aa94cdd80d02d3b069fa04b49b'; // Set this in your Apps Script
 const SPREADSHEET_ID = '1e8H6MdRGF0QJNpNL0NvUwJtWv89Wqk6hQsZIocpb-mI'; // Set this in your Apps Script
-const SHEET_NAME = 'Users';
+const SHEET_NAME = 'Talween Studio Data';
 
 // Main entry point for GET requests (Database API)
 function doGet(e) {
@@ -101,6 +101,12 @@ function handleDatabaseAction(data) {
       return handleDeductCredits(data.userId, data.amount);
     case 'updateCredits':
       return handleUpdateCredits(data.userId, data.credits);
+    case 'getUsers':
+      return handleGetUsers();
+    case 'getUser':
+      return handleGetUser(data.userId);
+    case 'syncCredits':
+      return handleSyncCredits(data.userId);
     default:
       return ContentService
         .createTextOutput(JSON.stringify({ 

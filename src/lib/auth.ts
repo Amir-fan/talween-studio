@@ -93,9 +93,17 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
       return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
     }
 
-    // For now, we'll skip password verification since Google Sheets doesn't store hashed passwords
-    // In production, you'd want to implement proper password verification
-    console.log('✅ User found, proceeding with login');
+    // Verify password - Google Sheets stores plain text passwords for now
+    const storedPassword = user['كلمة المرور'] || user.password || '';
+    console.log('  - stored password length:', storedPassword.length);
+    console.log('  - provided password length:', password.length);
+    
+    if (storedPassword !== password) {
+      console.log('❌ Password mismatch');
+      return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
+    }
+    
+    console.log('✅ User found and password verified, proceeding with login');
 
     // Update last login
     await googleSheetsUserDb.updateUser(user['المعرف'] || user.id, { 
