@@ -60,7 +60,7 @@ export default function CreateWithImagePage() {
 
     try {
       // Check credits on client side first
-      console.log('🔍 CREDIT CHECK DEBUG - Image to Coloring:');
+      console.log('🔍 CREDIT CHECK DEBUG:');
       console.log('  - user exists?', !!user);
       console.log('  - isAdmin?', isAdmin);
       console.log('  - user.id:', user?.id);
@@ -73,7 +73,7 @@ export default function CreateWithImagePage() {
       }
       
       if (user && !isAdmin) {
-        console.log('🔍 CLIENT CREDIT CHECK - Image to Coloring:');
+        console.log('🔍 CLIENT CREDIT CHECK:');
         console.log('  - user.credits:', user.credits);
         console.log('  - isAdmin:', isAdmin);
         
@@ -93,14 +93,13 @@ export default function CreateWithImagePage() {
         } else {
           console.log('❌ Not enough credits:', user.credits, '<', cost);
           setShowCreditsPopup(true);
-          setLoading(false);
           return;
         }
       }
 
       const result = await generateImageFromPhotoAction({ 
         photoDataUri: previewUrl,
-        userId: user?.id 
+        userId: user?.id || 'admin'
       });
       
       if (result.success && result.data) {

@@ -141,7 +141,7 @@ function CreateStoryPage() {
 
     try {
       // Check credits on client side first
-      console.log('🔍 CREDIT CHECK DEBUG - Story Generation:');
+      console.log('🔍 CREDIT CHECK DEBUG:');
       console.log('  - user exists?', !!user);
       console.log('  - isAdmin?', isAdmin);
       console.log('  - user.id:', user?.id);
@@ -154,7 +154,7 @@ function CreateStoryPage() {
       }
       
       if (user && !isAdmin) {
-        console.log('🔍 CLIENT CREDIT CHECK - Story Generation:');
+        console.log('🔍 CLIENT CREDIT CHECK:');
         console.log('  - user.credits:', user.credits);
         console.log('  - isAdmin:', isAdmin);
         
@@ -175,7 +175,6 @@ function CreateStoryPage() {
           console.log('❌ Not enough credits:', user.credits, '<', cost);
           setShowCreditsPopup(true);
           setStep(3); // Go back to allow purchase
-          setLoading(false);
           return;
         }
       }

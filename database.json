@@ -71,14 +71,14 @@
       "status": "pending",
       "created_at": 1758134044
     },
-    "848cee92-7d95-4cc9-9601-701d0e2c405b": {
-      "id": "848cee92-7d95-4cc9-9601-701d0e2c405b",
-      "user_id": "user_1758150726126_37endlree",
+    "1bac57a8-fc14-4871-bcd2-165a27f80eb7": {
+      "id": "1bac57a8-fc14-4871-bcd2-165a27f80eb7",
+      "user_id": "user_1758151057040_imqcnn4ty",
       "email_type": "welcomeAfterVerification",
-      "recipient_email": "test-credits@example.com",
+      "recipient_email": "test-fix@example.com",
       "subject": "Email failed via Google Apps Script - welcomeAfterVerification",
       "status": "pending",
-      "created_at": 1758150727
+      "created_at": 1758151058
     }
   },
   "userContent": {},
