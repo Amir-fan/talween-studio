@@ -119,7 +119,7 @@ export default function AdminDashboard() {
         window.location.href = '/login?redirect=/admin';
       }
     }
-  }, [router, hasRedirected]);
+  }, [router]);
 
   // Also check auth context when it loads
   useEffect(() => {

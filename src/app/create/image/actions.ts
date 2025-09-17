@@ -14,8 +14,8 @@ export async function generateImageFromPhotoAction(
   error?: string;
 }> {
   try {
-    // Check and deduct credits for the feature
-    if (values.userId) {
+    // Skip server-side credit check for admin users (client already handled credits)
+    if (values.userId && values.userId !== 'admin') {
       const creditCheck = await checkAndDeductCreditsForFeature(
         values.userId, 
         'PHOTO_TO_COLORING',

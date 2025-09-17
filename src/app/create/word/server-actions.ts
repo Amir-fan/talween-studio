@@ -18,8 +18,8 @@ export async function generateImageAction(
     console.log('  - values.userId:', values.userId);
     console.log('  - values.description:', values.description);
     
-    // Check and deduct credits for the feature
-    if (values.userId) {
+    // Skip server-side credit check for admin users (client already handled credits)
+    if (values.userId && values.userId !== 'admin') {
         console.log('🔍 Calling checkAndDeductCreditsForFeature...');
         const creditCheck = await checkAndDeductCreditsForFeature(
           values.userId, 
