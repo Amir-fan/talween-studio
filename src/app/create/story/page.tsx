@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
+import { deductLocalUserCredits } from '@/lib/local-auth';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -71,7 +72,7 @@ const lessons = [
 ];
 
 function CreateStoryPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isAdmin, refreshUserData } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState(1);
 
@@ -139,27 +140,67 @@ function CreateStoryPage() {
     setStep(4); // Move to the story view step
 
     try {
-        const input: StoryAndPagesInput = {
-            userId: user.id,
-            childName,
-            ageGroup,
-            numberOfPages,
-            setting: setting === 'other' ? customSetting : setting,
-            lesson: lesson === 'other' ? customLesson : lesson,
-        };
-
-        const result = await generateStoryAction(input);
-
-        if (result.success && result.data) {
-            setStory(result.data);
+      // Check credits on client side first
+      console.log('🔍 CREDIT CHECK DEBUG - Story Generation:');
+      console.log('  - user exists?', !!user);
+      console.log('  - isAdmin?', isAdmin);
+      console.log('  - user.id:', user?.id);
+      console.log('  - Will check credits?', user && !isAdmin);
+      
+      // Debug admin status
+      if (user?.id === 'admin') {
+        console.log('🔍 ADMIN USER DETECTED - skipping credit check');
+        console.log('  - user.id is admin, isAdmin flag:', isAdmin);
+      }
+      
+      if (user && !isAdmin) {
+        console.log('🔍 CLIENT CREDIT CHECK - Story Generation:');
+        console.log('  - user.credits:', user.credits);
+        console.log('  - isAdmin:', isAdmin);
+        
+        const cost = PRICING_CONFIG.FEATURE_COSTS.STORY_WITH_CHILD_NAME;
+        console.log('  - cost:', cost);
+        
+        // Simple credit check: if user has enough credits, proceed
+        if (user.credits >= cost) {
+          console.log('✅ User has enough credits, proceeding with generation');
+          
+          // Deduct credits from localStorage
+          const creditResult = deductLocalUserCredits(user.id, cost);
+          console.log('  - creditResult:', creditResult);
+          
+          // Refresh user data to show updated credits
+          refreshUserData();
         } else {
-             if (result.error === 'NotEnoughCredits') {
-                setShowCreditsPopup(true);
-                setStep(3); // Go back to allow purchase
-            } else {
-                throw new Error(result.error || "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.");
-            }
+          console.log('❌ Not enough credits:', user.credits, '<', cost);
+          setShowCreditsPopup(true);
+          setStep(3); // Go back to allow purchase
+          setLoading(false);
+          return;
         }
+      }
+
+      const input: StoryAndPagesInput = {
+          userId: user.id,
+          childName,
+          ageGroup,
+          numberOfPages,
+          setting: setting === 'other' ? customSetting : setting,
+          lesson: lesson === 'other' ? customLesson : lesson,
+      };
+
+      const result = await generateStoryAction(input);
+
+      if (result.success && result.data) {
+          setStory(result.data);
+      } else {
+           if (result.error === 'NotEnoughCredits') {
+              setShowCreditsPopup(true);
+              setStep(3); // Go back to allow purchase
+          } else {
+              throw new Error(result.error || "فشلت عملية إنشاء القصة. الرجاء المحاولة مرة أخرى.");
+          }
+      }
     } catch (error) {
         toast({
             variant: "destructive",

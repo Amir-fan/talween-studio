@@ -70,6 +70,15 @@
       "subject": "Email failed via Google Apps Script - welcomeAfterVerification",
       "status": "pending",
       "created_at": 1758134044
+    },
+    "848cee92-7d95-4cc9-9601-701d0e2c405b": {
+      "id": "848cee92-7d95-4cc9-9601-701d0e2c405b",
+      "user_id": "user_1758150726126_37endlree",
+      "email_type": "welcomeAfterVerification",
+      "recipient_email": "test-credits@example.com",
+      "subject": "Email failed via Google Apps Script - welcomeAfterVerification",
+      "status": "pending",
+      "created_at": 1758150727
     }
   },
   "userContent": {},

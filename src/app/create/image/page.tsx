@@ -15,15 +15,18 @@ import { generateImageFromPhotoAction } from './actions';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { PRICING_CONFIG } from '@/lib/pricing';
+import { deductLocalUserCredits } from '@/lib/local-auth';
+import { InsufficientCreditsPopup } from '@/components/popups/insufficient-credits-popup';
 
 export default function CreateWithImagePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [coloringPageUrl, setColoringPageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showCreditsPopup, setShowCreditsPopup] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isAdmin, refreshUserData } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -56,15 +59,59 @@ export default function CreateWithImagePage() {
     setColoringPageUrl(null);
 
     try {
-        const result = await generateImageFromPhotoAction({ 
-          photoDataUri: previewUrl,
-          userId: user?.id 
-        });
-        if (result.success && result.data) {
-            setColoringPageUrl(result.data.coloringPageDataUri);
+      // Check credits on client side first
+      console.log('🔍 CREDIT CHECK DEBUG - Image to Coloring:');
+      console.log('  - user exists?', !!user);
+      console.log('  - isAdmin?', isAdmin);
+      console.log('  - user.id:', user?.id);
+      console.log('  - Will check credits?', user && !isAdmin);
+      
+      // Debug admin status
+      if (user?.id === 'admin') {
+        console.log('🔍 ADMIN USER DETECTED - skipping credit check');
+        console.log('  - user.id is admin, isAdmin flag:', isAdmin);
+      }
+      
+      if (user && !isAdmin) {
+        console.log('🔍 CLIENT CREDIT CHECK - Image to Coloring:');
+        console.log('  - user.credits:', user.credits);
+        console.log('  - isAdmin:', isAdmin);
+        
+        const cost = PRICING_CONFIG.FEATURE_COSTS.PHOTO_TO_COLORING;
+        console.log('  - cost:', cost);
+        
+        // Simple credit check: if user has enough credits, proceed
+        if (user.credits >= cost) {
+          console.log('✅ User has enough credits, proceeding with generation');
+          
+          // Deduct credits from localStorage
+          const creditResult = deductLocalUserCredits(user.id, cost);
+          console.log('  - creditResult:', creditResult);
+          
+          // Refresh user data to show updated credits
+          refreshUserData();
         } else {
-            throw new Error(result.error || 'فشلت عملية إنشاء الصورة.');
+          console.log('❌ Not enough credits:', user.credits, '<', cost);
+          setShowCreditsPopup(true);
+          setLoading(false);
+          return;
         }
+      }
+
+      const result = await generateImageFromPhotoAction({ 
+        photoDataUri: previewUrl,
+        userId: user?.id 
+      });
+      
+      if (result.success && result.data) {
+        setColoringPageUrl(result.data.coloringPageDataUri);
+      } else {
+        if (result.error === 'NotEnoughCredits') {
+          setShowCreditsPopup(true);
+        } else {
+          throw new Error(result.error || 'فشلت عملية إنشاء الصورة.');
+        }
+      }
     } catch (error) {
         toast({
             variant: "destructive",
@@ -94,6 +141,7 @@ export default function CreateWithImagePage() {
 
   return (
     <div className="min-h-screen bg-yellow-50/30">
+      <InsufficientCreditsPopup open={showCreditsPopup} onOpenChange={setShowCreditsPopup} />
       <div className="container mx-auto px-4 py-8">
         <header className="flex items-center justify-between">
           <Button asChild variant="outline" className="rounded-full font-bold">

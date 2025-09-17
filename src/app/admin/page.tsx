@@ -71,59 +71,78 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [creditsToAdd, setCreditsToAdd] = useState('');
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [hasRedirected, setHasRedirected] = useState(false);
 
-  // Security check - redirect if not admin
+  // Check for admin authentication immediately
   useEffect(() => {
-    console.log('🔍 ADMIN PAGE - Auth check:');
-    console.log('  - authLoading:', authLoading);
-    console.log('  - user:', user);
-    console.log('  - isAdmin:', isAdmin);
-    console.log('  - user?.id:', user?.id);
+    console.log('🔍 ADMIN PAGE - Immediate auth check:');
     
-    if (!authLoading) {
-      if (!user || !isAdmin) {
-        console.log('🚫 Unauthorized access to admin panel - redirecting to login');
-        console.log('  - user exists:', !!user);
-        console.log('  - isAdmin:', isAdmin);
-        router.push('/login?redirect=/admin');
+    // Check for admin token in cookies first
+    if (typeof window !== 'undefined') {
+      const adminToken = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('admin_token='))
+        ?.split('=')[1];
+      
+      if (adminToken) {
+        console.log('🔍 Found admin token in cookies, granting admin access');
+        setIsAdminAuthenticated(true);
+        setIsCheckingAuth(false);
         return;
       }
-      console.log('✅ Admin access granted');
+      
+      // Check localStorage for admin user
+      const storedUser = localStorage.getItem('talween_user');
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          if (userData.uid === 'admin') {
+            console.log('🔍 Found admin user in localStorage, granting admin access');
+            setIsAdminAuthenticated(true);
+            setIsCheckingAuth(false);
+            return;
+          }
+        } catch (error) {
+          console.error('Error parsing stored user:', error);
+        }
+      }
     }
-  }, [user, isAdmin, authLoading, router]);
+    
+    // If no admin authentication found, redirect immediately
+    console.log('🚫 No admin authentication found - redirecting immediately');
+    if (!hasRedirected) {
+      setHasRedirected(true);
+      // Use window.location.href for immediate redirect
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login?redirect=/admin';
+      }
+    }
+  }, [router, hasRedirected]);
 
-  // Show loading while checking authentication
-  if (authLoading) {
+  // Also check auth context when it loads
+  useEffect(() => {
+    if (!authLoading && user && isAdmin) {
+      console.log('✅ Admin access granted from auth context');
+      setIsAdminAuthenticated(true);
+      setIsCheckingAuth(false);
+    } else if (!authLoading && !isAdminAuthenticated) {
+      console.log('🚫 Auth context loaded but no admin access');
+      setIsCheckingAuth(false);
+    }
+  }, [user, isAdmin, authLoading, isAdminAuthenticated]);
+
+  // Show loading while checking authentication or redirecting
+  if (isCheckingAuth || (!isAdminAuthenticated && !authLoading) || hasRedirected) {
     return (
       <div className="min-h-screen bg-gray-50/30 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">جاري التحقق من الصلاحيات...</p>
+          <p className="text-muted-foreground">
+            {hasRedirected ? 'جاري التوجيه إلى صفحة تسجيل الدخول...' : 'جاري التحقق من الصلاحيات...'}
+          </p>
         </div>
-      </div>
-    );
-  }
-
-  // Show unauthorized message if not admin
-  if (!user || !isAdmin) {
-    return (
-      <div className="min-h-screen bg-gray-50/30 flex items-center justify-center">
-        <Card className="max-w-md mx-auto">
-          <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-              <Shield className="h-8 w-8 text-red-600" />
-            </div>
-            <CardTitle className="text-red-600">غير مصرح لك بالوصول</CardTitle>
-            <CardDescription>
-              هذه الصفحة مخصصة للمديرين فقط. يرجى تسجيل الدخول بحساب مدير.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center">
-            <Button onClick={() => router.push('/login')} className="w-full">
-              تسجيل الدخول
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     );
   }
