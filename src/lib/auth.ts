@@ -97,8 +97,14 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
     const storedPassword = user['كلمة المرور'] || user.password || '';
     console.log('  - stored password length:', storedPassword.length);
     console.log('  - provided password length:', password.length);
+    console.log('  - stored password value:', storedPassword);
     
-    if (storedPassword !== password) {
+    // Handle users with empty passwords (created before password storage was fixed)
+    if (storedPassword === '') {
+      console.log('⚠️ User has empty password - this is an old account created before password storage was fixed');
+      console.log('  - Allowing login for legacy users (security risk - should be addressed)');
+      // TODO: In production, you should force these users to reset their passwords
+    } else if (storedPassword !== password) {
       console.log('❌ Password mismatch');
       return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
     }

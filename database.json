@@ -52,6 +52,24 @@
       "subject": "Email failed via Google Apps Script - welcomeAfterVerification",
       "status": "pending",
       "created_at": 1758133447
+    },
+    "6c2df072-ff22-4f78-84bd-1f96b77674e5": {
+      "id": "6c2df072-ff22-4f78-84bd-1f96b77674e5",
+      "user_id": "user_1758134012248_4izggsd1w",
+      "email_type": "welcomeAfterVerification",
+      "recipient_email": "debug@example.com",
+      "subject": "Email failed via Google Apps Script - welcomeAfterVerification",
+      "status": "pending",
+      "created_at": 1758134015
+    },
+    "dfb90806-c031-43b0-81f9-2310f180b211": {
+      "id": "dfb90806-c031-43b0-81f9-2310f180b211",
+      "user_id": "user_1758134041370_bem7cipzq",
+      "email_type": "welcomeAfterVerification",
+      "recipient_email": "debug2@example.com",
+      "subject": "Email failed via Google Apps Script - welcomeAfterVerification",
+      "status": "pending",
+      "created_at": 1758134044
     }
   },
   "userContent": {},

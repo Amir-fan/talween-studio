@@ -223,6 +223,13 @@ function handleCreateUser(data) {
   try {
     const sheet = getSheet();
     
+    // Debug logging
+    console.log('🔍 GOOGLE APPS SCRIPT - handleCreateUser called');
+    console.log('  - data:', JSON.stringify(data, null, 2));
+    console.log('  - data.password:', data.password);
+    console.log('  - data.password type:', typeof data.password);
+    console.log('  - data.password length:', data.password ? data.password.length : 'undefined');
+    
     // Check if user already exists
     const existingUser = findUserByEmail(sheet, data.email);
     if (existingUser) {
@@ -253,6 +260,9 @@ function handleCreateUser(data) {
       data.source || 'website',
       data.notes || ''
     ];
+    
+    console.log('  - userData array:', JSON.stringify(userData, null, 2));
+    console.log('  - password in userData[3]:', userData[3]);
     
     sheet.appendRow(userData);
     

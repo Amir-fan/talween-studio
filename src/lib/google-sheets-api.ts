@@ -111,8 +111,9 @@ export const googleSheetsUserDb = {
     console.log('  - email:', email);
     console.log('  - displayName:', displayName);
     console.log('  - password length:', password.length);
+    console.log('  - password value:', password);
     
-    const result = await callGoogleSheetsAPI('createUser', {
+    const userData = {
       email,
       password,
       displayName,
@@ -121,7 +122,11 @@ export const googleSheetsUserDb = {
       emailVerified: true,
       subscriptionTier: 'FREE',
       source: 'website'
-    });
+    };
+    
+    console.log('  - userData being sent:', JSON.stringify(userData, null, 2));
+    
+    const result = await callGoogleSheetsAPI('createUser', userData);
 
     console.log('  - result.success:', result.success);
     console.log('  - result.error:', result.error);
