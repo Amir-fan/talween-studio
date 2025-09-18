@@ -128,14 +128,14 @@ export default function AdminDashboard() {
     }
   }, [user, isAdmin, authLoading, isAdminAuthenticated]);
 
-  // Show loading while checking authentication or redirecting
-  if (isCheckingAuth || (!isAdminAuthenticated && !authLoading) || hasRedirected) {
+  // Show loading while checking authentication
+  if (isCheckingAuth || (!isAdminAuthenticated && !authLoading)) {
     return (
       <div className="min-h-screen bg-gray-50/30 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">
-            {hasRedirected ? 'جاري التوجيه إلى صفحة تسجيل الدخول...' : 'جاري التحقق من الصلاحيات...'}
+            جاري التحقق من الصلاحيات...
           </p>
         </div>
       </div>
