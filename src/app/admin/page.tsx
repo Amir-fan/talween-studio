@@ -73,7 +73,6 @@ export default function AdminDashboard() {
   const [creditsToAdd, setCreditsToAdd] = useState('');
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [hasRedirected, setHasRedirected] = useState(false);
 
   // Check for admin authentication immediately
   useEffect(() => {
@@ -112,14 +111,10 @@ export default function AdminDashboard() {
     
     // If no admin authentication found, redirect immediately
     console.log('🚫 No admin authentication found - redirecting immediately');
-    if (!hasRedirected) {
-      setHasRedirected(true);
-      // Use window.location.href for immediate redirect
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login?redirect=/admin';
-      }
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login?redirect=/admin';
     }
-  }, [router]);
+  }, []); // Empty dependency array - only run once on mount
 
   // Also check auth context when it loads
   useEffect(() => {
