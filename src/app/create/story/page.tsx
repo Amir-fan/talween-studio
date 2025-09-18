@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { deductLocalUserCredits } from '@/lib/local-auth';
+import { HeartButton } from '@/components/heart-button';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -740,7 +741,25 @@ function CreateStoryPage() {
         {step === 4 && (
             <Card className="mt-8">
                  <CardHeader className="text-center">
-                    <CardTitle className="font-headline text-3xl">{loading ? 'لحظات سحرية...' : (story?.title ? story.title : `قصة ${childName}!`)}</CardTitle>
+                    <div className="flex items-center justify-center gap-4">
+                        <CardTitle className="font-headline text-3xl">{loading ? 'لحظات سحرية...' : (story?.title ? story.title : `قصة ${childName}!`)}</CardTitle>
+                        {story && (
+                            <HeartButton 
+                                item={{
+                                    type: 'story',
+                                    title: story.title,
+                                    description: `قصة ${childName} - ${story.pages?.length || 0} صفحات`,
+                                    imageDataUri: story.pages?.[0]?.imageDataUri || '',
+                                    pages: story.pages,
+                                    childName,
+                                    ageGroup,
+                                    setting: setting === 'other' ? customSetting : setting,
+                                    lesson: lesson === 'other' ? customLesson : lesson,
+                                }}
+                                size="lg"
+                            />
+                        )}
+                    </div>
                     <CardDescription>{loading ? 'يقوم الذكاء الاصطناعي بنسج الكلمات والصور معاً' : `اقرأ مغامرة ${childName} الجديدة`}</CardDescription>
                 </CardHeader>
                 <CardContent className="px-8">

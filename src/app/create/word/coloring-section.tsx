@@ -14,6 +14,7 @@ import {
   Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { HeartButton } from '@/components/heart-button';
 import {
   Form,
   FormControl,
@@ -162,14 +163,28 @@ export function ColoringSection() {
               )}
               {imageDataUri && (
                   <div className="space-y-4">
-                      <div className="aspect-square w-full max-w-full overflow-hidden rounded-lg border bg-white shadow-sm">
-                          <Image
-                          src={imageDataUri}
-                          alt="Generated coloring page"
-                          width={800}
-                          height={800}
-                          className="h-full w-full object-contain"
-                          />
+                      <div className="relative">
+                          <div className="aspect-square w-full max-w-full overflow-hidden rounded-lg border bg-white shadow-sm">
+                              <Image
+                              src={imageDataUri}
+                              alt="Generated coloring page"
+                              width={800}
+                              height={800}
+                              className="h-full w-full object-contain"
+                              />
+                          </div>
+                          <div className="absolute top-2 right-2">
+                              <HeartButton 
+                                  item={{
+                                      type: 'text-to-coloring',
+                                      title: `صفحة تلوين: ${form.getValues('description')}`,
+                                      description: `صفحة تلوين من النص: ${form.getValues('description')}`,
+                                      imageDataUri,
+                                      difficulty: form.getValues('difficulty'),
+                                  }}
+                                  size="md"
+                              />
+                          </div>
                       </div>
                       <div className="flex flex-col items-center gap-3">
                           <Button onClick={generateColoringPage} size="lg" variant="outline" disabled={loading} className="bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100">

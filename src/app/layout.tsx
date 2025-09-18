@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/toaster';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 import ClientAuthProvider from '@/components/client-auth-provider';
+import { LibraryProvider } from '@/context/library-context';
 
 const cairo = Cairo({
   subsets: ['arabic', 'latin'],
@@ -116,12 +117,14 @@ export default function RootLayout({
       </head>
       <body className={cn('font-body antialiased', cairo.variable)}>
         <ClientAuthProvider>
-          <div className="flex min-h-screen flex-col">
-            <Header />
-            <main className="flex-grow">{children}</main>
-            <Footer />
-          </div>
-          <Toaster />
+          <LibraryProvider>
+            <div className="flex min-h-screen flex-col">
+              <Header />
+              <main className="flex-grow">{children}</main>
+              <Footer />
+            </div>
+            <Toaster />
+          </LibraryProvider>
         </ClientAuthProvider>
       </body>
     </html>

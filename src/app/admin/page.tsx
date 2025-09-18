@@ -198,6 +198,8 @@ export default function AdminDashboard() {
     }
 
     try {
+      console.log('🗑️ Deleting user:', userId);
+      
       const response = await fetch(`${config.googleAppsScriptUrl}?action=deleteUser&apiKey=${config.googleSheetsApiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -208,7 +210,10 @@ export default function AdminDashboard() {
         })
       });
 
+      console.log('Delete response status:', response.status);
       const data = await response.json();
+      console.log('Delete response data:', data);
+      
       if (data.success) {
         alert('تم حذف المستخدم بنجاح');
         loadData(); // Refresh the data

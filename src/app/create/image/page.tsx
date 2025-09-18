@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { ArrowRight, Camera, Loader2, Upload, Lightbulb, Wand2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { HeartButton } from '@/components/heart-button';
 import { Input } from '@/components/ui/input';
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
@@ -186,14 +187,28 @@ export default function CreateWithImagePage() {
 
                         {coloringPageUrl && (
                             <div className="space-y-4">
-                                <div className="aspect-square w-full max-w-full overflow-hidden rounded-lg border bg-white shadow-sm">
-                                    <Image
-                                    src={coloringPageUrl}
-                                    alt="Coloring page preview"
-                                    width={800}
-                                    height={800}
-                                    className="h-full w-full object-contain"
-                                    />
+                                <div className="relative">
+                                    <div className="aspect-square w-full max-w-full overflow-hidden rounded-lg border bg-white shadow-sm">
+                                        <Image
+                                        src={coloringPageUrl}
+                                        alt="Coloring page preview"
+                                        width={800}
+                                        height={800}
+                                        className="h-full w-full object-contain"
+                                        />
+                                    </div>
+                                    <div className="absolute top-2 right-2">
+                                        <HeartButton 
+                                            item={{
+                                                type: 'image-to-coloring',
+                                                title: 'صفحة تلوين من الصورة',
+                                                description: 'صفحة تلوين تم إنشاؤها من صورة شخصية',
+                                                imageDataUri: coloringPageUrl,
+                                                originalImageDataUri: previewUrl,
+                                            }}
+                                            size="md"
+                                        />
+                                    </div>
                                 </div>
                                 <div className="flex flex-col items-center gap-3">
                                     <Button onClick={generateColoringPage} size="lg" variant="outline" disabled={loading} className="bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100">
