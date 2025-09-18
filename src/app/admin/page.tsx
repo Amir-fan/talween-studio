@@ -71,65 +71,20 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [creditsToAdd, setCreditsToAdd] = useState('');
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  // Use auth context for authentication
+  const isAdminAuthenticated = isAdmin && user?.id === 'admin';
+  const isCheckingAuth = authLoading;
 
-  // Check for admin authentication immediately
+  // Redirect to login if not authenticated (after auth context loads)
   useEffect(() => {
-    console.log('🔍 ADMIN PAGE - Immediate auth check:');
-    
-    // Check for admin token in cookies first
-    if (typeof window !== 'undefined') {
-      const adminToken = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('admin_token='))
-        ?.split('=')[1];
-      
-      if (adminToken) {
-        console.log('🔍 Found admin token in cookies, granting admin access');
-        setIsAdminAuthenticated(true);
-        setIsCheckingAuth(false);
-        return;
-      }
-      
-      // Check localStorage for admin user
-      const storedUser = localStorage.getItem('talween_user');
-      if (storedUser) {
-        try {
-          const userData = JSON.parse(storedUser);
-          if (userData.uid === 'admin') {
-            console.log('🔍 Found admin user in localStorage, granting admin access');
-            setIsAdminAuthenticated(true);
-            setIsCheckingAuth(false);
-            return;
-          }
-        } catch (error) {
-          console.error('Error parsing stored user:', error);
-        }
-      }
+    if (!authLoading && !isAdminAuthenticated) {
+      console.log('🚫 No admin authentication - redirecting to login');
+      router.push('/login?redirect=/admin');
     }
-    
-    // If no admin authentication found, redirect immediately
-    console.log('🚫 No admin authentication found - redirecting immediately');
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login?redirect=/admin';
-    }
-  }, []); // Empty dependency array - only run once on mount
-
-  // Also check auth context when it loads
-  useEffect(() => {
-    if (!authLoading && user && isAdmin) {
-      console.log('✅ Admin access granted from auth context');
-      setIsAdminAuthenticated(true);
-      setIsCheckingAuth(false);
-    } else if (!authLoading && !isAdminAuthenticated) {
-      console.log('🚫 Auth context loaded but no admin access');
-      setIsCheckingAuth(false);
-    }
-  }, [user, isAdmin, authLoading, isAdminAuthenticated]);
+  }, [authLoading, isAdminAuthenticated, router]);
 
   // Show loading while checking authentication
-  if (isCheckingAuth || (!isAdminAuthenticated && !authLoading)) {
+  if (isCheckingAuth) {
     return (
       <div className="min-h-screen bg-gray-50/30 flex items-center justify-center">
         <div className="text-center">
@@ -140,6 +95,11 @@ export default function AdminDashboard() {
         </div>
       </div>
     );
+  }
+
+  // Don't render anything if not authenticated (redirect will happen)
+  if (!isAdminAuthenticated) {
+    return null;
   }
 
   // Load data
