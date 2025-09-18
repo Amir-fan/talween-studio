@@ -110,9 +110,24 @@ export default function AdminDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
+      console.log('🔍 Loading admin data...');
+      console.log('Google Apps Script URL:', config.googleAppsScriptUrl);
+      console.log('API Key:', config.googleSheetsApiKey);
+      
       // Load users from Google Sheets
-      const usersResponse = await fetch(`${config.googleAppsScriptUrl}?action=getUsers&apiKey=${config.googleSheetsApiKey}`);
+      const usersUrl = `${config.googleAppsScriptUrl}?action=getUsers&apiKey=${config.googleSheetsApiKey}`;
+      console.log('Users URL:', usersUrl);
+      
+      const usersResponse = await fetch(usersUrl);
+      console.log('Users response status:', usersResponse.status);
+      console.log('Users response ok:', usersResponse.ok);
+      
+      if (!usersResponse.ok) {
+        throw new Error(`HTTP error! status: ${usersResponse.status}`);
+      }
+      
       const usersData = await usersResponse.json();
+      console.log('Users data:', usersData);
       
       if (usersData.success) {
         setUsers(usersData.users || []);
@@ -148,9 +163,14 @@ export default function AdminDashboard() {
   };
 
   const handleAddCredits = async (userId: string) => {
-    if (!creditsToAdd || isNaN(Number(creditsToAdd))) return;
+    if (!creditsToAdd || isNaN(Number(creditsToAdd))) {
+      alert('يرجى إدخال عدد صحيح من النقاط');
+      return;
+    }
     
     try {
+      console.log('🔍 Adding credits:', { userId, amount: Number(creditsToAdd) });
+      
       const response = await fetch(`${config.googleAppsScriptUrl}?action=addCredits&apiKey=${config.googleSheetsApiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -162,18 +182,21 @@ export default function AdminDashboard() {
         })
       });
       
+      console.log('Add credits response status:', response.status);
       const data = await response.json();
+      console.log('Add credits response data:', data);
+      
       if (data.success) {
-        alert('تم إضافة النقاط بنجاح');
+        alert(`تم إضافة ${creditsToAdd} نقطة بنجاح. النقاط الجديدة: ${data.newCredits || 'غير محدد'}`);
         setCreditsToAdd('');
         setSelectedUser(null);
         loadData();
       } else {
-        alert(`فشل في إضافة النقاط: ${data.error}`);
+        alert(`فشل في إضافة النقاط: ${data.error || 'خطأ غير معروف'}`);
       }
     } catch (error) {
       console.error('Error adding credits:', error);
-      alert('حدث خطأ أثناء إضافة النقاط');
+      alert(`حدث خطأ أثناء إضافة النقاط: ${error.message || 'خطأ في الاتصال'}`);
     }
   };
 
@@ -198,7 +221,7 @@ export default function AdminDashboard() {
     }
 
     try {
-      console.log('🗑️ Deleting user:', userId);
+      console.log('🗑️ Deleting user:', { userId, userName });
       
       const response = await fetch(`${config.googleAppsScriptUrl}?action=deleteUser&apiKey=${config.googleSheetsApiKey}`, {
         method: 'POST',
@@ -211,18 +234,24 @@ export default function AdminDashboard() {
       });
 
       console.log('Delete response status:', response.status);
+      console.log('Delete response ok:', response.ok);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       console.log('Delete response data:', data);
       
       if (data.success) {
-        alert('تم حذف المستخدم بنجاح');
+        alert(`تم حذف المستخدم "${userName}" بنجاح`);
         loadData(); // Refresh the data
       } else {
         alert(`فشل في حذف المستخدم: ${data.error || 'خطأ غير معروف'}`);
       }
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert('فشل في حذف المستخدم');
+      alert(`فشل في حذف المستخدم: ${error.message || 'خطأ في الاتصال'}`);
     }
   };
 
@@ -356,6 +385,14 @@ export default function AdminDashboard() {
                     <Button onClick={handleSyncToSheets} variant="outline" size="sm">
                       <Download className="h-4 w-4 mr-2" />
                       مزامنة Google Sheets
+                    </Button>
+                    <Button onClick={() => {
+                      console.log('🧪 Testing API connection...');
+                      console.log('URL:', config.googleAppsScriptUrl);
+                      console.log('API Key:', config.googleSheetsApiKey);
+                      alert('تحقق من وحدة التحكم (Console) لرؤية تفاصيل الاتصال');
+                    }} variant="outline" size="sm">
+                      اختبار الاتصال
                     </Button>
                     <Button 
                       onClick={() => window.open('/api/admin/export-users', '_blank')} 
