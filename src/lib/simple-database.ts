@@ -235,6 +235,51 @@ export const userDb = {
       return { success: true };
     }
     return { success: false, error: 'User not found' };
+  },
+
+  // Comprehensive user deletion - removes user and all related data
+  deleteUserCompletely: (id: string) => {
+    const results = {
+      userDeleted: false,
+      ordersDeleted: 0,
+      emailLogsDeleted: 0,
+      contentDeleted: 0
+    };
+
+    // Delete user
+    if (db.users[id]) {
+      delete db.users[id];
+      results.userDeleted = true;
+    }
+
+    // Delete all orders for this user
+    const userOrders = Object.values(db.orders).filter(order => order.user_id === id);
+    userOrders.forEach(order => {
+      delete db.orders[order.id];
+      results.ordersDeleted++;
+    });
+
+    // Delete all email logs for this user
+    const userEmailLogs = Object.values(db.emailLogs).filter(log => log.user_id === id);
+    userEmailLogs.forEach(log => {
+      delete db.emailLogs[log.id];
+      results.emailLogsDeleted++;
+    });
+
+    // Delete all content for this user
+    const userContent = Object.values(db.userContent).filter(content => content.user_id === id);
+    userContent.forEach(content => {
+      delete db.userContent[content.id];
+      results.contentDeleted++;
+    });
+
+    saveDatabase();
+
+    return { 
+      success: true, 
+      message: `User and all related data deleted successfully`,
+      results
+    };
   }
 };
 

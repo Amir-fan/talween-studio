@@ -327,10 +327,13 @@ function handleUpdateUser(data) {
 // Delete User
 function handleDeleteUser(userId) {
   try {
+    console.log('🗑️ GOOGLE APPS SCRIPT - Deleting user:', userId);
+    
     const sheet = getSheet();
     const userRow = findUserRow(sheet, userId);
     
     if (!userRow) {
+      console.log('❌ User not found in Google Sheets');
       return ContentService
         .createTextOutput(JSON.stringify({ 
           success: false, 
@@ -339,15 +342,36 @@ function handleDeleteUser(userId) {
         .setMimeType(ContentService.MimeType.JSON);
     }
     
+    // Get user data before deletion for logging
+    const userData = sheet.getRange(userRow, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const userEmail = userData[1]; // البريد الإلكتروني column
+    const userName = userData[2]; // الاسم column
+    
+    console.log('📋 User data to delete:', {
+      userId: userId,
+      email: userEmail,
+      name: userName,
+      row: userRow
+    });
+    
+    // Delete the user row
     sheet.deleteRow(userRow);
+    
+    console.log('✅ User deleted successfully from Google Sheets');
     
     return ContentService
       .createTextOutput(JSON.stringify({ 
         success: true, 
-        message: 'User deleted successfully' 
+        message: 'User deleted successfully',
+        deletedUser: {
+          id: userId,
+          email: userEmail,
+          name: userName
+        }
       }))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
+    console.error('❌ Error deleting user:', error);
     return ContentService
       .createTextOutput(JSON.stringify({ 
         success: false, 

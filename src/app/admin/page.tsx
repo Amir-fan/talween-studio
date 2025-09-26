@@ -223,13 +223,13 @@ export default function AdminDashboard() {
     try {
       console.log('🗑️ Deleting user:', { userId, userName });
       
-      const response = await fetch(`${config.googleAppsScriptUrl}?action=deleteUser&apiKey=${config.googleSheetsApiKey}`, {
+      // Use the new comprehensive delete API
+      const response = await fetch('/api/admin/delete-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          action: 'deleteUser',
-          apiKey: config.googleSheetsApiKey,
-          userId 
+          userId,
+          userName
         })
       });
 
@@ -244,14 +244,23 @@ export default function AdminDashboard() {
       console.log('Delete response data:', data);
       
       if (data.success) {
-        alert(`تم حذف المستخدم "${userName}" بنجاح`);
+        const cleanupResults = data.deletedUser?.cleanupResults;
+        const details = [
+          `Google Sheets: ${data.deletedUser?.googleSheetsDeleted ? '✅ تم' : '❌ فشل'}`,
+          `قاعدة البيانات المحلية: ${data.deletedUser?.localDatabaseDeleted ? '✅ تم' : '⚠️ غير موجود'}`,
+          cleanupResults ? `الطلبات المحذوفة: ${cleanupResults.ordersDeleted}` : '',
+          cleanupResults ? `سجلات البريد المحذوفة: ${cleanupResults.emailLogsDeleted}` : '',
+          cleanupResults ? `المحتوى المحذوف: ${cleanupResults.contentDeleted}` : ''
+        ].filter(Boolean).join('\n');
+
+        alert(`✅ تم حذف المستخدم "${userName}" بنجاح من جميع قواعد البيانات!\n\nتفاصيل الحذف:\n${details}`);
         loadData(); // Refresh the data
       } else {
-        alert(`فشل في حذف المستخدم: ${data.error || 'خطأ غير معروف'}`);
+        alert(`❌ فشل في حذف المستخدم: ${data.error || 'خطأ غير معروف'}`);
       }
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert(`فشل في حذف المستخدم: ${error.message || 'خطأ في الاتصال'}`);
+      alert(`❌ فشل في حذف المستخدم: ${error.message || 'خطأ في الاتصال'}`);
     }
   };
 
