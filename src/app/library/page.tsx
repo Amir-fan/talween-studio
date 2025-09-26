@@ -5,7 +5,7 @@ import { useAuth } from '@/context/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Heart, Download, BookOpen, Image, Camera, Trash2, Calendar } from 'lucide-react';
+import { Heart, Download, BookOpen, Image as ImageIcon, Camera, Trash2, Calendar } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -56,7 +56,7 @@ export default function LibraryPage() {
       case 'story':
         return <BookOpen className="h-5 w-5" />;
       case 'text-to-coloring':
-        return <Image className="h-5 w-5" />;
+        return <ImageIcon className="h-5 w-5" />;
       case 'image-to-coloring':
         return <Camera className="h-5 w-5" />;
       default:
@@ -126,7 +126,7 @@ export default function LibraryPage() {
               onClick={() => setFilter('text-to-coloring')}
               className="flex items-center gap-2"
             >
-              <Image className="h-4 w-4" />
+              <ImageIcon className="h-4 w-4" />
               تلوين من النص ({libraryItems.filter(item => item.type === 'text-to-coloring').length})
             </Button>
             <Button
