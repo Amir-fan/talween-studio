@@ -71,20 +71,27 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [creditsToAdd, setCreditsToAdd] = useState('');
+  const [isClient, setIsClient] = useState(false);
+  
   // Use auth context for authentication
   const isAdminAuthenticated = isAdmin && user?.id === 'admin';
   const isCheckingAuth = authLoading;
 
+  // Handle client-side mounting
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // Redirect to login if not authenticated (after auth context loads)
   useEffect(() => {
-    if (!authLoading && !isAdminAuthenticated) {
+    if (isClient && !authLoading && !isAdminAuthenticated) {
       console.log('🚫 No admin authentication - redirecting to login');
       router.push('/login?redirect=/admin');
     }
-  }, [authLoading, isAdminAuthenticated, router]);
+  }, [isClient, authLoading, isAdminAuthenticated, router]);
 
-  // Show loading while checking authentication
-  if (isCheckingAuth) {
+  // Show loading while checking authentication or before client-side mounting
+  if (!isClient || isCheckingAuth) {
     return (
       <div className="min-h-screen bg-gray-50/30 flex items-center justify-center">
         <div className="text-center">
@@ -102,12 +109,17 @@ export default function AdminDashboard() {
     return null;
   }
 
-  // Load data
+  // Load data only on client side
   useEffect(() => {
-    loadData();
-  }, []);
+    if (isClient && isAdminAuthenticated) {
+      loadData();
+    }
+  }, [isClient, isAdminAuthenticated]);
 
   const loadData = async () => {
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+    
     setLoading(true);
     try {
       console.log('🔍 Loading admin data...');
