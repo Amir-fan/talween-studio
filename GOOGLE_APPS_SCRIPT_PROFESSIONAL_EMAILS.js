@@ -327,7 +327,7 @@ function handleUpdateUser(data) {
 // Delete User
 function handleDeleteUser(userId) {
   try {
-    console.log('🗑️ GOOGLE APPS SCRIPT - Deleting user:', userId);
+    console.log('GOOGLE APPS SCRIPT - Deleting user:', userId);
     
     const sheet = getSheet();
     const userRow = findUserRow(sheet, userId);
@@ -566,7 +566,7 @@ function handleEmailRequest(data) {
         break;
         
       case 'welcomeAfterVerification':
-        subject = 'مرحباً بك في تلوين ستوديو! 🎨';
+        subject = 'مرحباً بك في تلوين ستوديو!';
         htmlBody = getWelcomeEmailTemplate(templateData);
         break;
         
@@ -749,8 +749,8 @@ function getVerificationEmailTemplate(data) {
         
         <div class="content">
           <div class="icon-container">
-            <span class="icon">✉️</span>
-          </div>
+            <span class="icon">📧</span>
+            </div>
           
           <h2 class="title">تأكيد بريدك الإلكتروني</h2>
           
@@ -762,7 +762,7 @@ function getVerificationEmailTemplate(data) {
           
           <div class="cta-container">
             <a href="${data.verificationLink}" class="cta-button">
-              تأكيد البريد الإلكتروني ✨
+              تأكيد البريد الإلكتروني
             </a>
           </div>
           
@@ -828,14 +828,14 @@ function getWelcomeEmailTemplate(data) {
     <body>
       <div class="container">
         <div class="header">
-          <h1 class="logo">مرحباً بك! 🎉</h1>
+          <h1 class="logo">مرحباً بك!</h1>
           <p class="tagline">تم تأكيد حسابك بنجاح</p>
         </div>
         
         <div class="content">
           <div class="icon-container">
-            <span class="icon">🎨</span>
-          </div>
+            <span class="icon">✏️</span>
+            </div>
           
           <h2 class="title">مرحباً ${data.name || 'عزيزي المستخدم'}!</h2>
           
@@ -844,7 +844,7 @@ function getWelcomeEmailTemplate(data) {
           </p>
           
           <div class="gift-box">
-            <h3 class="gift-title">🎁 هديتك المجانية</h3>
+            <h3 class="gift-title">هديتك المجانية</h3>
             <p class="gift-amount">50 نقطة مجانية</p>
             <p class="gift-description">يمكنك استخدام هذه النقاط لإنشاء قصص وصور تلوين مخصصة!</p>
           </div>
@@ -853,13 +853,13 @@ function getWelcomeEmailTemplate(data) {
             <div class="feature-item">
               <span class="feature-icon">📚</span>
               <p class="feature-text">إنشاء قصص مخصصة بأسماء الأطفال</p>
-            </div>
+          </div>
             <div class="feature-item">
-              <span class="feature-icon">🎨</span>
+              <span class="feature-icon">✏️</span>
               <p class="feature-text">تحويل النصوص إلى صفحات تلوين</p>
             </div>
             <div class="feature-item">
-              <span class="feature-icon">🖼️</span>
+              <span class="feature-icon">📷</span>
               <p class="feature-text">تحويل الصور إلى صفحات تلوين</p>
             </div>
             <div class="feature-item">
@@ -934,7 +934,7 @@ function getPasswordResetEmailTemplate(data) {
         <div class="content">
           <div class="icon-container">
             <span class="icon">🔐</span>
-          </div>
+            </div>
           
           <h2 class="title">إعادة تعيين كلمة المرور</h2>
           
@@ -1062,7 +1062,7 @@ function getOrderConfirmationTemplate(data) {
           
           <div class="cta-container">
             <a href="${data.appUrl || 'https://italween.com'}" class="cta-button">
-              ابدأ الإبداع الآن 🎨
+              ابدأ الإبداع الآن
             </a>
           </div>
         </div>
@@ -1129,7 +1129,7 @@ function getPaymentSuccessTemplate(data) {
         <div class="content">
           <div class="icon-container">
             <span class="icon">✅</span>
-          </div>
+            </div>
           
           <h2 class="title">تم الدفع بنجاح!</h2>
           
@@ -1139,12 +1139,12 @@ function getPaymentSuccessTemplate(data) {
           </p>
           
           <div class="success-box">
-            <h3 class="success-title">🎉 تم تفعيل حسابك!</h3>
+            <h3 class="success-title">تم تفعيل حسابك!</h3>
             <p class="success-message">يمكنك الآن الاستمتاع بجميع الميزات المدفوعة</p>
           </div>
           
           <div class="payment-details">
-            <h3 class="payment-title">💳 تفاصيل الدفع</h3>
+            <h3 class="payment-title">تفاصيل الدفع</h3>
             <div class="payment-info">
               <span class="payment-label">رقم الطلب:</span>
               <span class="payment-value">#${data.orderNumber || 'غير محدد'}</span>
@@ -1232,7 +1232,7 @@ function getCreditsAddedTemplate(data) {
         <div class="content">
           <div class="icon-container">
             <span class="icon">⭐</span>
-          </div>
+            </div>
           
           <h2 class="title">تم إضافة النقاط إلى حسابك!</h2>
           
@@ -1242,7 +1242,7 @@ function getCreditsAddedTemplate(data) {
           </p>
           
           <div class="credits-box">
-            <h3 class="credits-title">🎁 النقاط المضافة</h3>
+            <h3 class="credits-title">النقاط المضافة</h3>
             <p class="credits-amount">+${data.credits || '0'} نقطة</p>
             <p class="credits-description">يمكنك استخدام هذه النقاط لإنشاء قصص وصور تلوين مخصصة!</p>
           </div>
@@ -1253,11 +1253,11 @@ function getCreditsAddedTemplate(data) {
               <p class="feature-text">إنشاء قصص مخصصة بأسماء الأطفال</p>
             </div>
             <div class="feature-item">
-              <span class="feature-icon">🎨</span>
+              <span class="feature-icon">✏️</span>
               <p class="feature-text">تحويل النصوص إلى صفحات تلوين</p>
             </div>
             <div class="feature-item">
-              <span class="feature-icon">🖼️</span>
+              <span class="feature-icon">📷</span>
               <p class="feature-text">تحويل الصور إلى صفحات تلوين</p>
             </div>
             <div class="feature-item">
@@ -1268,7 +1268,7 @@ function getCreditsAddedTemplate(data) {
           
           <div class="cta-container">
             <a href="${data.appUrl || 'https://italween.com'}" class="cta-button">
-              ابدأ الإبداع الآن 🎨
+              ابدأ الإبداع الآن
             </a>
           </div>
         </div>
@@ -1337,7 +1337,7 @@ function getDefaultEmailTemplate(data) {
           
           <div class="cta-container">
             <a href="${data.appUrl || 'https://italween.com'}" class="cta-button">
-              زر موقعنا 🎨
+              زر موقعنا
             </a>
           </div>
         </div>
