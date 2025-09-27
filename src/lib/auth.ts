@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { userDb } from './simple-database';
 import { googleSheetsUserDb } from './google-sheets-api';
 import { sendEmail } from './email-service-apps-script';
 
@@ -29,21 +30,31 @@ export async function registerUser(
   displayName: string
 ): Promise<AuthResult> {
   try {
-    console.log('🔍 GOOGLE SHEETS REGISTRATION - Attempting to register:');
+    console.log('🔍 LOCAL DATABASE REGISTRATION - Attempting to register:');
     console.log('  - email:', email);
     console.log('  - displayName:', displayName);
 
-    // Create user directly in Google Sheets
-    const result = await googleSheetsUserDb.create(email, password, displayName);
-    
-    console.log('  - result.success:', result.success);
-    console.log('  - result.error:', result.error);
-
-    if (!result.success) {
-      return { success: false, error: result.error || 'فشل في إنشاء الحساب' };
+    // Check if user already exists
+    const existingUser = userDb.findByEmail(email);
+    if (existingUser) {
+      return { success: false, error: 'البريد الإلكتروني مسجل مسبقاً' };
     }
 
-    const user = result.user!;
+    // Create user in local database (primary)
+    const user = userDb.create(email, password, displayName);
+    console.log('  - local user created:', user.id);
+
+    // Also create in Google Sheets (backup)
+    try {
+      const googleSheetsResult = await googleSheetsUserDb.create(email, password, displayName);
+      if (googleSheetsResult.success) {
+        console.log('  - Google Sheets backup created:', googleSheetsResult.user?.id);
+      } else {
+        console.log('  - Google Sheets backup failed (non-critical):', googleSheetsResult.error);
+      }
+    } catch (error) {
+      console.log('  - Google Sheets backup failed (non-critical):', error);
+    }
 
     // Send welcome email (non-blocking)
     sendEmail(
@@ -60,11 +71,11 @@ export async function registerUser(
       user: {
         id: user.id,
         email: user.email,
-        displayName: user.displayName,
-        credits: 50,
-        status: 'active',
-        emailVerified: true,
-        subscriptionTier: 'FREE'
+        displayName: user.display_name,
+        credits: user.credits,
+        status: user.status,
+        emailVerified: user.email_verified,
+        subscriptionTier: user.subscription_tier
       }
     };
   } catch (error) {
@@ -76,51 +87,56 @@ export async function registerUser(
 // Login user
 export async function loginUser(email: string, password: string): Promise<AuthResult> {
   try {
-    console.log('🔍 GOOGLE SHEETS LOGIN ATTEMPT:');
+    console.log('🔍 LOCAL DATABASE LOGIN ATTEMPT:');
     console.log('  - email:', email);
     console.log('  - password length:', password.length);
     
-    const user = await googleSheetsUserDb.findByEmail(email);
-    console.log('  - user found:', !!user);
-    if (user) {
-      console.log('  - user id:', user['المعرف'] || user.id);
-      console.log('  - user email:', user['البريد الإلكتروني'] || user.email);
-      console.log('  - user status:', user['الحالة'] || user.status);
+    // Try local database first (primary)
+    let user = userDb.findByEmail(email);
+    console.log('  - user found in local DB:', !!user);
+    
+    if (!user) {
+      // Fallback to Google Sheets
+      console.log('  - trying Google Sheets fallback...');
+      try {
+        const googleSheetsUser = await googleSheetsUserDb.findByEmail(email);
+        if (googleSheetsUser) {
+          console.log('  - user found in Google Sheets, migrating to local DB...');
+          // Create user in local database from Google Sheets data
+          user = userDb.create(
+            googleSheetsUser['البريد الإلكتروني'] || googleSheetsUser.email,
+            googleSheetsUser['كلمة المرور'] || googleSheetsUser.password || 'temp123',
+            googleSheetsUser['الاسم'] || googleSheetsUser.displayName || 'User'
+          );
+          console.log('  - user migrated to local DB:', user.id);
+        }
+      } catch (error) {
+        console.log('  - Google Sheets fallback failed:', error);
+      }
     }
     
     if (!user) {
-      console.log('❌ User not found');
+      console.log('❌ User not found in any database');
       return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
     }
 
-    // Verify password - Google Sheets stores plain text passwords for now
-    const storedPassword = user['كلمة المرور'] || user.password || '';
-    console.log('  - stored password length:', storedPassword.length);
-    console.log('  - provided password length:', password.length);
-    console.log('  - stored password value:', storedPassword);
+    // Verify password using bcrypt
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    console.log('  - password match:', passwordMatch);
     
-    // Handle users with empty passwords (created before password storage was fixed)
-    if (storedPassword === '') {
-      console.log('⚠️ User has empty password - this is an old account created before password storage was fixed');
-      console.log('  - Allowing login for legacy users (security risk - should be addressed)');
-      // TODO: In production, you should force these users to reset their passwords
-    } else if (storedPassword !== password) {
+    if (!passwordMatch) {
       console.log('❌ Password mismatch');
       return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
     }
     
     console.log('✅ User found and password verified, proceeding with login');
 
-    // Update last login
-    await googleSheetsUserDb.updateUser(user['المعرف'] || user.id, { 
-      'آخر دخول': new Date().toLocaleDateString('ar-SA') 
-    });
+    // Update last login in local database
+    userDb.updateUser(user.id, { last_login: Math.floor(Date.now() / 1000) });
 
     // Generate JWT token
-    const userId = user['المعرف'] || user.id;
-    const userEmail = user['البريد الإلكتروني'] || user.email;
     const token = jwt.sign(
-      { userId, email: userEmail },
+      { userId: user.id, email: user.email },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -128,13 +144,13 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
     return {
       success: true,
       user: {
-        id: userId,
-        email: userEmail,
-        displayName: user['الاسم'] || user.displayName,
-        credits: parseInt(user['النقاط'] || user.credits || '0'),
-        status: user['الحالة'] || user.status || 'active',
-        emailVerified: user['البريد الإلكتروني مؤكد'] === 'نعم' || user.emailVerified === true,
-        subscriptionTier: user['مستوى الاشتراك'] || user.subscriptionTier || 'FREE'
+        id: user.id,
+        email: user.email,
+        displayName: user.display_name,
+        credits: user.credits,
+        status: user.status,
+        emailVerified: user.email_verified,
+        subscriptionTier: user.subscription_tier
       },
       token
     };
@@ -174,17 +190,36 @@ export async function resetPassword(token: string, newPassword: string): Promise
 // Get user by ID
 export async function getUserById(userId: string): Promise<User | null> {
   try {
-    const user = await googleSheetsUserDb.findById(userId);
+    // Try local database first (primary)
+    let user = userDb.findById(userId);
+    
+    if (!user) {
+      // Fallback to Google Sheets
+      try {
+        const googleSheetsUser = await googleSheetsUserDb.findById(userId);
+        if (googleSheetsUser) {
+          // Migrate user to local database
+          user = userDb.create(
+            googleSheetsUser['البريد الإلكتروني'] || googleSheetsUser.email,
+            googleSheetsUser['كلمة المرور'] || googleSheetsUser.password || 'temp123',
+            googleSheetsUser['الاسم'] || googleSheetsUser.displayName || 'User'
+          );
+        }
+      } catch (error) {
+        console.log('Google Sheets fallback failed:', error);
+      }
+    }
+    
     if (!user) return null;
 
     return {
-      id: user['المعرف'] || user.id,
-      email: user['البريد الإلكتروني'] || user.email,
-      displayName: user['الاسم'] || user.displayName,
-      credits: parseInt(user['النقاط'] || user.credits || '0'),
-      status: user['الحالة'] || user.status || 'active',
-      emailVerified: user['البريد الإلكتروني مؤكد'] === 'نعم' || user.emailVerified === true,
-      subscriptionTier: user['مستوى الاشتراك'] || user.subscriptionTier || 'FREE'
+      id: user.id,
+      email: user.email,
+      displayName: user.display_name,
+      credits: user.credits,
+      status: user.status,
+      emailVerified: user.email_verified,
+      subscriptionTier: user.subscription_tier
     };
   } catch (error) {
     console.error('Error getting user by ID:', error);
