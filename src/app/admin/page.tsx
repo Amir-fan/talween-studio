@@ -262,9 +262,11 @@ function AdminDashboardContent() {
     }
   };
 
-  const filteredUsers = users.filter(user => 
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.display_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredUsers = (users || []).filter(user => 
+    user && 
+    user.email && 
+    (user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.display_name && user.display_name.toLowerCase().includes(searchTerm.toLowerCase())))
   );
 
   if (loading) {
@@ -392,7 +394,7 @@ function AdminDashboardContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.map((user) => (
+                {filteredUsers.length > 0 ? filteredUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.email}</TableCell>
                     <TableCell>{user.display_name || 'غير محدد'}</TableCell>
@@ -428,7 +430,13 @@ function AdminDashboardContent() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                )) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      لا توجد مستخدمين
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
