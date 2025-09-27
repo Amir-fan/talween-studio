@@ -39,9 +39,8 @@
       "verification_token": "72dff2a7-46b8-40e4-9f84-bd0c2810dbcd",
       "subscription_tier": "FREE",
       "created_at": 1759008776,
-      "updated_at": 1759008798,
-      "total_spent": 0,
-      "last_login": 1759008798
+      "updated_at": 1759008776,
+      "total_spent": 0
     }
   },
   "orders": {},

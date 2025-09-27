@@ -21,13 +21,24 @@ export async function signUpWithEmail(
   values: AuthInput
 ): Promise<{ success: boolean; error?: string; userId?: string }> {
   try {
-    const result = createLocalUser(values.email, values.password, values.name);
-    
-    if (!result.success) {
-      return { success: false, error: result.error };
-    }
+    // Use server API instead of localStorage
+    const response = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: values.email,
+        password: values.password,
+        displayName: values.name
+      })
+    });
 
-    return { success: true, userId: result.user?.uid };
+    const data = await response.json();
+
+    if (data.success) {
+      return { success: true, userId: data.user?.id };
+    } else {
+      return { success: false, error: data.error };
+    }
   } catch (error) {
     return { success: false, error: 'حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى.' };
   }
@@ -37,13 +48,23 @@ export async function signInUser(
   values: Pick<AuthInput, 'email' | 'password'>
 ): Promise<{ success: boolean; error?: string; userId?: string }> {
   try {
-    const result = signInLocalUser(values.email, values.password);
-    
-    if (!result.success) {
-      return { success: false, error: result.error };
-    }
+    // Use server API instead of localStorage
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: values.email,
+        password: values.password
+      })
+    });
 
-    return { success: true, userId: result.user?.uid };
+    const data = await response.json();
+
+    if (data.success) {
+      return { success: true, userId: data.user?.id };
+    } else {
+      return { success: false, error: data.error };
+    }
   } catch (error) {
     return { success: false, error: 'حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى.' };
   }
