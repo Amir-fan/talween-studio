@@ -743,7 +743,7 @@ function getWelcomeEmailTemplate(data) {
         .tagline { color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; font-weight: 400; }
         .content { padding: 40px 30px; }
         .icon-container { width: 80px; height: 80px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; }
-        .icon { font-size: 36px; }
+        .icon { font-size: 36px; color: white; font-weight: bold; }
         .title { color: #1a202c; margin: 0 0 16px 0; font-size: 24px; font-weight: 600; text-align: center; }
         .message { color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 32px 0; text-align: center; }
         .gift-box { background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center; border: 2px solid #f59e0b; }
@@ -778,7 +778,7 @@ function getWelcomeEmailTemplate(data) {
         
         <div class="content">
           <div class="icon-container">
-            <span class="icon" style="font-size: 24px; font-weight: bold; color: #10b981;">T</span>
+            <span class="icon">T</span>
             </div>
           
           <h2 class="title">مرحباً ${data.name || 'عزيزي المستخدم'}!</h2>
@@ -801,22 +801,23 @@ function getWelcomeEmailTemplate(data) {
             <div class="feature-item">
               <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">2</span>
               <p class="feature-text">تحويل النصوص إلى صفحات تلوين</p>
-            </div>
+        </div>
             <div class="feature-item">
               <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">3</span>
               <p class="feature-text">تحويل الصور إلى صفحات تلوين</p>
-            </div>
+      </div>
             <div class="feature-item">
               <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">4</span>
               <p class="feature-text">حفظ المحتوى في مكتبتك الشخصية</p>
+        </div>
             </div>
-          </div>
           
           <div class="cta-container">
             <a href="${data.appUrl || 'https://italween.com'}" class="cta-button">
-              ابدأ الإبداع الآن             </a>
+              ابدأ الإبداع الآن
+            </a>
           </div>
-        </div>
+          </div>
         
         <div class="footer">
           <p class="footer-text">© 2024 تلوين ستوديو. جميع الحقوق محفوظة.</p>
@@ -876,7 +877,7 @@ function getPasswordResetEmailTemplate(data) {
         
         <div class="content">
           <div class="icon-container">
-            <span class="icon" style="font-size: 24px; font-weight: bold; color: #f59e0b;">&nbsp;&nbsp;&nbsp;</span>
+            <span class="icon" style="font-size: 24px; font-weight: bold; color: white;">&nbsp;&nbsp;&nbsp;</span>
             </div>
           
           <h2 class="title">إعادة تعيين كلمة المرور</h2>
@@ -896,7 +897,7 @@ function getPasswordResetEmailTemplate(data) {
             <div class="step-item">
               <div class="step-number">1</div>
               <p class="step-text">انقر على الرابط أعلاه</p>
-            </div>
+          </div>
             <div class="step-item">
               <div class="step-number">2</div>
               <p class="step-text">أدخل كلمة مرور جديدة قوية</p>
@@ -1266,7 +1267,7 @@ function getDefaultEmailTemplate(data) {
         
         <div class="content">
           <div class="icon-container">
-            <span class="icon" style="font-size: 24px; font-weight: bold; color: #10b981;">&nbsp;&nbsp;&nbsp;</span>
+            <span class="icon" style="font-size: 24px; font-weight: bold; color: white;">&nbsp;&nbsp;&nbsp;</span>
           </div>
           
           <h2 class="title">رسالة من تلوين ستوديو</h2>
