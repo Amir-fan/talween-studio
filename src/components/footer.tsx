@@ -1,9 +1,16 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { Paintbrush } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
+  const [currentYear, setCurrentYear] = useState(2024);
+
+  useEffect(() => {
+    setCurrentYear(new Date().getFullYear());
+  }, []);
 
   return (
     <footer className="bg-secondary">

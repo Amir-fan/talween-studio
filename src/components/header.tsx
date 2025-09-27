@@ -6,9 +6,15 @@ import { Button } from './ui/button';
 import { User, Library, Menu, BookOpen, School, ShoppingCart, LogOut, LogIn, Star } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetClose } from '@/components/ui/sheet';
 import { useAuth } from '@/context/auth-context';
+import { useState, useEffect } from 'react';
 
 export default function Header() {
     const { user, userData, logout, isAdmin, loginAsAdmin } = useAuth();
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
     const navLinks = [
         { href: "/create", label: "إنشاء", icon: BookOpen },
@@ -32,7 +38,7 @@ export default function Header() {
                 />
             </Link>
              <nav className="hidden items-center gap-6 text-sm lg:flex">
-                {navLinks.map(link => {
+                {isClient && navLinks.map(link => {
                     if (link.auth && !user) return null;
                     return <Link key={link.label} href={link.href} className="font-semibold text-talween-brown/70 transition-colors hover:text-talween-orange">{link.label}</Link>
                 })}
@@ -40,14 +46,14 @@ export default function Header() {
         </div>
        
         <div className="flex items-center gap-4">
-           {(user && userData) && (
+           {isClient && (user && userData) && (
              <Button variant="outline" className="rounded-full flex border-talween-yellow/30 bg-talween-yellow/10 hover:bg-talween-yellow/20">
                <Star className="h-4 w-4 ml-2 text-talween-yellow fill-talween-yellow" />
                <span className="font-bold text-talween-brown">{userData.credits}</span>
                <span className="mr-1 text-talween-brown">نقطة</span>
              </Button>
            )}
-            {user ? (
+            {isClient && user ? (
                  <Button onClick={logout} variant="ghost" size="sm" className="hidden md:flex">
                     <LogOut className="ml-2 h-4 w-4" />
                     خروج
@@ -84,7 +90,7 @@ export default function Header() {
                         </SheetHeader>
                         
                         {/* Mobile Credit Display */}
-                        {(user && userData) && (
+                        {isClient && (user && userData) && (
                             <div className="mt-4 p-4 bg-talween-yellow/10 rounded-lg border border-talween-yellow/30">
                                 <div className="flex items-center justify-center gap-2">
                                     <Star className="h-5 w-5 text-talween-yellow fill-talween-yellow" />
@@ -95,7 +101,7 @@ export default function Header() {
                         )}
                         
                          <nav className="flex flex-col gap-4 mt-8">
-                            {navLinks.map((link) => {
+                            {isClient && navLinks.map((link) => {
                                  if (link.auth && !user) return null;
                                  return (
                                     <SheetClose asChild key={link.label}>
@@ -111,7 +117,7 @@ export default function Header() {
                             })}
                         </nav>
                         <div className="absolute bottom-4 right-4 left-4 flex flex-col gap-2">
-                             {user ? (
+                             {isClient && user ? (
                                 <Button onClick={() => {logout();}} variant="outline" className="w-full justify-center">
                                     <LogOut className="ml-2 h-4 w-4" />
                                     خروج
