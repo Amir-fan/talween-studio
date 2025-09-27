@@ -3,6 +3,7 @@
 
 import { checkAndDeductCreditsForFeature } from '@/lib/local-credits';
 import { generateColoringPageFromTextFlow } from '@/ai/flows/generate-coloring-page-from-text-flow';
+import { contentDb } from '@/lib/simple-database';
 import type { GenerateColoringPageFromTextInput, GenerateColoringPageFromTextOutput } from './types';
 
 
@@ -36,6 +37,24 @@ export async function generateImageAction(
     }
 
     const result = await generateColoringPageFromTextFlow(values);
+    
+    // Save coloring page to database
+    if (result && values.userId) {
+      const saveResult = contentDb.create(
+        values.userId,
+        `صفحة تلوين: ${values.description}`,
+        'coloring',
+        result,
+        result.imageDataUri
+      );
+
+      if (!saveResult.success) {
+        console.error('Failed to save coloring page to database:', saveResult.error);
+      } else {
+        console.log('Coloring page saved to database:', saveResult.content.id);
+      }
+    }
+    
     return { success: true, data: result };
   } catch (error) {
     console.error('Image generation failed:', error);

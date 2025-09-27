@@ -1,25 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { contentDb } from '@/lib/simple-database';
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const { id } = params;
     const { action } = await request.json();
-    const contentId = params.id;
 
-    if (action === 'toggle-favorite') {
-      const result = contentDb.toggleFavorite(contentId);
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Content ID is required' },
+        { status: 400 }
+      );
+    }
+
+    if (action === 'toggleFavorite') {
+      const result = contentDb.toggleFavorite(id);
       
       if (result.success) {
         return NextResponse.json({
           success: true,
-          content: result.content
+          content: result.content,
+          message: result.content.status === 'favorite' ? 'تم إضافة المحتوى للمفضلة' : 'تم إزالة المحتوى من المفضلة'
         });
       } else {
         return NextResponse.json(
-          { error: result.error },
+          { error: result.error || 'فشل في تحديث المفضلة' },
           { status: 404 }
         );
       }
@@ -38,22 +43,27 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const contentId = params.id;
-    const result = contentDb.delete(contentId);
+    const { id } = params;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Content ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const result = contentDb.delete(id);
     
     if (result.success) {
       return NextResponse.json({
         success: true,
-        message: 'Content deleted successfully'
+        message: 'تم حذف المحتوى بنجاح'
       });
     } else {
       return NextResponse.json(
-        { error: result.error },
+        { error: result.error || 'فشل في حذف المحتوى' },
         { status: 404 }
       );
     }

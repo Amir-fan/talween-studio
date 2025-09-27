@@ -23,17 +23,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user content
-    const userContent = contentDb.findByUser(userId);
+    const allUserContent = contentDb.findByUser(userId);
+    const userContent = allUserContent.filter(content => content.status !== 'favorite');
+    const favorites = allUserContent.filter(content => content.status === 'favorite');
     
     // Get user orders
     const userOrders = orderDb.findByUser(userId);
 
     // Calculate statistics
     const stats = {
-      stories: userContent.filter(item => item.type === 'story').length,
-      coloring: userContent.filter(item => item.type === 'coloring').length,
-      images: userContent.filter(item => item.type === 'image').length,
-      totalContent: userContent.length,
+      stories: allUserContent.filter(item => item.type === 'story').length,
+      coloring: allUserContent.filter(item => item.type === 'coloring').length,
+      images: allUserContent.filter(item => item.type === 'image').length,
+      totalContent: allUserContent.length,
       creditsUsed: user.total_spent || 0,
       creditsRemaining: user.credits || 0,
       totalPurchased: userOrders.reduce((sum, order) => sum + (order.credits_purchased || 0), 0),
@@ -53,7 +55,7 @@ export async function GET(request: NextRequest) {
         date: new Date(order.created_at * 1000),
         status: order.status
       })),
-      ...userContent.map(content => ({
+      ...allUserContent.map(content => ({
         id: content.id,
         type: 'deduction',
         amount: -getContentCost(content.type),
@@ -76,7 +78,9 @@ export async function GET(request: NextRequest) {
         last_login: user.last_login
       },
       stats,
-      recentTransactions
+      recentTransactions,
+      userContent,
+      favorites
     });
   } catch (error) {
     console.error('Error fetching user stats:', error);

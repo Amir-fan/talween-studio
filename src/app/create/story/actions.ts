@@ -3,7 +3,7 @@
 
 import { checkAndDeductCreditsForFeature } from '@/lib/local-credits';
 import { createStoryAndColoringPagesFlow } from '@/ai/flows/create-story-and-coloring-pages';
-// Removed Firebase dependencies - using local storage instead
+import { contentDb } from '@/lib/simple-database';
 import { v4 as uuidv4 } from 'uuid';
 import type { StoryAndPagesInput, StoryAndPagesOutput } from './types';
 
@@ -34,9 +34,21 @@ export async function generateStoryAction(
       throw new Error("Story generation flow failed to return complete data.");
     }
 
-    // Story generated successfully - no database persistence needed for local version
-    console.log('Story generated successfully:', finalStory.title);
+    // Save story to database
+    const saveResult = contentDb.create(
+      input.userId,
+      finalStory.title,
+      'story',
+      finalStory,
+      finalStory.pages?.[0]?.imageDataUri // Use first page as thumbnail
+    );
 
+    if (!saveResult.success) {
+      console.error('Failed to save story to database:', saveResult.error);
+      // Still return the story even if saving fails
+    } else {
+      console.log('Story saved to database:', saveResult.content.id);
+    }
 
     return { success: true, data: finalStory };
   } catch (error) {

@@ -7,12 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Coins, CreditCard, Download, History, Settings, Star, Crown, Users } from 'lucide-react';
+import { Coins, CreditCard, Download, History, Settings, Star, Crown, Users, Heart, Trash2, BookOpen, Image, Camera } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { PRICING_CONFIG } from '@/lib/pricing';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import ImageComponent from 'next/image';
 
 interface UserStats {
   stories: number;
@@ -37,11 +38,22 @@ interface Transaction {
   status: string;
 }
 
+interface UserContent {
+  id: string;
+  title: string;
+  type: 'story' | 'coloring' | 'image';
+  thumbnail_url?: string;
+  status: 'draft' | 'published' | 'favorite';
+  created_at: number;
+}
+
 export default function AccountPage() {
   const { user, userData } = useAuth();
   const { toast } = useToast();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [userContent, setUserContent] = useState<UserContent[]>([]);
+  const [favorites, setFavorites] = useState<UserContent[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Fetch user statistics and transactions
@@ -59,6 +71,8 @@ export default function AccountPage() {
         if (data.success) {
           setStats(data.stats);
           setRecentTransactions(data.recentTransactions);
+          setUserContent(data.userContent || []);
+          setFavorites(data.favorites || []);
         } else {
           console.error('Failed to fetch user stats:', data.error);
           toast({
@@ -81,6 +95,91 @@ export default function AccountPage() {
 
     fetchUserStats();
   }, [user?.id, toast]);
+
+  // Handle toggle favorite
+  const handleToggleFavorite = async (contentId: string) => {
+    try {
+      const response = await fetch(`/api/user/content/${contentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'toggleFavorite' })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        toast({
+          title: 'تم التحديث',
+          description: data.message
+        });
+        
+        // Refresh data
+        if (user?.id) {
+          const statsResponse = await fetch(`/api/user/stats?userId=${user.id}`);
+          const statsData = await statsResponse.json();
+          if (statsData.success) {
+            setUserContent(statsData.userContent || []);
+            setFavorites(statsData.favorites || []);
+          }
+        }
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'خطأ',
+          description: data.error || 'فشل في تحديث المفضلة'
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast({
+        variant: 'destructive',
+        title: 'خطأ',
+        description: 'فشل في تحديث المفضلة'
+      });
+    }
+  };
+
+  // Handle delete content
+  const handleDeleteContent = async (contentId: string) => {
+    try {
+      const response = await fetch(`/api/user/content/${contentId}`, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        toast({
+          title: 'تم الحذف',
+          description: data.message
+        });
+        
+        // Refresh data
+        if (user?.id) {
+          const statsResponse = await fetch(`/api/user/stats?userId=${user.id}`);
+          const statsData = await statsResponse.json();
+          if (statsData.success) {
+            setStats(statsData.stats);
+            setUserContent(statsData.userContent || []);
+            setFavorites(statsData.favorites || []);
+          }
+        }
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'خطأ',
+          description: data.error || 'فشل في حذف المحتوى'
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting content:', error);
+      toast({
+        variant: 'destructive',
+        title: 'خطأ',
+        description: 'فشل في حذف المحتوى'
+      });
+    }
+  };
 
   if (!user || !userData || loading) {
     return (
@@ -354,6 +453,150 @@ export default function AccountPage() {
             </div>
               </CardContent>
             </Card>
+
+        {/* User Content Section */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="h-6 w-6 text-primary" />
+              إبداعاتي
+            </CardTitle>
+            <CardDescription>
+              المحتوى الذي أنشأته - قصص وصفحات تلوين وتحويلات
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {userContent.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>لم تنشئ أي محتوى بعد</p>
+                <Button asChild className="mt-4">
+                  <Link href="/create">ابدأ الإبداع</Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {userContent.map((content) => (
+                  <div key={content.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="aspect-square mb-3 bg-gray-100 rounded-lg overflow-hidden">
+                      {content.thumbnail_url ? (
+                        <ImageComponent
+                          src={content.thumbnail_url}
+                          alt={content.title}
+                          width={200}
+                          height={200}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          {content.type === 'story' ? (
+                            <BookOpen className="h-8 w-8 text-gray-400" />
+                          ) : content.type === 'coloring' ? (
+                            <Image className="h-8 w-8 text-gray-400" />
+                          ) : (
+                            <Camera className="h-8 w-8 text-gray-400" />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="font-medium text-sm mb-2 line-clamp-2">{content.title}</h3>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="text-xs">
+                        {content.type === 'story' ? 'قصة' : content.type === 'coloring' ? 'تلوين' : 'صورة'}
+                      </Badge>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleToggleFavorite(content.id)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Heart className={`h-4 w-4 ${content.status === 'favorite' ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteContent(content.id)}
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Favorites Section */}
+        {favorites.length > 0 && (
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Heart className="h-6 w-6 text-red-500" />
+                المفضلة
+              </CardTitle>
+              <CardDescription>
+                المحتوى الذي أضفته للمفضلة
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {favorites.map((content) => (
+                  <div key={content.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="aspect-square mb-3 bg-gray-100 rounded-lg overflow-hidden">
+                      {content.thumbnail_url ? (
+                        <ImageComponent
+                          src={content.thumbnail_url}
+                          alt={content.title}
+                          width={200}
+                          height={200}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          {content.type === 'story' ? (
+                            <BookOpen className="h-8 w-8 text-gray-400" />
+                          ) : content.type === 'coloring' ? (
+                            <Image className="h-8 w-8 text-gray-400" />
+                          ) : (
+                            <Camera className="h-8 w-8 text-gray-400" />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="font-medium text-sm mb-2 line-clamp-2">{content.title}</h3>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="text-xs">
+                        {content.type === 'story' ? 'قصة' : content.type === 'coloring' ? 'تلوين' : 'صورة'}
+                      </Badge>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleToggleFavorite(content.id)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Heart className="h-4 w-4 fill-red-500 text-red-500" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteContent(content.id)}
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

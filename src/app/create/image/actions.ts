@@ -5,6 +5,7 @@ import {
   generateColoringPageFromImage,
   GenerateColoringPageFromImageInput,
 } from '@/ai/flows/generate-coloring-page-from-image';
+import { contentDb } from '@/lib/simple-database';
 
 export async function generateImageFromPhotoAction(
   values: GenerateColoringPageFromImageInput & { userId?: string }
@@ -27,6 +28,24 @@ export async function generateImageFromPhotoAction(
     }
 
     const result = await generateColoringPageFromImage(values);
+    
+    // Save image conversion to database
+    if (result && values.userId) {
+      const saveResult = contentDb.create(
+        values.userId,
+        'تحويل صورة إلى صفحة تلوين',
+        'image',
+        result,
+        result.coloringPageDataUri
+      );
+
+      if (!saveResult.success) {
+        console.error('Failed to save image conversion to database:', saveResult.error);
+      } else {
+        console.log('Image conversion saved to database:', saveResult.content.id);
+      }
+    }
+    
     return { success: true, data: result };
   } catch (error) {
     console.error('Image from photo generation failed:', error);
