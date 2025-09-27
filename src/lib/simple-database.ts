@@ -112,48 +112,30 @@ function loadDatabase() {
   }
 }
 
-// Bulletproof save function with multiple backup layers
+// Simplified and reliable save function
 function saveDatabase() {
   try {
-    console.log('🔍 SAVING DATABASE WITH BACKUP:');
+    console.log('🔍 SAVING DATABASE:');
     console.log('  - dbPath:', dbPath);
     console.log('  - users count:', Object.keys(db.users).length);
-    console.log('  - users:', Object.keys(db.users));
     
     const dataString = JSON.stringify(db, null, 2);
     
-    // 1. Create backup of current database before writing
-    if (fs.existsSync(dbPath)) {
-      try {
-        const currentData = fs.readFileSync(dbPath, 'utf8');
-        fs.writeFileSync(backupPath, currentData, 'utf8');
-        console.log('✅ Database backup created');
-      } catch (backupError) {
-        console.log('⚠️ Backup creation failed (non-critical):', backupError);
-      }
-    }
-    
-    // 2. Write to main database file
+    // Write to main database file
     fs.writeFileSync(dbPath, dataString, 'utf8');
-    console.log('✅ Main database saved');
+    console.log('✅ Database saved successfully');
     
-    // 3. Create emergency backup
-    fs.writeFileSync(emergencyPath, dataString, 'utf8');
-    console.log('✅ Emergency backup created');
-    
-    // 4. Validate the saved data
-    const validationResult = validateDatabaseIntegrity();
-    if (!validationResult.valid) {
-      console.error('❌ Database integrity check failed after save:', validationResult.errors);
-      // Try to restore from backup
-      restoreFromBackup();
+    // Optional: Create backup (non-critical)
+    try {
+      fs.writeFileSync(backupPath, dataString, 'utf8');
+      console.log('✅ Backup created');
+    } catch (backupError) {
+      console.log('⚠️ Backup creation failed (non-critical):', backupError.message);
     }
     
   } catch (error) {
-    console.error('❌ Critical error saving database:', error);
-    // Try to restore from backup
-    restoreFromBackup();
-    throw new Error('Database save failed - attempting recovery');
+    console.error('❌ Database save error:', error);
+    throw new Error(`Database save failed: ${error.message}`);
   }
 }
 
@@ -415,47 +397,90 @@ export const userDb = {
 
   // Comprehensive user deletion - removes user and all related data
   deleteUserCompletely: (id: string) => {
-    const results = {
-      userDeleted: false,
-      ordersDeleted: 0,
-      emailLogsDeleted: 0,
-      contentDeleted: 0
-    };
+    console.log('🗑️ DELETING USER COMPLETELY:', id);
+    
+    try {
+      const results = {
+        userDeleted: false,
+        ordersDeleted: 0,
+        emailLogsDeleted: 0,
+        contentDeleted: 0
+      };
 
-    // Delete user
-    if (db.users[id]) {
+      // Check if user exists
+      if (!db.users[id]) {
+        console.log('❌ User not found:', id);
+        return { 
+          success: false, 
+          error: 'User not found',
+          results 
+        };
+      }
+
+      console.log('✅ User found, proceeding with deletion');
+
+      // Delete user
       delete db.users[id];
       results.userDeleted = true;
+      console.log('✅ User deleted from memory');
+
+      // Delete all orders for this user
+      const userOrders = Object.values(db.orders).filter(order => order.user_id === id);
+      userOrders.forEach(order => {
+        delete db.orders[order.id];
+        results.ordersDeleted++;
+      });
+      console.log('✅ Orders deleted:', results.ordersDeleted);
+
+      // Delete all email logs for this user
+      const userEmailLogs = Object.values(db.emailLogs).filter(log => log.user_id === id);
+      userEmailLogs.forEach(log => {
+        delete db.emailLogs[log.id];
+        results.emailLogsDeleted++;
+      });
+      console.log('✅ Email logs deleted:', results.emailLogsDeleted);
+
+      // Delete all content for this user
+      const userContent = Object.values(db.userContent).filter(content => content.user_id === id);
+      userContent.forEach(content => {
+        delete db.userContent[content.id];
+        results.contentDeleted++;
+      });
+      console.log('✅ Content deleted:', results.contentDeleted);
+
+      // Save database with error handling
+      console.log('💾 Attempting to save database...');
+      try {
+        saveDatabase();
+        console.log('✅ Database saved successfully');
+      } catch (saveError) {
+        console.error('❌ Database save failed:', saveError);
+        return { 
+          success: false, 
+          error: `Database save failed: ${saveError.message}`,
+          results 
+        };
+      }
+
+      return { 
+        success: true, 
+        message: `User and all related data deleted successfully`,
+        results
+      };
+      
+    } catch (error) {
+      console.error('❌ CRITICAL ERROR in deleteUserCompletely:', error);
+      return { 
+        success: false, 
+        error: `Critical error during deletion: ${error.message}`,
+        results: {
+          userDeleted: false,
+          ordersDeleted: 0,
+          emailLogsDeleted: 0,
+          contentDeleted: 0
+        }
+      };
     }
-
-    // Delete all orders for this user
-    const userOrders = Object.values(db.orders).filter(order => order.user_id === id);
-    userOrders.forEach(order => {
-      delete db.orders[order.id];
-      results.ordersDeleted++;
-    });
-
-    // Delete all email logs for this user
-    const userEmailLogs = Object.values(db.emailLogs).filter(log => log.user_id === id);
-    userEmailLogs.forEach(log => {
-      delete db.emailLogs[log.id];
-      results.emailLogsDeleted++;
-    });
-
-    // Delete all content for this user
-    const userContent = Object.values(db.userContent).filter(content => content.user_id === id);
-    userContent.forEach(content => {
-      delete db.userContent[content.id];
-      results.contentDeleted++;
-    });
-
-    saveDatabase();
-
-    return { 
-      success: true, 
-      message: `User and all related data deleted successfully`,
-      results
-    };
   }
 };
 

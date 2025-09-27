@@ -1,20 +1,5 @@
 {
-  "users": {
-    "283f36ec-b579-4e31-8457-7ec2de336e28": {
-      "id": "283f36ec-b579-4e31-8457-7ec2de336e28",
-      "email": "realtest@example.com",
-      "password": "$2a$12$9hxar21DdCMLsczJtlru.eLKFWb1KoZqrpiimouRXujD90k0ULQAC",
-      "display_name": "Real Test User",
-      "credits": 50,
-      "status": "active",
-      "email_verified": true,
-      "verification_token": "5a868b18-ea6f-44b8-a288-0b0bc5fcead4",
-      "subscription_tier": "FREE",
-      "created_at": 1759008745,
-      "updated_at": 1759008745,
-      "total_spent": 0
-    }
-  },
+  "users": {},
   "orders": {},
   "emailLogs": {
     "c1878f85-ac1c-4929-8f5b-ef97a5b6857b": {
