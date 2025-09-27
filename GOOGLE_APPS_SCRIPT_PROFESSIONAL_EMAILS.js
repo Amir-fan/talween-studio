@@ -379,7 +379,7 @@ function handleDeleteUser(userId) {
     const userEmail = userData[1]; // البريد الإلكتروني column
     const userName = userData[2]; // الاسم column
     
-    console.log('📋 User data to delete:', {
+    console.log('User data to delete:', {
       userId: userId,
       email: userEmail,
       name: userName,
@@ -389,7 +389,7 @@ function handleDeleteUser(userId) {
     // Delete the user row
     sheet.deleteRow(userRow);
     
-    console.log('✅ User deleted successfully from Google Sheets');
+    console.log('User deleted successfully from Google Sheets');
     
     return ContentService
       .createTextOutput(JSON.stringify({ 
@@ -797,27 +797,27 @@ function getWelcomeEmailTemplate(data) {
             <div class="feature-item">
               <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">1</span>
               <p class="feature-text">إنشاء قصص مخصصة بأسماء الأطفال</p>
-          </div>
+            </div>
             <div class="feature-item">
               <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">2</span>
               <p class="feature-text">تحويل النصوص إلى صفحات تلوين</p>
-        </div>
+            </div>
             <div class="feature-item">
               <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">3</span>
               <p class="feature-text">تحويل الصور إلى صفحات تلوين</p>
-      </div>
+            </div>
             <div class="feature-item">
               <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">4</span>
               <p class="feature-text">حفظ المحتوى في مكتبتك الشخصية</p>
-        </div>
             </div>
+          </div>
           
           <div class="cta-container">
             <a href="${data.appUrl || 'https://italween.com'}" class="cta-button">
               ابدأ الإبداع الآن
             </a>
           </div>
-          </div>
+        </div>
         
         <div class="footer">
           <p class="footer-text">© 2024 تلوين ستوديو. جميع الحقوق محفوظة.</p>
@@ -897,7 +897,7 @@ function getPasswordResetEmailTemplate(data) {
             <div class="step-item">
               <div class="step-number">1</div>
               <p class="step-text">انقر على الرابط أعلاه</p>
-          </div>
+            </div>
             <div class="step-item">
               <div class="step-number">2</div>
               <p class="step-text">أدخل كلمة مرور جديدة قوية</p>
