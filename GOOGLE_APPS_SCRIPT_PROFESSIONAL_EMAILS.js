@@ -287,16 +287,10 @@ function handleCreateUser(data) {
       data.password || '',
       data.credits || 50,
       data.status || 'active',
-      data.emailVerified || true,
+      data.subscriptionTier || 'FREE',
       new Date().toISOString(),
-      data.phone || '',
-      data.country || '',
-      data.city || '',
-      data.age || '',
-      data.gender || '',
-      data.interests || '',
-      data.source || 'website',
-      data.notes || ''
+      new Date().toISOString(), // last login
+      0 // total spent
     ];
     
     console.log('  - userData array:', JSON.stringify(userData, null, 2));
