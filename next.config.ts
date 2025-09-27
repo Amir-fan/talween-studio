@@ -39,8 +39,8 @@ const nextConfig: NextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
-  // Enable standalone output for cPanel Node.js
-  output: 'standalone',
+  // Remove standalone output for Vercel deployment
+  // output: 'standalone',
   // Optimize bundle
   webpack: (config, { dev, isServer }) => {
     if (!dev && !isServer) {
