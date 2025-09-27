@@ -1,7 +1,7 @@
 import { emailDb } from './simple-database';
 
 // Google Apps Script Web App URL - you'll get this after deploying the script
-const GOOGLE_APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL || '';
+const GOOGLE_APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbyz5QjB9BlrtemRf7mOnjTHaSBN9kxxxT7Q0QFt9j3US6aVT2OlzcowbEFFQRb_YoeR/exec';
 
 export async function sendEmail(
   recipientEmail: string,
