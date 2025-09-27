@@ -48,7 +48,7 @@ export async function registerUser(
     // Send welcome email (non-blocking)
     sendEmail(
       email,
-      'welcomeAfterVerification',
+      'welcome',
       { name: displayName },
       user.id
     ).catch(error => {
