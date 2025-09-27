@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   Trash2
 } from 'lucide-react';
+import { config } from '@/lib/config';
 
 interface User {
   id: string;
@@ -115,7 +116,7 @@ function AdminDashboardContent() {
       console.log('🔍 Loading admin data...');
       
       // Load users from Google Sheets
-      const usersUrl = `${process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL}?action=getUsers&apiKey=${process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY}`;
+      const usersUrl = `${config.googleAppsScriptUrl}?action=getUsers&apiKey=${config.googleSheetsApiKey}`;
       console.log('Users URL:', usersUrl);
       
       const usersResponse = await fetch(usersUrl);
@@ -128,14 +129,21 @@ function AdminDashboardContent() {
       
       const usersData = await usersResponse.json();
       console.log('Users data:', usersData);
+      console.log('Users data success:', usersData.success);
+      console.log('Users data users:', usersData.users);
+      console.log('Users data error:', usersData.error);
       
       if (usersData.success) {
-        setUsers(usersData.users || []);
+        const usersList = usersData.users || [];
+        console.log('Setting users:', usersList);
+        setUsers(usersList);
         
         // Calculate stats
-        const totalUsers = usersData.users?.length || 0;
-        const verifiedUsers = usersData.users?.filter((u: User) => u.email_verified).length || 0;
-        const totalCredits = usersData.users?.reduce((sum: number, u: User) => sum + (u.credits || 0), 0) || 0;
+        const totalUsers = usersList.length;
+        const verifiedUsers = usersList.filter((u: User) => u.email_verified).length;
+        const totalCredits = usersList.reduce((sum: number, u: User) => sum + (u.credits || 0), 0);
+        
+        console.log('Stats:', { totalUsers, verifiedUsers, totalCredits });
         
         setStats({
           totalUsers,
@@ -145,10 +153,12 @@ function AdminDashboardContent() {
         });
       } else {
         console.error('Failed to load users:', usersData.error);
+        alert(`فشل في تحميل المستخدمين: ${usersData.error || 'خطأ غير معروف'}`);
       }
       
     } catch (error) {
       console.error('Error loading admin data:', error);
+      alert(`خطأ في تحميل البيانات: ${error.message || 'خطأ في الاتصال'}`);
     } finally {
       setLoading(false);
     }
