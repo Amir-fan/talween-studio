@@ -86,10 +86,26 @@ function loadDatabase() {
   try {
     if (fs.existsSync(dbPath)) {
       const data = fs.readFileSync(dbPath, 'utf8');
-      db = JSON.parse(data);
+      const loadedDb = JSON.parse(data);
+      // Ensure all required properties exist
+      db = {
+        users: loadedDb.users || {},
+        orders: loadedDb.orders || {},
+        emailLogs: loadedDb.emailLogs || {},
+        userContent: loadedDb.userContent || {},
+        adminUsers: loadedDb.adminUsers || {}
+      };
     }
   } catch (error) {
     console.error('Error loading database:', error);
+    // Reset to default structure if loading fails
+    db = {
+      users: {},
+      orders: {},
+      emailLogs: {},
+      userContent: {},
+      adminUsers: {}
+    };
   }
 }
 
@@ -113,7 +129,7 @@ function initializeDatabase() {
   loadDatabase();
   
   // Create default admin user if not exists
-  const adminExists = Object.values(db.adminUsers).find(user => user.email === 'admin@talween.com');
+  const adminExists = db.adminUsers ? Object.values(db.adminUsers).find(user => user.email === 'admin@talween.com') : null;
   if (!adminExists) {
     const adminId = uuidv4();
     const adminPassword = bcrypt.hashSync('admin123', 10);

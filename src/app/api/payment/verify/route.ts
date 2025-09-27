@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { orderDb, userDb } from '@/lib/simple-database';
+import { config } from '@/lib/config';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,34 +13,84 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find the order
-    const order = orderDb.findById(orderId);
-    if (!order) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      );
+    console.log('💳 PAYMENT VERIFY API - Verifying payment:', { orderId, status, transactionId });
+
+    // Step 1: Update local database
+    console.log('💾 Step 1: Updating local database...');
+    let localSuccess = false;
+    let order = null;
+
+    try {
+      order = orderDb.findById(orderId);
+      if (order) {
+        orderDb.updateStatus(orderId, status, transactionId);
+        
+        // If payment was successful, add credits to user
+        if (status === 'paid' && order.credits_purchased) {
+          userDb.updateCredits(order.user_id, order.credits_purchased);
+          
+          // Update user's subscription tier if applicable
+          if (order.subscription_tier && order.subscription_tier !== 'FREE') {
+            userDb.updateUser(order.user_id, {
+              subscription_tier: order.subscription_tier
+            });
+          }
+        }
+        localSuccess = true;
+        console.log('💾 Local database updated successfully');
+      } else {
+        console.log('💾 Order not found in local database');
+      }
+    } catch (error) {
+      console.log('💾 Local database error (continuing):', error);
     }
 
-    // Update order status
-    orderDb.updateStatus(orderId, status, transactionId);
+    // Step 2: Update Google Sheets
+    console.log('📊 Step 2: Updating Google Sheets...');
+    let googleSheetsSuccess = false;
 
-    // If payment was successful, add credits to user
-    if (status === 'paid' && order.credits_purchased) {
-      userDb.updateCredits(order.user_id, order.credits_purchased);
-      
-      // Update user's subscription tier if applicable
-      if (order.subscription_tier && order.subscription_tier !== 'FREE') {
-        userDb.updateUser(order.user_id, {
-          subscription_tier: order.subscription_tier
-        });
+    try {
+      const response = await fetch(`${config.googleAppsScriptUrl}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'verifyPayment',
+          orderId: orderId,
+          status: status,
+          transactionId: transactionId,
+          apiKey: config.googleSheetsApiKey
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        googleSheetsSuccess = result.success;
+        console.log('📊 Google Sheets updated:', result);
       }
+    } catch (error) {
+      console.log('📊 Google Sheets error (continuing):', error);
+    }
+
+    // Return success if either update succeeded
+    if (!localSuccess && !googleSheetsSuccess) {
+      return NextResponse.json(
+        { error: 'Failed to update payment status in both databases' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Payment status updated successfully'
+      message: 'Payment status updated successfully',
+      details: {
+        localUpdated: localSuccess,
+        googleSheetsUpdated: googleSheetsSuccess,
+        orderFound: !!order
+      }
     });
+
   } catch (error) {
     console.error('Payment verification error:', error);
     return NextResponse.json(

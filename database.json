@@ -2,5 +2,14 @@
   "users": [],
   "orders": [],
   "emailLogs": [],
-  "userContent": []
+  "userContent": [],
+  "adminUsers": {
+    "60a2a978-09e3-41ad-9aef-675399a17b3d": {
+      "id": "60a2a978-09e3-41ad-9aef-675399a17b3d",
+      "email": "admin@talween.com",
+      "password": "$2a$10$s.z94Jx5INDPkfayxz72Xew0iBZfyU6BiZd0uJ6y/nwv5aUl0SanW",
+      "role": "admin",
+      "created_at": 1758940748
+    }
+  }
 }

@@ -12,8 +12,13 @@ export async function POST(request: NextRequest) {
 
     console.log('🗑️ ADMIN API - Deleting user:', { userId, userName });
 
-    // Step 1: Delete from Google Sheets
-    console.log('📊 Step 1: Deleting from Google Sheets...');
+    // Step 1: Delete from local database
+    console.log('💾 Step 1: Deleting from local database...');
+    const localDeleteResult = userDb.deleteUserCompletely(userId);
+    console.log('💾 Local database deletion result:', localDeleteResult);
+
+    // Step 2: Delete from Google Sheets
+    console.log('📊 Step 2: Deleting from Google Sheets...');
     const googleSheetsResponse = await fetch(`${config.googleAppsScriptUrl}?action=deleteUser&apiKey=${config.googleSheetsApiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -27,42 +32,29 @@ export async function POST(request: NextRequest) {
     const googleSheetsData = await googleSheetsResponse.json();
     console.log('📊 Google Sheets response:', googleSheetsData);
 
-    if (!googleSheetsData.success) {
-      console.error('❌ Failed to delete from Google Sheets:', googleSheetsData.error);
+    // Return success if either deletion succeeded
+    const localSuccess = localDeleteResult.success;
+    const googleSheetsSuccess = googleSheetsData.success;
+
+    if (!localSuccess && !googleSheetsSuccess) {
+      console.error('❌ Failed to delete from both databases');
       return NextResponse.json({ 
         success: false, 
-        error: `Failed to delete from Google Sheets: ${googleSheetsData.error}` 
+        error: 'Failed to delete user from both local database and Google Sheets' 
       }, { status: 500 });
     }
-
-    // Step 2: Delete from local JSON database (comprehensive deletion)
-    console.log('💾 Step 2: Deleting from local database (comprehensive)...');
-    const localDeleteResult = userDb.deleteUserCompletely(userId);
-    console.log('💾 Local database response:', localDeleteResult);
-
-    if (!localDeleteResult.success) {
-      console.warn('⚠️ User not found in local database (this might be normal)');
-    }
-
-    // Step 3: Log cleanup results
-    console.log('🧹 Step 3: Cleanup results:', {
-      userDeleted: localDeleteResult.results?.userDeleted || false,
-      ordersDeleted: localDeleteResult.results?.ordersDeleted || 0,
-      emailLogsDeleted: localDeleteResult.results?.emailLogsDeleted || 0,
-      contentDeleted: localDeleteResult.results?.contentDeleted || 0
-    });
 
     console.log('✅ User deletion completed successfully');
 
     return NextResponse.json({ 
       success: true, 
-      message: `User "${userName || userId}" deleted successfully from all databases`,
+      message: `User "${userName || userId}" deleted successfully`,
       deletedUser: {
         id: userId,
         name: userName,
-        googleSheetsDeleted: googleSheetsData.success,
-        localDatabaseDeleted: localDeleteResult.success,
-        cleanupResults: localDeleteResult.results
+        localDeleted: localSuccess,
+        googleSheetsDeleted: googleSheetsSuccess,
+        localDetails: localDeleteResult
       }
     });
 
