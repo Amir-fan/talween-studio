@@ -53,7 +53,8 @@ function LoginForm() {
     setLoading(true);
     try {
       // Hidden admin check - looks like normal login
-      if (loginAsAdmin(values.email, values.password)) {
+      const adminResult = await loginAsAdmin(values.email, values.password);
+      if (adminResult) {
         setLoading(false);
         toast({
           title: "تم تسجيل الدخول بنجاح",
