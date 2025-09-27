@@ -157,36 +157,45 @@ function saveDatabase() {
   }
 }
 
-// Database integrity validation
+// Database integrity validation - checks saved file, not in-memory data
 function validateDatabaseIntegrity(): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
   
   try {
+    // Read the saved database file to validate what was actually written
+    if (!fs.existsSync(dbPath)) {
+      errors.push('Database file does not exist');
+      return { valid: false, errors };
+    }
+    
+    const savedData = fs.readFileSync(dbPath, 'utf8');
+    const savedDb = JSON.parse(savedData);
+    
     // Check if all required properties exist and are objects
-    if (!db.users || typeof db.users !== 'object' || Array.isArray(db.users)) {
-      errors.push('Users property is invalid');
+    if (!savedDb.users || typeof savedDb.users !== 'object' || Array.isArray(savedDb.users)) {
+      errors.push('Users property is invalid in saved file');
     }
     
-    if (!db.orders || typeof db.orders !== 'object' || Array.isArray(db.orders)) {
-      errors.push('Orders property is invalid');
+    if (!savedDb.orders || typeof savedDb.orders !== 'object' || Array.isArray(savedDb.orders)) {
+      errors.push('Orders property is invalid in saved file');
     }
     
-    if (!db.emailLogs || typeof db.emailLogs !== 'object' || Array.isArray(db.emailLogs)) {
-      errors.push('EmailLogs property is invalid');
+    if (!savedDb.emailLogs || typeof savedDb.emailLogs !== 'object' || Array.isArray(savedDb.emailLogs)) {
+      errors.push('EmailLogs property is invalid in saved file');
     }
     
-    if (!db.userContent || typeof db.userContent !== 'object' || Array.isArray(db.userContent)) {
-      errors.push('UserContent property is invalid');
+    if (!savedDb.userContent || typeof savedDb.userContent !== 'object' || Array.isArray(savedDb.userContent)) {
+      errors.push('UserContent property is invalid in saved file');
     }
     
-    if (!db.adminUsers || typeof db.adminUsers !== 'object' || Array.isArray(db.adminUsers)) {
-      errors.push('AdminUsers property is invalid');
+    if (!savedDb.adminUsers || typeof savedDb.adminUsers !== 'object' || Array.isArray(savedDb.adminUsers)) {
+      errors.push('AdminUsers property is invalid in saved file');
     }
     
     // Validate user data structure
-    Object.values(db.users).forEach((user: any, index) => {
+    Object.values(savedDb.users).forEach((user: any, index) => {
       if (!user.id || !user.email || !user.password) {
-        errors.push(`User ${index} missing required fields (id, email, or password)`);
+        errors.push(`User ${index} missing required fields (id, email, or password) in saved file`);
       }
     });
     
@@ -300,41 +309,27 @@ export const userDb = {
     console.log('  - Email:', email);
     console.log('  - Total users now:', Object.keys(db.users).length);
     
-    // BULLETPROOF SAVE: Multiple attempts with validation
-    let saveSuccess = false;
-    let attempts = 0;
-    const maxAttempts = 3;
-    
-    while (!saveSuccess && attempts < maxAttempts) {
-      attempts++;
-      console.log(`  - Save attempt ${attempts}/${maxAttempts}`);
+    // SIMPLIFIED SAVE: Direct save with basic validation
+    try {
+      saveDatabase();
+      console.log('✅ Database saved successfully');
       
-      try {
-        saveDatabase();
-        
-        // Verify the save was successful
-        const verificationResult = validateDatabaseIntegrity();
-        if (verificationResult.valid) {
-          console.log('✅ Database save verified successfully');
-          saveSuccess = true;
+      // Simple verification - check if file exists and has content
+      if (fs.existsSync(dbPath)) {
+        const savedData = fs.readFileSync(dbPath, 'utf8');
+        const savedDb = JSON.parse(savedData);
+        if (savedDb.users && savedDb.users[id]) {
+          console.log('✅ User save verified - user exists in saved file');
         } else {
-          console.log('❌ Database save verification failed:', verificationResult.errors);
-          if (attempts < maxAttempts) {
-            console.log('  - Retrying save...');
-            // Small delay before retry
-            setTimeout(() => {}, 100);
-          }
+          console.log('❌ User not found in saved file');
+          return { success: false, error: 'Failed to save user data - please try again' };
         }
-      } catch (error) {
-        console.log('❌ Save attempt failed:', error);
-        if (attempts < maxAttempts) {
-          console.log('  - Retrying save...');
-        }
+      } else {
+        console.log('❌ Database file not found after save');
+        return { success: false, error: 'Failed to save user data - please try again' };
       }
-    }
-    
-    if (!saveSuccess) {
-      console.error('❌ CRITICAL: All save attempts failed - user data may be lost!');
+    } catch (error) {
+      console.error('❌ Save failed:', error);
       // Remove user from memory since we couldn't save it
       delete db.users[id];
       return { success: false, error: 'Failed to save user data - please try again' };

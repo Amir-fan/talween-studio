@@ -7,40 +7,62 @@ export async function POST(request: NextRequest) {
     const { userId, userName } = await request.json();
     
     if (!userId) {
-      return NextResponse.json({ success: false, error: 'User ID is required' }, { status: 400 });
+      return NextResponse.json({ 
+        success: false, 
+        error: 'معرف المستخدم مطلوب' 
+      }, { status: 400 });
     }
 
     console.log('🗑️ ADMIN API - Deleting user:', { userId, userName });
 
     // Step 1: Delete from local database
     console.log('💾 Step 1: Deleting from local database...');
-    const localDeleteResult = userDb.deleteUserCompletely(userId);
-    console.log('💾 Local database deletion result:', localDeleteResult);
+    let localDeleteResult;
+    try {
+      localDeleteResult = userDb.deleteUserCompletely(userId);
+      console.log('💾 Local database deletion result:', localDeleteResult);
+    } catch (localError) {
+      console.error('💾 Local database deletion error:', localError);
+      localDeleteResult = { success: false, error: localError.message };
+    }
 
-    // Step 2: Delete from Google Sheets
+    // Step 2: Delete from Google Sheets (non-blocking)
     console.log('📊 Step 2: Deleting from Google Sheets...');
-    const googleSheetsResponse = await fetch(`${config.googleAppsScriptUrl}?action=deleteUser&apiKey=${config.googleSheetsApiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        action: 'deleteUser',
-        apiKey: config.googleSheetsApiKey,
-        userId 
-      })
-    });
+    let googleSheetsSuccess = false;
+    let googleSheetsError = null;
+    
+    try {
+      const googleSheetsResponse = await fetch(`${config.googleAppsScriptUrl}?action=deleteUser&apiKey=${config.googleSheetsApiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'deleteUser',
+          apiKey: config.googleSheetsApiKey,
+          userId 
+        })
+      });
 
-    const googleSheetsData = await googleSheetsResponse.json();
-    console.log('📊 Google Sheets response:', googleSheetsData);
+      if (googleSheetsResponse.ok) {
+        const googleSheetsData = await googleSheetsResponse.json();
+        console.log('📊 Google Sheets response:', googleSheetsData);
+        googleSheetsSuccess = googleSheetsData.success || false;
+      } else {
+        console.log('📊 Google Sheets request failed:', googleSheetsResponse.status);
+        googleSheetsError = `HTTP ${googleSheetsResponse.status}`;
+      }
+    } catch (googleSheetsError) {
+      console.log('📊 Google Sheets deletion error:', googleSheetsError);
+      googleSheetsError = googleSheetsError.message;
+    }
 
-    // Return success if either deletion succeeded
-    const localSuccess = localDeleteResult.success;
-    const googleSheetsSuccess = googleSheetsData.success;
+    // Return success if local deletion succeeded (primary requirement)
+    const localSuccess = localDeleteResult && localDeleteResult.success;
 
-    if (!localSuccess && !googleSheetsSuccess) {
-      console.error('❌ Failed to delete from both databases');
+    if (!localSuccess) {
+      console.error('❌ Failed to delete from local database');
       return NextResponse.json({ 
         success: false, 
-        error: 'Failed to delete user from both local database and Google Sheets' 
+        error: 'حدث خطأ أثناء حذف المستخدم من قاعدة البيانات المحلية' 
       }, { status: 500 });
     }
 
@@ -48,12 +70,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ 
       success: true, 
-      message: `User "${userName || userId}" deleted successfully`,
+      message: `تم حذف المستخدم "${userName || userId}" بنجاح`,
       deletedUser: {
         id: userId,
         name: userName,
         localDeleted: localSuccess,
         googleSheetsDeleted: googleSheetsSuccess,
+        googleSheetsError: googleSheetsError,
         localDetails: localDeleteResult
       }
     });
@@ -62,7 +85,7 @@ export async function POST(request: NextRequest) {
     console.error('❌ Error in delete user API:', error);
     return NextResponse.json({ 
       success: false, 
-      error: `Failed to delete user: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      error: `حدث خطأ أثناء حذف المستخدم: ${error instanceof Error ? error.message : 'خطأ غير معروف'}` 
     }, { status: 500 });
   }
 }

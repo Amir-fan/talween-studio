@@ -1,5 +1,20 @@
 {
-  "users": {},
+  "users": {
+    "test-user-1759008071035": {
+      "id": "test-user-1759008071035",
+      "email": "testuser@example.com",
+      "password": "$2a$12$oeQbzu8yp19s1bMqJg9bhO/uYVifKuioffRaW1iQT5Q486F5QZfvm",
+      "display_name": "Test User",
+      "credits": 50,
+      "status": "active",
+      "email_verified": true,
+      "verification_token": "test-token",
+      "subscription_tier": "FREE",
+      "created_at": 1759008071,
+      "updated_at": 1759008071,
+      "total_spent": 0
+    }
+  },
   "orders": {},
   "emailLogs": {},
   "userContent": {},
