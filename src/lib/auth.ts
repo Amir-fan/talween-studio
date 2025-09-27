@@ -95,6 +95,16 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
     let user = userDb.findByEmail(email);
     console.log('  - user found in local DB:', !!user);
     
+    // Layer 1.5: If not found in regular users, check admin users
+    if (!user) {
+      console.log('  - checking admin users...');
+      const adminUser = userDb.findAdminByEmail(email);
+      if (adminUser) {
+        console.log('  - admin user found:', adminUser.email);
+        user = adminUser; // Use admin user as the user object
+      }
+    }
+    
     // Layer 2: If not found, try Google Sheets fallback
     if (!user) {
       console.log('  - trying Google Sheets fallback...');
@@ -181,7 +191,8 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
         credits: user.credits,
         status: user.status,
         emailVerified: user.email_verified,
-        subscriptionTier: user.subscription_tier
+        subscriptionTier: user.subscription_tier,
+        role: user.role || 'user' // Include role for admin users
       },
       token
     };

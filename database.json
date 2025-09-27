@@ -9,6 +9,22 @@
       "subject": "Email sent via Google Apps Script - welcome",
       "status": "pending",
       "created_at": 1759008783
+    },
+    "7ef9456d-166d-4fb8-81e1-d5456c164ba9": {
+      "id": "7ef9456d-166d-4fb8-81e1-d5456c164ba9",
+      "email_type": "welcome",
+      "recipient_email": "deletetest@example.com",
+      "subject": "Email sent via Google Apps Script - welcome",
+      "status": "pending",
+      "created_at": 1759010557
+    },
+    "27cbe120-eaf9-435a-be7b-6accd746af73": {
+      "id": "27cbe120-eaf9-435a-be7b-6accd746af73",
+      "email_type": "welcome",
+      "recipient_email": "testuser@example.com",
+      "subject": "Email sent via Google Apps Script - welcome",
+      "status": "pending",
+      "created_at": 1759011332
     }
   },
   "userContent": {},

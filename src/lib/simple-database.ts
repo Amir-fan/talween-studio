@@ -336,6 +336,10 @@ export const userDb = {
     return Object.values(db.users).find(user => user.email === email);
   },
 
+  findAdminByEmail: (email: string) => {
+    return Object.values(db.adminUsers).find(admin => admin.email === email);
+  },
+
   findById: (id: string) => {
     return db.users[id];
   },

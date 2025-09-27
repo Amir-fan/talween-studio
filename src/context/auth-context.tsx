@@ -102,44 +102,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     router.push('/');
   };
 
-  const loginAsAdmin = (email: string, password: string) => {
-    // Use environment variables for admin credentials
-    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@talween.com';
-    const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123';
-    
-    // Also allow the old hardcoded credentials for backward compatibility
-    const validCredentials = (
-      (email === 'admin' && password === 'admin123') ||
-      (email === adminEmail && password === adminPassword)
-    );
-    
-    if (validCredentials) {
-      const adminUser = {
-        id: 'admin',
-        email: adminEmail,
-        displayName: 'مدير النظام',
-        credits: 9999,
-        status: 'premium',
-        emailVerified: true,
-        subscriptionTier: 'CREATIVE_TEACHER'
-      };
-      localStorage.setItem('talween_user', JSON.stringify({ uid: 'admin' }));
-      setUser(adminUser);
-      setUserData(adminUser);
-      setIsAdmin(true);
+  const loginAsAdmin = async (email: string, password: string) => {
+    try {
+      console.log('🔍 Attempting admin login with:', email);
       
-      // Set admin token for middleware
-      const adminToken = `admin_${Date.now()}`;
-      document.cookie = `admin_token=${adminToken}; path=/; max-age=86400; SameSite=Lax; Secure=false`; // 24 hours
+      // Call the server-side admin login API
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password })
+      });
       
-      console.log('✅ Admin login successful');
-      console.log('🔍 Admin token set:', adminToken);
-      console.log('🔍 Current cookies:', document.cookie);
-      return true;
+      const data = await response.json();
+      console.log('🔍 Admin login response:', data);
+      
+      if (data.success && data.user) {
+        // Check if this is an admin user
+        if (data.user.role === 'admin') {
+          const adminUser = {
+            id: data.user.id,
+            email: data.user.email,
+            displayName: 'مدير النظام',
+            credits: 9999,
+            status: 'premium',
+            emailVerified: true,
+            subscriptionTier: 'CREATIVE_TEACHER'
+          };
+          localStorage.setItem('talween_user', JSON.stringify({ uid: data.user.id }));
+          setUser(adminUser);
+          setUserData(adminUser);
+          setIsAdmin(true);
+          
+          // Set admin token for middleware
+          const adminToken = `admin_${Date.now()}`;
+          document.cookie = `admin_token=${adminToken}; path=/; max-age=86400; SameSite=Lax; Secure=false`; // 24 hours
+          
+          console.log('✅ Admin login successful');
+          console.log('🔍 Admin token set:', adminToken);
+          console.log('🔍 Current cookies:', document.cookie);
+          return true;
+        } else {
+          console.log('❌ User is not an admin');
+          return false;
+        }
+      } else {
+        console.log('❌ Admin login failed:', data.error);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Admin login error:', error);
+      return false;
     }
-    
-    console.log('❌ Invalid admin credentials');
-    return false;
   };
 
   const signUp = async (email: string, password: string, displayName?: string) => {
