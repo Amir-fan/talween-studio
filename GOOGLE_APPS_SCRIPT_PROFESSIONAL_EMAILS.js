@@ -155,7 +155,7 @@ function handleClearAllData() {
     if (lastRow > 1) {
       // Clear all data except headers (row 1)
       sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
-      console.log(`Cleared ${lastRow - 1} rows of data`);
+      console.log('Cleared ' + (lastRow - 1) + ' rows of data');
     } else {
       console.log('No data to clear');
     }
@@ -262,7 +262,7 @@ function handleCreateUser(data) {
     const sheet = getSheet();
     
     // Debug logging
-    console.log('🔍 GOOGLE APPS SCRIPT - handleCreateUser called');
+    console.log('GOOGLE APPS SCRIPT - handleCreateUser called');
     console.log('  - data:', JSON.stringify(data, null, 2));
     console.log('  - data.password:', data.password);
     console.log('  - data.password type:', typeof data.password);
@@ -365,7 +365,7 @@ function handleDeleteUser(userId) {
     const userRow = findUserRow(sheet, userId);
     
     if (!userRow) {
-      console.log('❌ User not found in Google Sheets');
+      console.log('User not found in Google Sheets');
       return ContentService
         .createTextOutput(JSON.stringify({ 
           success: false, 
@@ -403,7 +403,7 @@ function handleDeleteUser(userId) {
       }))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
-    console.error('❌ Error deleting user:', error);
+    console.error('Error deleting user:', error);
     return ContentService
       .createTextOutput(JSON.stringify({ 
         success: false, 
@@ -622,17 +622,37 @@ function handleEmailRequest(data) {
         htmlBody = getDefaultEmailTemplate(templateData);
     }
     
-    GmailApp.sendEmail(
-      recipientEmail,
-      subject,
-      '',
-      {
-        htmlBody: htmlBody,
-        name: 'تلوين ستوديو'
-      }
-    );
+    // Create plain text version for better compatibility
+    const plainText = ensureUTF8(createPlainTextVersion(emailType, templateData));
+    const cleanSubject = ensureUTF8(subject);
+    const cleanHtmlBody = ensureUTF8(htmlBody);
     
-    console.log(`Email sent successfully to ${recipientEmail} for ${emailType}`);
+    try {
+      GmailApp.sendEmail(
+        recipientEmail,
+        cleanSubject,
+        plainText,
+        {
+          htmlBody: cleanHtmlBody,
+          name: 'تلوين ستوديو',
+          replyTo: 'noreply@italween.com',
+          attachments: []
+        }
+      );
+    } catch (emailError) {
+      console.error('Email sending error:', emailError);
+      // Fallback: try sending plain text only
+      GmailApp.sendEmail(
+        recipientEmail,
+        cleanSubject,
+        plainText,
+        {
+          name: 'تلوين ستوديو'
+        }
+      );
+    }
+    
+    console.log('Email sent successfully to ' + recipientEmail + ' for ' + emailType);
     
     return ContentService
       .createTextOutput(JSON.stringify({ 
@@ -724,610 +744,399 @@ function generateId() {
   return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
+// Utility function to ensure proper UTF-8 encoding
+function ensureUTF8(text) {
+  if (!text) return '';
+  // Remove any potential problematic characters and ensure clean UTF-8
+  return text.replace(/[\uFEFF]/g, '').trim();
+}
+
+// Plain Text Email Versions for Better Compatibility
+function createPlainTextVersion(emailType, data) {
+  const userName = data.name || 'عزيزي المستخدم';
+  
+  switch (emailType) {
+    case 'welcome':
+      return 'مرحباً ' + userName + '!\n\n' +
+             'تم تأكيد بريدك الإلكتروني بنجاح! يمكنك الآن الاستمتاع بجميع ميزات تلوين ستوديو وبدء رحلة الإبداع السحرية مع طفلك.\n\n' +
+             'هديتك المجانية: 50 نقطة مجانية\n' +
+             'يمكنك استخدام هذه النقاط لإنشاء قصص وصور تلوين مخصصة!\n\n' +
+             'ابدأ الإبداع الآن: ' + (data.appUrl || 'https://italween.com') + '\n\n' +
+             '© 2024 تلوين ستوديو. جميع الحقوق محفوظة.';
+             
+    case 'passwordReset':
+      return 'مرحباً ' + userName + ',\n\n' +
+             'تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك في تلوين ستوديو.\n\n' +
+             'انقر على الرابط أدناه لإعادة تعيين كلمة المرور الخاصة بك:\n' +
+             (data.resetLink || '#') + '\n\n' +
+             'ملاحظة أمنية: إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذه الرسالة بأمان.\n\n' +
+             '© 2024 تلوين ستوديو. جميع الحقوق محفوظة.';
+             
+    case 'orderConfirmation':
+      return 'مرحباً ' + userName + ',\n\n' +
+             'تم تأكيد طلبك بنجاح! يمكنك الآن الاستمتاع بجميع الميزات المدفوعة في تلوين ستوديو.\n\n' +
+             'تفاصيل الطلب:\n' +
+             'رقم الطلب: #' + (data.orderNumber || 'غير محدد') + '\n' +
+             'المبلغ الإجمالي: $' + (data.totalAmount || '0') + '\n' +
+             'الحالة: تم التأكيد\n\n' +
+             'ابدأ الإبداع الآن: ' + (data.appUrl || 'https://italween.com') + '\n\n' +
+             '© 2024 تلوين ستوديو. جميع الحقوق محفوظة.';
+             
+    case 'paymentSuccess':
+      return 'مرحباً ' + userName + ',\n\n' +
+             'شكراً لك! تم استلام دفعتك بنجاح وتم تفعيل حسابك في تلوين ستوديو.\n\n' +
+             'تم تفعيل حسابك!\n' +
+             'يمكنك الآن الاستمتاع بجميع الميزات المدفوعة\n\n' +
+             'ابدأ الإبداع الآن: ' + (data.appUrl || 'https://italween.com') + '\n\n' +
+             '© 2024 تلوين ستوديو. جميع الحقوق محفوظة.';
+             
+    case 'creditsAdded':
+      return 'مرحباً ' + userName + ',\n\n' +
+             'تم إضافة النقاط إلى حسابك بنجاح! يمكنك الآن الاستمتاع بإنشاء المزيد من المحتوى الإبداعي.\n\n' +
+             'النقاط المضافة: +' + (data.credits || '0') + ' نقطة\n' +
+             'يمكنك استخدام هذه النقاط لإنشاء قصص وصور تلوين مخصصة!\n\n' +
+             'ابدأ الإبداع الآن: ' + (data.appUrl || 'https://italween.com') + '\n\n' +
+             '© 2024 تلوين ستوديو. جميع الحقوق محفوظة.';
+             
+    default:
+      return 'مرحباً ' + userName + ',\n\n' +
+             (data.message || 'نشكرك على استخدام تلوين ستوديو. نتمنى لك تجربة إبداعية ممتعة!') + '\n\n' +
+             'زر موقعنا: ' + (data.appUrl || 'https://italween.com') + '\n\n' +
+             '© 2024 تلوين ستوديو. جميع الحقوق محفوظة.';
+  }
+}
+
 // Professional Email Templates
 
 function getWelcomeEmailTemplate(data) {
-  return `
-    <!DOCTYPE html>
-    <html dir="rtl" lang="ar">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>مرحباً بك في تلوين ستوديو</title>
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap');
-        body { margin: 0; padding: 0; font-family: 'Cairo', Arial, sans-serif; background-color: #f8fafc; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 20px; text-align: center; }
-        .logo { color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
-        .tagline { color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; font-weight: 400; }
-        .content { padding: 40px 30px; }
-        .icon-container { width: 80px; height: 80px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; }
-        .icon { font-size: 36px; color: white; font-weight: bold; }
-        .title { color: #1a202c; margin: 0 0 16px 0; font-size: 24px; font-weight: 600; text-align: center; }
-        .message { color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 32px 0; text-align: center; }
-        .gift-box { background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center; border: 2px solid #f59e0b; }
-        .gift-title { color: #92400e; margin: 0 0 8px 0; font-size: 20px; font-weight: 600; }
-        .gift-amount { color: #92400e; margin: 0 0 8px 0; font-size: 24px; font-weight: 700; }
-        .gift-description { color: #92400e; margin: 0; font-size: 14px; }
-        .features { margin: 32px 0; }
-        .feature-item { display: flex; align-items: center; margin: 16px 0; padding: 12px; background-color: #f7fafc; border-radius: 8px; }
-        .feature-icon { font-size: 20px; margin-left: 12px; }
-        .feature-text { color: #4a5568; font-size: 15px; margin: 0; }
-        .cta-button { display: inline-block; background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); }
-        .cta-container { text-align: center; margin: 32px 0; }
-        .footer { background-color: #f7fafc; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; }
-        .footer-text { color: #718096; font-size: 14px; margin: 0; }
-        @media (max-width: 600px) {
-          .container { margin: 0; border-radius: 0; }
-          .content { padding: 30px 20px; }
-          .header { padding: 30px 20px; }
-          .logo { font-size: 24px; }
-          .title { font-size: 20px; }
-          .message { font-size: 15px; }
-          .gift-box { padding: 20px; }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1 class="logo">مرحباً بك!</h1>
-          <p class="tagline">تم تأكيد حسابك بنجاح</p>
-        </div>
-        
-        <div class="content">
-          <div class="icon-container">
-            <span class="icon">T</span>
-            </div>
-          
-          <h2 class="title">مرحباً ${data.name || 'عزيزي المستخدم'}!</h2>
-          
-          <p class="message">
-            تم تأكيد بريدك الإلكتروني بنجاح! يمكنك الآن الاستمتاع بجميع ميزات تلوين ستوديو وبدء رحلة الإبداع السحرية مع طفلك.
-          </p>
-          
-          <div class="gift-box">
-            <h3 class="gift-title">هديتك المجانية</h3>
-            <p class="gift-amount">50 نقطة مجانية</p>
-            <p class="gift-description">يمكنك استخدام هذه النقاط لإنشاء قصص وصور تلوين مخصصة!</p>
-          </div>
-          
-          <div class="features">
-            <div class="feature-item">
-              <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">1</span>
-              <p class="feature-text">إنشاء قصص مخصصة بأسماء الأطفال</p>
-            </div>
-            <div class="feature-item">
-              <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">2</span>
-              <p class="feature-text">تحويل النصوص إلى صفحات تلوين</p>
-            </div>
-            <div class="feature-item">
-              <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">3</span>
-              <p class="feature-text">تحويل الصور إلى صفحات تلوين</p>
-            </div>
-            <div class="feature-item">
-              <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">4</span>
-              <p class="feature-text">حفظ المحتوى في مكتبتك الشخصية</p>
-            </div>
-          </div>
-          
-          <div class="cta-container">
-            <a href="${data.appUrl || 'https://italween.com'}" class="cta-button">
-              ابدأ الإبداع الآن
-            </a>
-          </div>
-        </div>
-        
-        <div class="footer">
-          <p class="footer-text">© 2024 تلوين ستوديو. جميع الحقوق محفوظة.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  const userName = data.name || 'عزيزي المستخدم';
+  const appUrl = data.appUrl || 'https://italween.com';
+  
+  return '<!DOCTYPE html>' +
+    '<html dir="rtl" lang="ar">' +
+    '<head>' +
+      '<meta charset="UTF-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+      '<title>مرحباً بك في تلوين ستوديو</title>' +
+      '<style>' +
+        'body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f8fafc; }' +
+        '.container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }' +
+        '.header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 20px; text-align: center; }' +
+        '.logo { color: white; margin: 0; font-size: 28px; font-weight: 700; }' +
+        '.tagline { color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; }' +
+        '.content { padding: 40px 30px; }' +
+        '.icon-container { width: 80px; height: 80px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; }' +
+        '.icon { font-size: 36px; color: white; font-weight: bold; }' +
+        '.title { color: #1a202c; margin: 0 0 16px 0; font-size: 24px; font-weight: 600; text-align: center; }' +
+        '.message { color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 32px 0; text-align: center; }' +
+        '.gift-box { background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center; border: 2px solid #f59e0b; }' +
+        '.gift-title { color: #92400e; margin: 0 0 8px 0; font-size: 20px; font-weight: 600; }' +
+        '.gift-amount { color: #92400e; margin: 0 0 8px 0; font-size: 24px; font-weight: 700; }' +
+        '.gift-description { color: #92400e; margin: 0; font-size: 14px; }' +
+        '.cta-button { display: inline-block; background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; }' +
+        '.cta-container { text-align: center; margin: 32px 0; }' +
+        '.footer { background-color: #f7fafc; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; }' +
+        '.footer-text { color: #718096; font-size: 14px; margin: 0; }' +
+      '</style>' +
+    '</head>' +
+    '<body>' +
+      '<div class="container">' +
+        '<div class="header">' +
+          '<h1 class="logo">مرحباً بك!</h1>' +
+          '<p class="tagline">تم تأكيد حسابك بنجاح</p>' +
+        '</div>' +
+        '<div class="content">' +
+          '<div class="icon-container">' +
+            '<span class="icon">T</span>' +
+          '</div>' +
+          '<h2 class="title">مرحباً ' + userName + '!</h2>' +
+          '<p class="message">تم تأكيد بريدك الإلكتروني بنجاح! يمكنك الآن الاستمتاع بجميع ميزات تلوين ستوديو وبدء رحلة الإبداع السحرية مع طفلك.</p>' +
+          '<div class="gift-box">' +
+            '<h3 class="gift-title">هديتك المجانية</h3>' +
+            '<p class="gift-amount">50 نقطة مجانية</p>' +
+            '<p class="gift-description">يمكنك استخدام هذه النقاط لإنشاء قصص وصور تلوين مخصصة!</p>' +
+          '</div>' +
+          '<div class="cta-container">' +
+            '<a href="' + appUrl + '" class="cta-button">ابدأ الإبداع الآن</a>' +
+          '</div>' +
+        '</div>' +
+        '<div class="footer">' +
+          '<p class="footer-text">© 2024 تلوين ستوديو. جميع الحقوق محفوظة.</p>' +
+        '</div>' +
+      '</div>' +
+    '</body>' +
+    '</html>';
 }
 
 function getPasswordResetEmailTemplate(data) {
-  return `
-    <!DOCTYPE html>
-    <html dir="rtl" lang="ar">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>إعادة تعيين كلمة المرور - تلوين ستوديو</title>
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap');
-        body { margin: 0; padding: 0; font-family: 'Cairo', Arial, sans-serif; background-color: #f8fafc; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 40px 20px; text-align: center; }
-        .logo { color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
-        .tagline { color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; font-weight: 400; }
-        .content { padding: 40px 30px; }
-        .icon-container { width: 80px; height: 80px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; }
-        .icon { font-size: 36px; }
-        .title { color: #1a202c; margin: 0 0 16px 0; font-size: 24px; font-weight: 600; text-align: center; }
-        .message { color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 32px 0; text-align: center; }
-        .cta-button { display: inline-block; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4); }
-        .cta-container { text-align: center; margin: 32px 0; }
-        .footer { background-color: #f7fafc; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; }
-        .footer-text { color: #718096; font-size: 14px; margin: 0; }
-        .security-note { background-color: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 16px; margin: 24px 0; text-align: center; }
-        .security-text { color: #991b1b; font-size: 14px; margin: 0; }
-        .steps { margin: 32px 0; }
-        .step-item { display: flex; align-items: flex-start; margin: 16px 0; padding: 16px; background-color: #f7fafc; border-radius: 8px; }
-        .step-number { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; margin-left: 12px; flex-shrink: 0; }
-        .step-text { color: #4a5568; font-size: 15px; margin: 0; }
-        @media (max-width: 600px) {
-          .container { margin: 0; border-radius: 0; }
-          .content { padding: 30px 20px; }
-          .header { padding: 30px 20px; }
-          .logo { font-size: 24px; }
-          .title { font-size: 20px; }
-          .message { font-size: 15px; }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1 class="logo">إعادة تعيين كلمة المرور</h1>
-          <p class="tagline">تأمين حسابك</p>
-        </div>
-        
-        <div class="content">
-          <div class="icon-container">
-            <span class="icon" style="font-size: 24px; font-weight: bold; color: white;">&nbsp;&nbsp;&nbsp;</span>
-            </div>
-          
-          <h2 class="title">إعادة تعيين كلمة المرور</h2>
-          
-          <p class="message">
-            مرحباً <strong>${data.name || 'عزيزي المستخدم'}</strong>،<br><br>
-            تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك في تلوين ستوديو.<br><br>
-            انقر على الزر أدناه لإعادة تعيين كلمة المرور الخاصة بك.
-          </p>
-          
-          <div class="cta-container">
-            <a href="${data.resetLink}" class="cta-button">
-              إعادة تعيين كلمة المرور             </a>
-          </div>
-          
-          <div class="steps">
-            <div class="step-item">
-              <div class="step-number">1</div>
-              <p class="step-text">انقر على الرابط أعلاه</p>
-            </div>
-            <div class="step-item">
-              <div class="step-number">2</div>
-              <p class="step-text">أدخل كلمة مرور جديدة قوية</p>
-            </div>
-            <div class="step-item">
-              <div class="step-number">3</div>
-              <p class="step-text">تأكيد كلمة المرور الجديدة</p>
-            </div>
-          </div>
-          
-          <div class="security-note">
-            <p class="security-text">
-              <strong>ملاحظة أمنية:</strong> إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذه الرسالة بأمان. رابط إعادة التعيين صالح لمدة 24 ساعة فقط.
-            </p>
-          </div>
-        </div>
-        
-        <div class="footer">
-          <p class="footer-text">© 2024 تلوين ستوديو. جميع الحقوق محفوظة.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  const userName = data.name || 'عزيزي المستخدم';
+  const resetLink = data.resetLink || '#';
+  
+  return '<!DOCTYPE html>' +
+    '<html dir="rtl" lang="ar">' +
+    '<head>' +
+      '<meta charset="UTF-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+      '<title>إعادة تعيين كلمة المرور - تلوين ستوديو</title>' +
+      '<style>' +
+        'body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f8fafc; }' +
+        '.container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }' +
+        '.header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 40px 20px; text-align: center; }' +
+        '.logo { color: white; margin: 0; font-size: 28px; font-weight: 700; }' +
+        '.tagline { color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; }' +
+        '.content { padding: 40px 30px; }' +
+        '.icon-container { width: 80px; height: 80px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; }' +
+        '.icon { font-size: 36px; }' +
+        '.title { color: #1a202c; margin: 0 0 16px 0; font-size: 24px; font-weight: 600; text-align: center; }' +
+        '.message { color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 32px 0; text-align: center; }' +
+        '.cta-button { display: inline-block; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; }' +
+        '.cta-container { text-align: center; margin: 32px 0; }' +
+        '.footer { background-color: #f7fafc; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; }' +
+        '.footer-text { color: #718096; font-size: 14px; margin: 0; }' +
+        '.security-note { background-color: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 16px; margin: 24px 0; text-align: center; }' +
+        '.security-text { color: #991b1b; font-size: 14px; margin: 0; }' +
+      '</style>' +
+    '</head>' +
+    '<body>' +
+      '<div class="container">' +
+        '<div class="header">' +
+          '<h1 class="logo">إعادة تعيين كلمة المرور</h1>' +
+          '<p class="tagline">تأمين حسابك</p>' +
+        '</div>' +
+        '<div class="content">' +
+          '<div class="icon-container">' +
+            '<span class="icon" style="font-size: 24px; font-weight: bold; color: white;">&nbsp;&nbsp;&nbsp;</span>' +
+          '</div>' +
+          '<h2 class="title">إعادة تعيين كلمة المرور</h2>' +
+          '<p class="message">مرحباً <strong>' + userName + '</strong>،<br><br>تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك في تلوين ستوديو.<br><br>انقر على الزر أدناه لإعادة تعيين كلمة المرور الخاصة بك.</p>' +
+          '<div class="cta-container">' +
+            '<a href="' + resetLink + '" class="cta-button">إعادة تعيين كلمة المرور</a>' +
+          '</div>' +
+          '<div class="security-note">' +
+            '<p class="security-text"><strong>ملاحظة أمنية:</strong> إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذه الرسالة بأمان. رابط إعادة التعيين صالح لمدة 24 ساعة فقط.</p>' +
+          '</div>' +
+        '</div>' +
+        '<div class="footer">' +
+          '<p class="footer-text">© 2024 تلوين ستوديو. جميع الحقوق محفوظة.</p>' +
+        '</div>' +
+      '</div>' +
+    '</body>' +
+    '</html>';
 }
 
 function getOrderConfirmationTemplate(data) {
-  return `
-    <!DOCTYPE html>
-    <html dir="rtl" lang="ar">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>تأكيد الطلب - تلوين ستوديو</title>
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap');
-        body { margin: 0; padding: 0; font-family: 'Cairo', Arial, sans-serif; background-color: #f8fafc; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        .header { background: linear-gradient(135deg, #059669 0%, #047857 100%); padding: 40px 20px; text-align: center; }
-        .logo { color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
-        .tagline { color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; font-weight: 400; }
-        .content { padding: 40px 30px; }
-        .icon-container { width: 80px; height: 80px; background: linear-gradient(135deg, #059669, #047857); border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; }
-        .icon { font-size: 36px; }
-        .title { color: #1a202c; margin: 0 0 16px 0; font-size: 24px; font-weight: 600; text-align: center; }
-        .message { color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 32px 0; text-align: center; }
-        .order-details { background-color: #f0fdf4; border: 2px solid #22c55e; border-radius: 12px; padding: 24px; margin: 24px 0; }
-        .order-title { color: #166534; margin: 0 0 16px 0; font-size: 18px; font-weight: 600; text-align: center; }
-        .order-info { display: flex; justify-content: space-between; margin: 8px 0; }
-        .order-label { color: #166534; font-weight: 600; }
-        .order-value { color: #166534; }
-        .cta-button { display: inline-block; background: linear-gradient(135deg, #059669, #047857); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(5, 150, 105, 0.4); }
-        .cta-container { text-align: center; margin: 32px 0; }
-        .footer { background-color: #f7fafc; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; }
-        .footer-text { color: #718096; font-size: 14px; margin: 0; }
-        @media (max-width: 600px) {
-          .container { margin: 0; border-radius: 0; }
-          .content { padding: 30px 20px; }
-          .header { padding: 30px 20px; }
-          .logo { font-size: 24px; }
-          .title { font-size: 20px; }
-          .message { font-size: 15px; }
-          .order-info { flex-direction: column; gap: 4px; }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1 class="logo">تم تأكيد طلبك!</h1>
-          <p class="tagline">شكراً لك على ثقتك</p>
-        </div>
-        
-        <div class="content">
-          <div class="icon-container">
-            <span class="icon" style="font-size: 24px; font-weight: bold; color: white;">&nbsp;&nbsp;&nbsp;</span>
-          </div>
-          
-          <h2 class="title">شكراً لك على طلبك!</h2>
-          
-          <p class="message">
-            مرحباً <strong>${data.name || 'عزيزي العميل'}</strong>،<br><br>
-            تم تأكيد طلبك بنجاح! يمكنك الآن الاستمتاع بجميع الميزات المدفوعة في تلوين ستوديو.
-          </p>
-          
-          <div class="order-details">
-            <h3 class="order-title">تفاصيل الطلب</h3>
-            <div class="order-info">
-              <span class="order-label">رقم الطلب:</span>
-              <span class="order-value">#${data.orderNumber || 'غير محدد'}</span>
-            </div>
-            <div class="order-info">
-              <span class="order-label">المبلغ الإجمالي:</span>
-              <span class="order-value">$${data.totalAmount || '0'}</span>
-            </div>
-            <div class="order-info">
-              <span class="order-label">الحالة:</span>
-              <span class="order-value">تم التأكيد</span>
-            </div>
-            <div class="order-info">
-              <span class="order-label">تاريخ الطلب:</span>
-              <span class="order-value">${new Date().toLocaleDateString('ar-SA')}</span>
-            </div>
-          </div>
-          
-          <div class="cta-container">
-            <a href="${data.appUrl || 'https://italween.com'}" class="cta-button">
-              ابدأ الإبداع الآن
-            </a>
-          </div>
-        </div>
-        
-        <div class="footer">
-          <p class="footer-text">© 2024 تلوين ستوديو. جميع الحقوق محفوظة.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  const userName = data.name || 'عزيزي العميل';
+  const orderNumber = data.orderNumber || 'غير محدد';
+  const totalAmount = data.totalAmount || '0';
+  const appUrl = data.appUrl || 'https://italween.com';
+  
+  return '<!DOCTYPE html>' +
+    '<html dir="rtl" lang="ar">' +
+    '<head>' +
+      '<meta charset="UTF-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+      '<title>تأكيد الطلب - تلوين ستوديو</title>' +
+      '<style>' +
+        'body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f8fafc; }' +
+        '.container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }' +
+        '.header { background: linear-gradient(135deg, #059669 0%, #047857 100%); padding: 40px 20px; text-align: center; }' +
+        '.logo { color: white; margin: 0; font-size: 28px; font-weight: 700; }' +
+        '.tagline { color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; }' +
+        '.content { padding: 40px 30px; }' +
+        '.title { color: #1a202c; margin: 0 0 16px 0; font-size: 24px; font-weight: 600; text-align: center; }' +
+        '.message { color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 32px 0; text-align: center; }' +
+        '.order-details { background-color: #f0fdf4; border: 2px solid #22c55e; border-radius: 12px; padding: 24px; margin: 24px 0; }' +
+        '.order-title { color: #166534; margin: 0 0 16px 0; font-size: 18px; font-weight: 600; text-align: center; }' +
+        '.order-info { display: flex; justify-content: space-between; margin: 8px 0; }' +
+        '.order-label { color: #166534; font-weight: 600; }' +
+        '.order-value { color: #166534; }' +
+        '.cta-button { display: inline-block; background: linear-gradient(135deg, #059669, #047857); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; }' +
+        '.cta-container { text-align: center; margin: 32px 0; }' +
+        '.footer { background-color: #f7fafc; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; }' +
+        '.footer-text { color: #718096; font-size: 14px; margin: 0; }' +
+      '</style>' +
+    '</head>' +
+    '<body>' +
+      '<div class="container">' +
+        '<div class="header">' +
+          '<h1 class="logo">تم تأكيد طلبك!</h1>' +
+          '<p class="tagline">شكراً لك على ثقتك</p>' +
+        '</div>' +
+        '<div class="content">' +
+          '<h2 class="title">شكراً لك على طلبك!</h2>' +
+          '<p class="message">مرحباً <strong>' + userName + '</strong>،<br><br>تم تأكيد طلبك بنجاح! يمكنك الآن الاستمتاع بجميع الميزات المدفوعة في تلوين ستوديو.</p>' +
+          '<div class="order-details">' +
+            '<h3 class="order-title">تفاصيل الطلب</h3>' +
+            '<div class="order-info"><span class="order-label">رقم الطلب:</span><span class="order-value">#' + orderNumber + '</span></div>' +
+            '<div class="order-info"><span class="order-label">المبلغ الإجمالي:</span><span class="order-value">$' + totalAmount + '</span></div>' +
+            '<div class="order-info"><span class="order-label">الحالة:</span><span class="order-value">تم التأكيد</span></div>' +
+          '</div>' +
+          '<div class="cta-container">' +
+            '<a href="' + appUrl + '" class="cta-button">ابدأ الإبداع الآن</a>' +
+          '</div>' +
+        '</div>' +
+        '<div class="footer">' +
+          '<p class="footer-text">© 2024 تلوين ستوديو. جميع الحقوق محفوظة.</p>' +
+        '</div>' +
+      '</div>' +
+    '</body>' +
+    '</html>';
 }
 
 function getPaymentSuccessTemplate(data) {
-  return `
-    <!DOCTYPE html>
-    <html dir="rtl" lang="ar">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>تم الدفع بنجاح - تلوين ستوديو</title>
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap');
-        body { margin: 0; padding: 0; font-family: 'Cairo', Arial, sans-serif; background-color: #f8fafc; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 20px; text-align: center; }
-        .logo { color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
-        .tagline { color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; font-weight: 400; }
-        .content { padding: 40px 30px; }
-        .icon-container { width: 80px; height: 80px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; }
-        .icon { font-size: 36px; }
-        .title { color: #1a202c; margin: 0 0 16px 0; font-size: 24px; font-weight: 600; text-align: center; }
-        .message { color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 32px 0; text-align: center; }
-        .success-box { background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 2px solid #22c55e; border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center; }
-        .success-title { color: #166534; margin: 0 0 16px 0; font-size: 20px; font-weight: 600; }
-        .success-message { color: #166534; margin: 0; font-size: 16px; }
-        .payment-details { background-color: #f7fafc; border-radius: 12px; padding: 24px; margin: 24px 0; }
-        .payment-title { color: #1a202c; margin: 0 0 16px 0; font-size: 18px; font-weight: 600; text-align: center; }
-        .payment-info { display: flex; justify-content: space-between; margin: 8px 0; }
-        .payment-label { color: #4a5568; font-weight: 600; }
-        .payment-value { color: #1a202c; font-weight: 600; }
-        .cta-button { display: inline-block; background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); }
-        .cta-container { text-align: center; margin: 32px 0; }
-        .footer { background-color: #f7fafc; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; }
-        .footer-text { color: #718096; font-size: 14px; margin: 0; }
-        @media (max-width: 600px) {
-          .container { margin: 0; border-radius: 0; }
-          .content { padding: 30px 20px; }
-          .header { padding: 30px 20px; }
-          .logo { font-size: 24px; }
-          .title { font-size: 20px; }
-          .message { font-size: 15px; }
-          .payment-info { flex-direction: column; gap: 4px; }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1 class="logo">تم الدفع بنجاح!</h1>
-          <p class="tagline">شكراً لك على ثقتك</p>
-        </div>
-        
-        <div class="content">
-          <div class="icon-container">
-            <span class="icon" style="font-size: 24px; font-weight: bold; color: white;">&nbsp;&nbsp;&nbsp;</span>
-            </div>
-          
-          <h2 class="title">تم الدفع بنجاح!</h2>
-          
-          <p class="message">
-            مرحباً <strong>${data.name || 'عزيزي العميل'}</strong>،<br><br>
-            شكراً لك! تم استلام دفعتك بنجاح وتم تفعيل حسابك في تلوين ستوديو.
-          </p>
-          
-          <div class="success-box">
-            <h3 class="success-title">تم تفعيل حسابك!</h3>
-            <p class="success-message">يمكنك الآن الاستمتاع بجميع الميزات المدفوعة</p>
-          </div>
-          
-          <div class="payment-details">
-            <h3 class="payment-title">تفاصيل الدفع</h3>
-            <div class="payment-info">
-              <span class="payment-label">رقم الطلب:</span>
-              <span class="payment-value">#${data.orderNumber || 'غير محدد'}</span>
-            </div>
-            <div class="payment-info">
-              <span class="payment-label">المبلغ المدفوع:</span>
-              <span class="payment-value">$${data.totalAmount || '0'}</span>
-            </div>
-            <div class="payment-info">
-              <span class="payment-label">تاريخ الدفع:</span>
-              <span class="payment-value">${new Date().toLocaleDateString('ar-SA')}</span>
-            </div>
-            <div class="payment-info">
-              <span class="payment-label">حالة الدفع:</span>
-              <span class="payment-value">مكتمل</span>
-            </div>
-          </div>
-          
-          <div class="cta-container">
-            <a href="${data.appUrl || 'https://italween.com'}" class="cta-button">
-              ابدأ الإبداع الآن             </a>
-          </div>
-        </div>
-        
-        <div class="footer">
-          <p class="footer-text">© 2024 تلوين ستوديو. جميع الحقوق محفوظة.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  const userName = data.name || 'عزيزي العميل';
+  const orderNumber = data.orderNumber || 'غير محدد';
+  const totalAmount = data.totalAmount || '0';
+  const appUrl = data.appUrl || 'https://italween.com';
+  
+  return '<!DOCTYPE html>' +
+    '<html dir="rtl" lang="ar">' +
+    '<head>' +
+      '<meta charset="UTF-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+      '<title>تم الدفع بنجاح - تلوين ستوديو</title>' +
+      '<style>' +
+        'body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f8fafc; }' +
+        '.container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }' +
+        '.header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 20px; text-align: center; }' +
+        '.logo { color: white; margin: 0; font-size: 28px; font-weight: 700; }' +
+        '.tagline { color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; }' +
+        '.content { padding: 40px 30px; }' +
+        '.title { color: #1a202c; margin: 0 0 16px 0; font-size: 24px; font-weight: 600; text-align: center; }' +
+        '.message { color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 32px 0; text-align: center; }' +
+        '.success-box { background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 2px solid #22c55e; border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center; }' +
+        '.success-title { color: #166534; margin: 0 0 16px 0; font-size: 20px; font-weight: 600; }' +
+        '.success-message { color: #166534; margin: 0; font-size: 16px; }' +
+        '.cta-button { display: inline-block; background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; }' +
+        '.cta-container { text-align: center; margin: 32px 0; }' +
+        '.footer { background-color: #f7fafc; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; }' +
+        '.footer-text { color: #718096; font-size: 14px; margin: 0; }' +
+      '</style>' +
+    '</head>' +
+    '<body>' +
+      '<div class="container">' +
+        '<div class="header">' +
+          '<h1 class="logo">تم الدفع بنجاح!</h1>' +
+          '<p class="tagline">شكراً لك على ثقتك</p>' +
+        '</div>' +
+        '<div class="content">' +
+          '<h2 class="title">تم الدفع بنجاح!</h2>' +
+          '<p class="message">مرحباً <strong>' + userName + '</strong>،<br><br>شكراً لك! تم استلام دفعتك بنجاح وتم تفعيل حسابك في تلوين ستوديو.</p>' +
+          '<div class="success-box">' +
+            '<h3 class="success-title">تم تفعيل حسابك!</h3>' +
+            '<p class="success-message">يمكنك الآن الاستمتاع بجميع الميزات المدفوعة</p>' +
+          '</div>' +
+          '<div class="cta-container">' +
+            '<a href="' + appUrl + '" class="cta-button">ابدأ الإبداع الآن</a>' +
+          '</div>' +
+        '</div>' +
+        '<div class="footer">' +
+          '<p class="footer-text">© 2024 تلوين ستوديو. جميع الحقوق محفوظة.</p>' +
+        '</div>' +
+      '</div>' +
+    '</body>' +
+    '</html>';
 }
 
 function getCreditsAddedTemplate(data) {
-  return `
-    <!DOCTYPE html>
-    <html dir="rtl" lang="ar">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>تم إضافة النقاط - تلوين ستوديو</title>
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap');
-        body { margin: 0; padding: 0; font-family: 'Cairo', Arial, sans-serif; background-color: #f8fafc; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 40px 20px; text-align: center; }
-        .logo { color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
-        .tagline { color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; font-weight: 400; }
-        .content { padding: 40px 30px; }
-        .icon-container { width: 80px; height: 80px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; }
-        .icon { font-size: 36px; }
-        .title { color: #1a202c; margin: 0 0 16px 0; font-size: 24px; font-weight: 600; text-align: center; }
-        .message { color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 32px 0; text-align: center; }
-        .credits-box { background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid #f59e0b; border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center; }
-        .credits-title { color: #92400e; margin: 0 0 16px 0; font-size: 20px; font-weight: 600; }
-        .credits-amount { color: #92400e; margin: 0 0 8px 0; font-size: 32px; font-weight: 700; }
-        .credits-description { color: #92400e; margin: 0; font-size: 16px; }
-        .features { margin: 32px 0; }
-        .feature-item { display: flex; align-items: center; margin: 16px 0; padding: 12px; background-color: #f7fafc; border-radius: 8px; }
-        .feature-icon { font-size: 20px; margin-left: 12px; }
-        .feature-text { color: #4a5568; font-size: 15px; margin: 0; }
-        .cta-button { display: inline-block; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4); }
-        .cta-container { text-align: center; margin: 32px 0; }
-        .footer { background-color: #f7fafc; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; }
-        .footer-text { color: #718096; font-size: 14px; margin: 0; }
-        @media (max-width: 600px) {
-          .container { margin: 0; border-radius: 0; }
-          .content { padding: 30px 20px; }
-          .header { padding: 30px 20px; }
-          .logo { font-size: 24px; }
-          .title { font-size: 20px; }
-          .message { font-size: 15px; }
-          .credits-box { padding: 20px; }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1 class="logo">تم إضافة النقاط!</h1>
-          <p class="tagline">استمتع بالمزيد من الإبداع</p>
-        </div>
-        
-        <div class="content">
-          <div class="icon-container">
-            <span class="icon" style="font-size: 24px; font-weight: bold; color: white;">&nbsp;&nbsp;&nbsp;</span>
-            </div>
-          
-          <h2 class="title">تم إضافة النقاط إلى حسابك!</h2>
-          
-          <p class="message">
-            مرحباً <strong>${data.name || 'عزيزي المستخدم'}</strong>،<br><br>
-            تم إضافة النقاط إلى حسابك بنجاح! يمكنك الآن الاستمتاع بإنشاء المزيد من المحتوى الإبداعي.
-          </p>
-          
-          <div class="credits-box">
-            <h3 class="credits-title">النقاط المضافة</h3>
-            <p class="credits-amount">+${data.credits || '0'} نقطة</p>
-            <p class="credits-description">يمكنك استخدام هذه النقاط لإنشاء قصص وصور تلوين مخصصة!</p>
-          </div>
-          
-          <div class="features">
-            <div class="feature-item">
-              <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">1</span>
-              <p class="feature-text">إنشاء قصص مخصصة بأسماء الأطفال</p>
-            </div>
-            <div class="feature-item">
-              <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">2</span>
-              <p class="feature-text">تحويل النصوص إلى صفحات تلوين</p>
-            </div>
-            <div class="feature-item">
-              <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">3</span>
-              <p class="feature-text">تحويل الصور إلى صفحات تلوين</p>
-            </div>
-            <div class="feature-item">
-              <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">4</span>
-              <p class="feature-text">حفظ المحتوى في مكتبتك الشخصية</p>
-            </div>
-          </div>
-          
-          <div class="cta-container">
-            <a href="${data.appUrl || 'https://italween.com'}" class="cta-button">
-              ابدأ الإبداع الآن
-            </a>
-          </div>
-        </div>
-        
-        <div class="footer">
-          <p class="footer-text">© 2024 تلوين ستوديو. جميع الحقوق محفوظة.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  const userName = data.name || 'عزيزي المستخدم';
+  const credits = data.credits || '0';
+  const appUrl = data.appUrl || 'https://italween.com';
+  
+  return '<!DOCTYPE html>' +
+    '<html dir="rtl" lang="ar">' +
+    '<head>' +
+      '<meta charset="UTF-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+      '<title>تم إضافة النقاط - تلوين ستوديو</title>' +
+      '<style>' +
+        'body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f8fafc; }' +
+        '.container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }' +
+        '.header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 40px 20px; text-align: center; }' +
+        '.logo { color: white; margin: 0; font-size: 28px; font-weight: 700; }' +
+        '.tagline { color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; }' +
+        '.content { padding: 40px 30px; }' +
+        '.title { color: #1a202c; margin: 0 0 16px 0; font-size: 24px; font-weight: 600; text-align: center; }' +
+        '.message { color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 32px 0; text-align: center; }' +
+        '.credits-box { background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid #f59e0b; border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center; }' +
+        '.credits-title { color: #92400e; margin: 0 0 16px 0; font-size: 20px; font-weight: 600; }' +
+        '.credits-amount { color: #92400e; margin: 0 0 8px 0; font-size: 32px; font-weight: 700; }' +
+        '.credits-description { color: #92400e; margin: 0; font-size: 16px; }' +
+        '.cta-button { display: inline-block; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; }' +
+        '.cta-container { text-align: center; margin: 32px 0; }' +
+        '.footer { background-color: #f7fafc; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; }' +
+        '.footer-text { color: #718096; font-size: 14px; margin: 0; }' +
+      '</style>' +
+    '</head>' +
+    '<body>' +
+      '<div class="container">' +
+        '<div class="header">' +
+          '<h1 class="logo">تم إضافة النقاط!</h1>' +
+          '<p class="tagline">استمتع بالمزيد من الإبداع</p>' +
+        '</div>' +
+        '<div class="content">' +
+          '<h2 class="title">تم إضافة النقاط إلى حسابك!</h2>' +
+          '<p class="message">مرحباً <strong>' + userName + '</strong>،<br><br>تم إضافة النقاط إلى حسابك بنجاح! يمكنك الآن الاستمتاع بإنشاء المزيد من المحتوى الإبداعي.</p>' +
+          '<div class="credits-box">' +
+            '<h3 class="credits-title">النقاط المضافة</h3>' +
+            '<p class="credits-amount">+' + credits + ' نقطة</p>' +
+            '<p class="credits-description">يمكنك استخدام هذه النقاط لإنشاء قصص وصور تلوين مخصصة!</p>' +
+          '</div>' +
+          '<div class="cta-container">' +
+            '<a href="' + appUrl + '" class="cta-button">ابدأ الإبداع الآن</a>' +
+          '</div>' +
+        '</div>' +
+        '<div class="footer">' +
+          '<p class="footer-text">© 2024 تلوين ستوديو. جميع الحقوق محفوظة.</p>' +
+        '</div>' +
+      '</div>' +
+    '</body>' +
+    '</html>';
 }
 
 function getDefaultEmailTemplate(data) {
-  return `
-    <!DOCTYPE html>
-    <html dir="rtl" lang="ar">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>رسالة من تلوين ستوديو</title>
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap');
-        body { margin: 0; padding: 0; font-family: 'Cairo', Arial, sans-serif; background-color: #f8fafc; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center; }
-        .logo { color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
-        .tagline { color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; font-weight: 400; }
-        .content { padding: 40px 30px; }
-        .icon-container { width: 80px; height: 80px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; }
-        .icon { font-size: 36px; }
-        .title { color: #1a202c; margin: 0 0 16px 0; font-size: 24px; font-weight: 600; text-align: center; }
-        .message { color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 32px 0; text-align: center; }
-        .cta-button { display: inline-block; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); }
-        .cta-container { text-align: center; margin: 32px 0; }
-        .footer { background-color: #f7fafc; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; }
-        .footer-text { color: #718096; font-size: 14px; margin: 0; }
-        @media (max-width: 600px) {
-          .container { margin: 0; border-radius: 0; }
-          .content { padding: 30px 20px; }
-          .header { padding: 30px 20px; }
-          .logo { font-size: 24px; }
-          .title { font-size: 20px; }
-          .message { font-size: 15px; }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1 class="logo">تلوين ستوديو</h1>
-          <p class="tagline">عالم الإبداع والقصص السحرية</p>
-        </div>
-        
-        <div class="content">
-          <div class="icon-container">
-            <span class="icon" style="font-size: 24px; font-weight: bold; color: white;">&nbsp;&nbsp;&nbsp;</span>
-          </div>
-          
-          <h2 class="title">رسالة من تلوين ستوديو</h2>
-          
-          <p class="message">
-            مرحباً <strong>${data.name || 'عزيزي المستخدم'}</strong>،<br><br>
-            ${data.message || 'نشكرك على استخدام تلوين ستوديو. نتمنى لك تجربة إبداعية ممتعة!'}
-          </p>
-          
-          <div class="cta-container">
-            <a href="${data.appUrl || 'https://italween.com'}" class="cta-button">
-              زر موقعنا
-            </a>
-          </div>
-        </div>
-        
-        <div class="footer">
-          <p class="footer-text">© 2024 تلوين ستوديو. جميع الحقوق محفوظة.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-}
-
-// Test function
-function testEmail() {
-  const testData = {
-    recipientEmail: 'your-email@gmail.com',
-    emailType: 'welcome',
-    templateData: {
-      name: 'Test User'
-    },
-    userId: 'test123'
-  };
+  const userName = data.name || 'عزيزي المستخدم';
+  const message = data.message || 'نشكرك على استخدام تلوين ستوديو. نتمنى لك تجربة إبداعية ممتعة!';
+  const appUrl = data.appUrl || 'https://italween.com';
   
-  const result = doPost({
-    postData: {
-      contents: JSON.stringify(testData)
-    }
-  });
-  
-  console.log(result.getContent());
-}
-
-// Test database function
-function testDatabase() {
-  const testData = {
-    action: 'createUser',
-    apiKey: API_KEY,
-    email: 'test@example.com',
-    displayName: 'Test User',
-    credits: 50
-  };
-  
-  const result = doPost({
-    postData: {
-      contents: JSON.stringify(testData)
-    }
-  });
-  
-  console.log(result.getContent());
+  return '<!DOCTYPE html>' +
+    '<html dir="rtl" lang="ar">' +
+    '<head>' +
+      '<meta charset="UTF-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+      '<title>رسالة من تلوين ستوديو</title>' +
+      '<style>' +
+        'body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f8fafc; }' +
+        '.container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }' +
+        '.header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center; }' +
+        '.logo { color: white; margin: 0; font-size: 28px; font-weight: 700; }' +
+        '.tagline { color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; }' +
+        '.content { padding: 40px 30px; }' +
+        '.title { color: #1a202c; margin: 0 0 16px 0; font-size: 24px; font-weight: 600; text-align: center; }' +
+        '.message { color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 32px 0; text-align: center; }' +
+        '.cta-button { display: inline-block; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; }' +
+        '.cta-container { text-align: center; margin: 32px 0; }' +
+        '.footer { background-color: #f7fafc; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; }' +
+        '.footer-text { color: #718096; font-size: 14px; margin: 0; }' +
+      '</style>' +
+    '</head>' +
+    '<body>' +
+      '<div class="container">' +
+        '<div class="header">' +
+          '<h1 class="logo">تلوين ستوديو</h1>' +
+          '<p class="tagline">عالم الإبداع والقصص السحرية</p>' +
+        '</div>' +
+        '<div class="content">' +
+          '<h2 class="title">رسالة من تلوين ستوديو</h2>' +
+          '<p class="message">مرحباً <strong>' + userName + '</strong>،<br><br>' + message + '</p>' +
+          '<div class="cta-container">' +
+            '<a href="' + appUrl + '" class="cta-button">زر موقعنا</a>' +
+          '</div>' +
+        '</div>' +
+        '<div class="footer">' +
+          '<p class="footer-text">© 2024 تلوين ستوديو. جميع الحقوق محفوظة.</p>' +
+        '</div>' +
+      '</div>' +
+    '</body>' +
+    '</html>';
 }
