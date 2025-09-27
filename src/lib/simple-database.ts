@@ -87,13 +87,13 @@ function loadDatabase() {
     if (fs.existsSync(dbPath)) {
       const data = fs.readFileSync(dbPath, 'utf8');
       const loadedDb = JSON.parse(data);
-      // Ensure all required properties exist
+      // Ensure all required properties exist and are objects (not arrays)
       db = {
-        users: loadedDb.users || {},
-        orders: loadedDb.orders || {},
-        emailLogs: loadedDb.emailLogs || {},
-        userContent: loadedDb.userContent || {},
-        adminUsers: loadedDb.adminUsers || {}
+        users: (loadedDb.users && typeof loadedDb.users === 'object' && !Array.isArray(loadedDb.users)) ? loadedDb.users : {},
+        orders: (loadedDb.orders && typeof loadedDb.orders === 'object' && !Array.isArray(loadedDb.orders)) ? loadedDb.orders : {},
+        emailLogs: (loadedDb.emailLogs && typeof loadedDb.emailLogs === 'object' && !Array.isArray(loadedDb.emailLogs)) ? loadedDb.emailLogs : {},
+        userContent: (loadedDb.userContent && typeof loadedDb.userContent === 'object' && !Array.isArray(loadedDb.userContent)) ? loadedDb.userContent : {},
+        adminUsers: (loadedDb.adminUsers && typeof loadedDb.adminUsers === 'object' && !Array.isArray(loadedDb.adminUsers)) ? loadedDb.adminUsers : {}
       };
     }
   } catch (error) {

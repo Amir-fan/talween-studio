@@ -1,8 +1,8 @@
 {
-  "users": [],
-  "orders": [],
-  "emailLogs": [],
-  "userContent": [],
+  "users": {},
+  "orders": {},
+  "emailLogs": {},
+  "userContent": {},
   "adminUsers": {
     "60a2a978-09e3-41ad-9aef-675399a17b3d": {
       "id": "60a2a978-09e3-41ad-9aef-675399a17b3d",
