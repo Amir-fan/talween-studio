@@ -37,9 +37,10 @@ export async function GET(request: NextRequest) {
     if (statusResult.status === 'Paid') {
       orderDb.updateStatus(orderId!, 'paid', paymentId || invoiceId);
       
-      // Add credits to user
+      // Add credits to user in both databases
       const user = userDb.findById(order.userId);
       if (user) {
+        // Update local database
         userDb.updateCredits(user.id, order.credits);
         
         // Update subscription tier if applicable
@@ -47,6 +48,41 @@ export async function GET(request: NextRequest) {
           userDb.updateUser(user.id, {
             subscription_tier: order.packageId
           });
+        }
+
+        // Update Google Sheets
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'addCredits',
+              userId: user.id,
+              amount: order.credits,
+              apiKey: process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY
+            })
+          });
+
+          // Send thank you email
+          await fetch(`${process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'sendEmail',
+              emailType: 'paymentSuccess',
+              recipientEmail: user.email,
+              templateData: {
+                name: user.display_name,
+                orderNumber: orderId,
+                amount: order.amount,
+                credits: order.credits,
+                appUrl: process.env.NEXT_PUBLIC_APP_URL
+              },
+              apiKey: process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY
+            })
+          });
+        } catch (error) {
+          console.error('Error updating Google Sheets or sending email:', error);
         }
       }
 
@@ -92,9 +128,10 @@ export async function POST(request: NextRequest) {
     if (TransactionStatus === 'Paid') {
       orderDb.updateStatus(order.id, 'paid', TransactionId);
       
-      // Add credits to user
+      // Add credits to user in both databases
       const user = userDb.findById(order.userId);
       if (user) {
+        // Update local database
         userDb.updateCredits(user.id, order.credits);
         
         // Update subscription tier if applicable
@@ -102,6 +139,41 @@ export async function POST(request: NextRequest) {
           userDb.updateUser(user.id, {
             subscription_tier: order.packageId
           });
+        }
+
+        // Update Google Sheets
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'addCredits',
+              userId: user.id,
+              amount: order.credits,
+              apiKey: process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY
+            })
+          });
+
+          // Send thank you email
+          await fetch(`${process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'sendEmail',
+              emailType: 'paymentSuccess',
+              recipientEmail: user.email,
+              templateData: {
+                name: user.display_name,
+                orderNumber: order.id,
+                amount: order.amount,
+                credits: order.credits,
+                appUrl: process.env.NEXT_PUBLIC_APP_URL
+              },
+              apiKey: process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY
+            })
+          });
+        } catch (error) {
+          console.error('Error updating Google Sheets or sending email:', error);
         }
       }
 

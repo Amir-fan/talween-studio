@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPaymentSession } from '@/lib/myfatoorah-service';
 import { userDb, orderDb } from '@/lib/simple-database';
+import { googleSheetsUserDb } from '@/lib/google-sheets-api';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: NextRequest) {
@@ -26,10 +27,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user from database
-    const user = userDb.findById(userId);
+    console.log('🔍 PAYMENT CREATE SESSION - Processing payment:', { amount, currency, packageId, credits, userId });
+
+    // Get user from Google Sheets (primary) and local database (fallback)
+    let user = null;
+    
+    try {
+      // Try Google Sheets first
+      user = await googleSheetsUserDb.findById(userId);
+      console.log('📊 User found in Google Sheets:', !!user);
+    } catch (error) {
+      console.log('📊 Google Sheets error, trying local database:', error);
+    }
+    
+    // Fallback to local database if Google Sheets fails
+    if (!user) {
+      user = userDb.findById(userId);
+      console.log('💾 User found in local database:', !!user);
+    }
     
     if (!user) {
+      console.log('❌ User not found in any database');
       return NextResponse.json(
         { error: 'المستخدم غير موجود' },
         { status: 404 }

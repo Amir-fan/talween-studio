@@ -56,7 +56,7 @@ function PaymentSuccessContent() {
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
             <h1 className="font-headline text-3xl font-bold text-foreground mb-2">
-              تم الدفع بنجاح! 🎉
+              تم الدفع بنجاح!
             </h1>
             <p className="text-muted-foreground">
               شكراً لك! تم تأكيد طلبك بنجاح
