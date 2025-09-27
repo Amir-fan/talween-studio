@@ -33,7 +33,6 @@ interface User {
   display_name: string;
   credits: number;
   status: string;
-  email_verified: boolean;
   subscription_tier: string;
   created_at: number;
   last_login: number;
@@ -145,7 +144,6 @@ function AdminDashboardContent() {
           display_name: user.display_name || user.displayName || user['الاسم'] || '',
           credits: user.credits || user['النقاط'] || 0,
           status: user.status || user['الحالة'] || 'active',
-          email_verified: user.email_verified || user.emailVerified || user['تم التأكيد'] || false,
           subscription_tier: user.subscription_tier || user.subscriptionTier || user['نوع الاشتراك'] || 'FREE',
           created_at: user.created_at || user.createdAt || user['تاريخ الإنشاء'] || Date.now(),
           last_login: user.last_login || user.lastLogin || user['آخر دخول'] || Date.now(),
@@ -157,16 +155,14 @@ function AdminDashboardContent() {
         
         // Calculate stats
         const totalUsers = usersList.length;
-        const verifiedUsers = usersList.filter((u: User) => u.email_verified).length;
         const totalCredits = usersList.reduce((sum: number, u: User) => sum + (u.credits || 0), 0);
         
-        console.log('Stats:', { totalUsers, verifiedUsers, totalCredits });
+        console.log('Stats:', { totalUsers, totalCredits });
         
         setStats({
           totalUsers,
-          verifiedUsers,
           totalCredits,
-          pendingVerification: totalUsers - verifiedUsers
+          activeUsers: usersList.filter((u: User) => u.status === 'active').length
         });
       } else {
         console.error('Failed to load users:', usersData.error);
@@ -336,12 +332,12 @@ function AdminDashboardContent() {
               <CardTitle className="text-sm font-medium">إجمالي المستخدمين</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+              <CardContent>
                 <div className="text-2xl font-bold">{stats.totalUsers}</div>
-              <p className="text-xs text-muted-foreground">
-                  {stats.verifiedUsers} مؤكد
-              </p>
-            </CardContent>
+                <p className="text-xs text-muted-foreground">
+                  إجمالي المستخدمين
+                </p>
+              </CardContent>
           </Card>
 
           <Card>
@@ -357,18 +353,18 @@ function AdminDashboardContent() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">في انتظار التأكيد</CardTitle>
-                <Mail className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold">{stats.pendingVerification}</div>
-              <p className="text-xs text-muted-foreground">
-                  مستخدم غير مؤكد
-              </p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">المستخدمين النشطين</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.activeUsers || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  مستخدم نشط
+                </p>
+              </CardContent>
+            </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -411,11 +407,10 @@ function AdminDashboardContent() {
                   <TableHeader>
                     <TableRow>
                   <TableHead>البريد الإلكتروني</TableHead>
-                      <TableHead>الاسم</TableHead>
-                      <TableHead>النقاط</TableHead>
-                      <TableHead>الحالة</TableHead>
-                  <TableHead>التأكيد</TableHead>
-                      <TableHead>الإجراءات</TableHead>
+                  <TableHead>الاسم</TableHead>
+                  <TableHead>النقاط</TableHead>
+                  <TableHead>الحالة</TableHead>
+                  <TableHead>الإجراءات</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -426,16 +421,11 @@ function AdminDashboardContent() {
                     <TableCell>
                       <Badge variant="secondary">{user.credits || 0}</Badge>
                     </TableCell>
-                        <TableCell>
+                    <TableCell>
                       <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
                         {user.status || 'غير محدد'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                      <Badge variant={user.email_verified ? 'default' : 'destructive'}>
-                        {user.email_verified ? 'مؤكد' : 'غير مؤكد'}
                       </Badge>
-                        </TableCell>
+                    </TableCell>
                         <TableCell>
                       <div className="flex space-x-2">
                             <Button

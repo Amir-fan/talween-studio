@@ -560,12 +560,7 @@ function handleEmailRequest(data) {
     let htmlBody = '';
     
     switch (emailType) {
-      case 'emailVerification':
-        subject = 'تأكيد بريدك الإلكتروني - تلوين ستوديو';
-        htmlBody = getVerificationEmailTemplate(templateData);
-        break;
-        
-      case 'welcomeAfterVerification':
+      case 'welcome':
         subject = 'مرحباً بك في تلوين ستوديو!';
         htmlBody = getWelcomeEmailTemplate(templateData);
         break;
@@ -573,11 +568,6 @@ function handleEmailRequest(data) {
       case 'passwordReset':
         subject = 'إعادة تعيين كلمة المرور - تلوين ستوديو';
         htmlBody = getPasswordResetEmailTemplate(templateData);
-        break;
-        
-      case 'welcome':
-        subject = 'مرحباً بك في تلوين ستوديو!';
-        htmlBody = getWelcomeEmailTemplate(templateData);
         break;
         
       case 'orderConfirmation':
@@ -703,84 +693,6 @@ function generateId() {
 }
 
 // Professional Email Templates
-function getVerificationEmailTemplate(data) {
-  return `
-    <!DOCTYPE html>
-    <html dir="rtl" lang="ar">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>تأكيد البريد الإلكتروني - تلوين ستوديو</title>
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap');
-        body { margin: 0; padding: 0; font-family: 'Cairo', Arial, sans-serif; background-color: #f8fafc; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center; }
-        .logo { color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
-        .tagline { color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; font-weight: 400; }
-        .content { padding: 40px 30px; }
-        .icon-container { width: 80px; height: 80px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; }
-        .icon { font-size: 36px; }
-        .title { color: #1a202c; margin: 0 0 16px 0; font-size: 24px; font-weight: 600; text-align: center; }
-        .message { color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 32px 0; text-align: center; }
-        .cta-button { display: inline-block; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: transform 0.2s; }
-        .cta-button:hover { transform: translateY(-2px); }
-        .cta-container { text-align: center; margin: 32px 0; }
-        .footer { background-color: #f7fafc; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; }
-        .footer-text { color: #718096; font-size: 14px; margin: 0; }
-        .security-note { background-color: #fef5e7; border: 1px solid #f6e05e; border-radius: 8px; padding: 16px; margin: 24px 0; text-align: center; }
-        .security-text { color: #744210; font-size: 14px; margin: 0; }
-        @media (max-width: 600px) {
-          .container { margin: 0; border-radius: 0; }
-          .content { padding: 30px 20px; }
-          .header { padding: 30px 20px; }
-          .logo { font-size: 24px; }
-          .title { font-size: 20px; }
-          .message { font-size: 15px; }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1 class="logo">تلوين ستوديو</h1>
-          <p class="tagline">عالم الإبداع والقصص السحرية</p>
-        </div>
-        
-        <div class="content">
-          <div class="icon-container">
-            <span class="icon">📧</span>
-            </div>
-          
-          <h2 class="title">تأكيد بريدك الإلكتروني</h2>
-          
-          <p class="message">
-            مرحباً <strong>${data.name || 'عزيزي المستخدم'}</strong>،<br><br>
-            شكراً لك على التسجيل في تلوين ستوديو! نحن متحمسون لرؤية الإبداع الذي ستنشئه لطفلك.<br><br>
-            يرجى النقر على الزر أدناه لتأكيد بريدك الإلكتروني والبدء في رحلة الإبداع السحرية.
-          </p>
-          
-          <div class="cta-container">
-            <a href="${data.verificationLink}" class="cta-button">
-              تأكيد البريد الإلكتروني
-            </a>
-          </div>
-          
-          <div class="security-note">
-            <p class="security-text">
-              <strong>ملاحظة أمنية:</strong> صلاحية هذا الرابط محدودة. إذا لم تطلب إنشاء هذا الحساب، يمكنك تجاهل هذه الرسالة بأمان.
-            </p>
-          </div>
-        </div>
-        
-        <div class="footer">
-          <p class="footer-text">© 2024 تلوين ستوديو. جميع الحقوق محفوظة.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-}
 
 function getWelcomeEmailTemplate(data) {
   return `
@@ -1355,10 +1267,9 @@ function getDefaultEmailTemplate(data) {
 function testEmail() {
   const testData = {
     recipientEmail: 'your-email@gmail.com',
-    emailType: 'emailVerification',
+    emailType: 'welcome',
     templateData: {
-      name: 'Test User',
-      verificationLink: 'https://your-domain.com/verify-email?token=test123'
+      name: 'Test User'
     },
     userId: 'test123'
   };
