@@ -32,6 +32,8 @@ function doGet(e) {
         return handleGetUser(e.parameter.userId);
       case 'syncCredits':
         return handleSyncCredits(e.parameter.userId);
+      case 'clearAllData':
+        return handleClearAllData();
       default:
         return ContentService
           .createTextOutput(JSON.stringify({ 
@@ -107,6 +109,8 @@ function handleDatabaseAction(data) {
       return handleGetUser(data.userId);
     case 'syncCredits':
       return handleSyncCredits(data.userId);
+    case 'clearAllData':
+      return handleClearAllData();
     default:
       return ContentService
         .createTextOutput(JSON.stringify({ 
@@ -135,6 +139,40 @@ function handleHealthCheck() {
       .createTextOutput(JSON.stringify({ 
         success: false, 
         error: 'Health check failed: ' + error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Clear All Data
+function handleClearAllData() {
+  try {
+    console.log('🗑️ Clearing all data from Google Sheets...');
+    
+    const sheet = getSheet();
+    const lastRow = sheet.getLastRow();
+    
+    if (lastRow > 1) {
+      // Clear all data except headers (row 1)
+      sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
+      console.log(`Cleared ${lastRow - 1} rows of data`);
+    } else {
+      console.log('No data to clear');
+    }
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: true, 
+        message: 'All data cleared successfully',
+        clearedRows: lastRow - 1
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    console.error('Error clearing all data:', error);
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'Failed to clear data: ' + error.toString() 
       }))
       .setMimeType(ContentService.MimeType.JSON);
   }

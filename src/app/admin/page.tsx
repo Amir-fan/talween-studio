@@ -230,6 +230,43 @@ function AdminDashboardContent() {
     }
   };
 
+  const handleClearAllUsers = async () => {
+    if (!confirm('⚠️ تحذير: هذا سيحذف جميع المستخدمين نهائياً!\n\nهل أنت متأكد من أنك تريد المتابعة؟')) {
+      return;
+    }
+
+    if (!confirm('⚠️ تحذير نهائي!\n\nهذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع المستخدمين والبيانات المرتبطة بهم.\n\nهل أنت متأكد 100%؟')) {
+      return;
+    }
+
+    try {
+      console.log('🗑️ Starting complete user cleanup...');
+      
+      const response = await fetch('/api/admin/clear-all-users', { 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Clear all users result:', data);
+        
+        alert('✅ تم حذف جميع المستخدمين بنجاح!\n\nيمكنك الآن البدء مع عملائك الجدد.');
+        
+        // Reload data to show empty state
+        loadData();
+      } else {
+        const errorData = await response.json();
+        alert(`❌ فشل في حذف المستخدمين: ${errorData.error || 'خطأ غير معروف'}`);
+      }
+    } catch (error) {
+      console.error('Error clearing all users:', error);
+      alert(`❌ حدث خطأ أثناء حذف المستخدمين: ${error.message || 'خطأ في الاتصال'}`);
+    }
+  };
+
   const handleDeleteUser = async (userId: string) => {
     if (!confirm('هل أنت متأكد من حذف هذا المستخدم؟ سيتم حذف جميع بياناته نهائياً.')) {
       return;
@@ -317,10 +354,14 @@ function AdminDashboardContent() {
                 تحديث
               </Button>
               <Button onClick={handleSyncToSheets} variant="outline" size="sm">
-                  <Download className="h-4 w-4 mr-2" />
+                <Download className="h-4 w-4 mr-2" />
                 مزامنة
-                </Button>
-              </div>
+              </Button>
+              <Button onClick={handleClearAllUsers} variant="destructive" size="sm">
+                <Trash2 className="h-4 w-4 mr-2" />
+                مسح الكل
+              </Button>
+            </div>
             </div>
         </div>
 
