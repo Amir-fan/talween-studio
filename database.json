@@ -1,19 +1,5 @@
 {
   "users": {
-    "test-user-1759008071035": {
-      "id": "test-user-1759008071035",
-      "email": "testuser@example.com",
-      "password": "$2a$12$oeQbzu8yp19s1bMqJg9bhO/uYVifKuioffRaW1iQT5Q486F5QZfvm",
-      "display_name": "Test User",
-      "credits": 50,
-      "status": "active",
-      "email_verified": true,
-      "verification_token": "test-token",
-      "subscription_tier": "FREE",
-      "created_at": 1759008071,
-      "updated_at": 1759008071,
-      "total_spent": 0
-    },
     "283f36ec-b579-4e31-8457-7ec2de336e28": {
       "id": "283f36ec-b579-4e31-8457-7ec2de336e28",
       "email": "realtest@example.com",
@@ -27,21 +13,6 @@
       "created_at": 1759008745,
       "updated_at": 1759008745,
       "total_spent": 0
-    },
-    "599f527f-cdfa-444c-bb77-76c7ba8d5aca": {
-      "id": "599f527f-cdfa-444c-bb77-76c7ba8d5aca",
-      "email": "apiexample@test.com",
-      "password": "$2a$12$NMaOZ5D/dtiXtVcQvflAFulNK179WrLGgdQUkPMis0DQT27m6m.UG",
-      "display_name": "API Test User",
-      "credits": 50,
-      "status": "active",
-      "email_verified": true,
-      "verification_token": "72dff2a7-46b8-40e4-9f84-bd0c2810dbcd",
-      "subscription_tier": "FREE",
-      "created_at": 1759008776,
-      "updated_at": 1759008798,
-      "total_spent": 0,
-      "last_login": 1759008798
     }
   },
   "orders": {},
