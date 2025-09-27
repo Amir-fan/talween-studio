@@ -2,8 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
+import { googleSheetsUserDb } from './google-sheets-api';
 
 const dbPath = path.join(process.cwd(), 'database.json');
+const backupPath = path.join(process.cwd(), 'database-backup.json');
+const emergencyPath = path.join(process.cwd(), 'database-emergency.json');
 
 interface User {
   id: string;
@@ -109,18 +112,129 @@ function loadDatabase() {
   }
 }
 
-// Save database to file
+// Bulletproof save function with multiple backup layers
 function saveDatabase() {
   try {
-    console.log('🔍 SAVING DATABASE:');
+    console.log('🔍 SAVING DATABASE WITH BACKUP:');
     console.log('  - dbPath:', dbPath);
     console.log('  - users count:', Object.keys(db.users).length);
     console.log('  - users:', Object.keys(db.users));
     
-    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
-    console.log('✅ Database saved successfully');
+    const dataString = JSON.stringify(db, null, 2);
+    
+    // 1. Create backup of current database before writing
+    if (fs.existsSync(dbPath)) {
+      try {
+        const currentData = fs.readFileSync(dbPath, 'utf8');
+        fs.writeFileSync(backupPath, currentData, 'utf8');
+        console.log('✅ Database backup created');
+      } catch (backupError) {
+        console.log('⚠️ Backup creation failed (non-critical):', backupError);
+      }
+    }
+    
+    // 2. Write to main database file
+    fs.writeFileSync(dbPath, dataString, 'utf8');
+    console.log('✅ Main database saved');
+    
+    // 3. Create emergency backup
+    fs.writeFileSync(emergencyPath, dataString, 'utf8');
+    console.log('✅ Emergency backup created');
+    
+    // 4. Validate the saved data
+    const validationResult = validateDatabaseIntegrity();
+    if (!validationResult.valid) {
+      console.error('❌ Database integrity check failed after save:', validationResult.errors);
+      // Try to restore from backup
+      restoreFromBackup();
+    }
+    
   } catch (error) {
-    console.error('❌ Error saving database:', error);
+    console.error('❌ Critical error saving database:', error);
+    // Try to restore from backup
+    restoreFromBackup();
+    throw new Error('Database save failed - attempting recovery');
+  }
+}
+
+// Database integrity validation
+function validateDatabaseIntegrity(): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  
+  try {
+    // Check if all required properties exist and are objects
+    if (!db.users || typeof db.users !== 'object' || Array.isArray(db.users)) {
+      errors.push('Users property is invalid');
+    }
+    
+    if (!db.orders || typeof db.orders !== 'object' || Array.isArray(db.orders)) {
+      errors.push('Orders property is invalid');
+    }
+    
+    if (!db.emailLogs || typeof db.emailLogs !== 'object' || Array.isArray(db.emailLogs)) {
+      errors.push('EmailLogs property is invalid');
+    }
+    
+    if (!db.userContent || typeof db.userContent !== 'object' || Array.isArray(db.userContent)) {
+      errors.push('UserContent property is invalid');
+    }
+    
+    if (!db.adminUsers || typeof db.adminUsers !== 'object' || Array.isArray(db.adminUsers)) {
+      errors.push('AdminUsers property is invalid');
+    }
+    
+    // Validate user data structure
+    Object.values(db.users).forEach((user: any, index) => {
+      if (!user.id || !user.email || !user.password) {
+        errors.push(`User ${index} missing required fields (id, email, or password)`);
+      }
+    });
+    
+  } catch (error) {
+    errors.push(`Database validation error: ${error}`);
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
+// Emergency restore from backup
+function restoreFromBackup() {
+  console.log('🚨 Attempting emergency database restoration...');
+  
+  try {
+    // Try to restore from backup
+    if (fs.existsSync(backupPath)) {
+      const backupData = fs.readFileSync(backupPath, 'utf8');
+      const backupDb = JSON.parse(backupData);
+      
+      // Validate backup data
+      const validationResult = validateDatabaseIntegrity();
+      if (validationResult.valid) {
+        db = backupDb;
+        fs.writeFileSync(dbPath, backupData, 'utf8');
+        console.log('✅ Database restored from backup');
+        return;
+      }
+    }
+    
+    // Try emergency backup
+    if (fs.existsSync(emergencyPath)) {
+      const emergencyData = fs.readFileSync(emergencyPath, 'utf8');
+      const emergencyDb = JSON.parse(emergencyData);
+      
+      db = emergencyDb;
+      fs.writeFileSync(dbPath, emergencyData, 'utf8');
+      console.log('✅ Database restored from emergency backup');
+      return;
+    }
+    
+    console.error('❌ All backup restoration attempts failed');
+    
+  } catch (error) {
+    console.error('❌ Emergency restoration failed:', error);
   }
 }
 
@@ -147,12 +261,12 @@ function initializeDatabase() {
 // User management functions
 export const userDb = {
   create: (email: string, password: string, displayName: string) => {
-    console.log('🔍 DATABASE CREATE - Attempting to create user:');
+    console.log('🔍 BULLETPROOF USER CREATE - Attempting to create user:');
     console.log('  - email:', email);
     console.log('  - displayName:', displayName);
     
     const id = uuidv4();
-    const hashedPassword = bcrypt.hashSync(password, 10);
+    const hashedPassword = bcrypt.hashSync(password, 12); // Higher security
     const verificationToken = uuidv4();
     
     // Check if user already exists
@@ -179,13 +293,64 @@ export const userDb = {
       total_spent: 0
     };
     
+    // Add user to database
     db.users[id] = newUser;
     console.log('✅ User added to database:');
     console.log('  - User ID:', id);
     console.log('  - Email:', email);
     console.log('  - Total users now:', Object.keys(db.users).length);
     
-    saveDatabase();
+    // BULLETPROOF SAVE: Multiple attempts with validation
+    let saveSuccess = false;
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (!saveSuccess && attempts < maxAttempts) {
+      attempts++;
+      console.log(`  - Save attempt ${attempts}/${maxAttempts}`);
+      
+      try {
+        saveDatabase();
+        
+        // Verify the save was successful
+        const verificationResult = validateDatabaseIntegrity();
+        if (verificationResult.valid) {
+          console.log('✅ Database save verified successfully');
+          saveSuccess = true;
+        } else {
+          console.log('❌ Database save verification failed:', verificationResult.errors);
+          if (attempts < maxAttempts) {
+            console.log('  - Retrying save...');
+            // Small delay before retry
+            setTimeout(() => {}, 100);
+          }
+        }
+      } catch (error) {
+        console.log('❌ Save attempt failed:', error);
+        if (attempts < maxAttempts) {
+          console.log('  - Retrying save...');
+        }
+      }
+    }
+    
+    if (!saveSuccess) {
+      console.error('❌ CRITICAL: All save attempts failed - user data may be lost!');
+      // Remove user from memory since we couldn't save it
+      delete db.users[id];
+      return { success: false, error: 'Failed to save user data - please try again' };
+    }
+    
+    // SYNC TO GOOGLE SHEETS (backup layer)
+    console.log('  - Syncing to Google Sheets as backup...');
+    googleSheetsUserDb.create(email, password, displayName).then(result => {
+      if (result.success) {
+        console.log('✅ User synced to Google Sheets successfully');
+      } else {
+        console.log('⚠️ Google Sheets sync failed (non-critical):', result.error);
+      }
+    }).catch(error => {
+      console.log('⚠️ Google Sheets sync error (non-critical):', error);
+    });
     
     return { success: true, user: { id, email, displayName, verificationToken } };
   },

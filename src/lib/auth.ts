@@ -84,45 +84,71 @@ export async function registerUser(
   }
 }
 
-// Login user
+// BULLETPROOF Login user with multiple fallback layers
 export async function loginUser(email: string, password: string): Promise<AuthResult> {
   try {
-    console.log('🔍 LOCAL DATABASE LOGIN ATTEMPT:');
+    console.log('🔍 BULLETPROOF LOGIN ATTEMPT:');
     console.log('  - email:', email);
     console.log('  - password length:', password.length);
     
-    // Try local database first (primary)
+    // Layer 1: Try local database first (primary)
     let user = userDb.findByEmail(email);
     console.log('  - user found in local DB:', !!user);
     
+    // Layer 2: If not found, try Google Sheets fallback
     if (!user) {
-      // Fallback to Google Sheets
       console.log('  - trying Google Sheets fallback...');
       try {
         const googleSheetsUser = await googleSheetsUserDb.findByEmail(email);
         if (googleSheetsUser) {
           console.log('  - user found in Google Sheets, migrating to local DB...');
           // Create user in local database from Google Sheets data
-          user = userDb.create(
+          const migrationResult = userDb.create(
             googleSheetsUser['البريد الإلكتروني'] || googleSheetsUser.email,
             googleSheetsUser['كلمة المرور'] || googleSheetsUser.password || 'temp123',
             googleSheetsUser['الاسم'] || googleSheetsUser.displayName || 'User'
           );
-          console.log('  - user migrated to local DB:', user.id);
+          
+          if (migrationResult.success) {
+            user = userDb.findByEmail(email);
+            console.log('  - user migrated to local DB:', user?.id);
+          } else {
+            console.log('  - migration failed:', migrationResult.error);
+          }
         }
       } catch (error) {
         console.log('  - Google Sheets fallback failed:', error);
       }
     }
     
+    // Layer 3: If still not found, check backup files
     if (!user) {
-      console.log('❌ User not found in any database');
+      console.log('  - checking backup files...');
+      try {
+        user = await restoreUserFromBackup(email);
+        if (user) {
+          console.log('  - user restored from backup:', user.id);
+        }
+      } catch (error) {
+        console.log('  - backup restoration failed:', error);
+      }
+    }
+    
+    if (!user) {
+      console.log('❌ User not found in any database or backup');
       return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
     }
 
-    // Verify password using bcrypt
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    console.log('  - password match:', passwordMatch);
+    // Verify password using bcrypt with multiple attempts
+    let passwordMatch = false;
+    try {
+      passwordMatch = await bcrypt.compare(password, user.password);
+      console.log('  - password match:', passwordMatch);
+    } catch (bcryptError) {
+      console.log('  - bcrypt error, trying fallback verification:', bcryptError);
+      // Fallback for old plain text passwords (migration)
+      passwordMatch = password === user.password;
+    }
     
     if (!passwordMatch) {
       console.log('❌ Password mismatch');
@@ -131,8 +157,13 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
     
     console.log('✅ User found and password verified, proceeding with login');
 
-    // Update last login in local database
-    userDb.updateUser(user.id, { last_login: Math.floor(Date.now() / 1000) });
+    // Update last login with bulletproof save
+    try {
+      userDb.updateUser(user.id, { last_login: Math.floor(Date.now() / 1000) });
+      console.log('  - last login updated');
+    } catch (updateError) {
+      console.log('  - last login update failed (non-critical):', updateError);
+    }
 
     // Generate JWT token
     const token = jwt.sign(
@@ -155,8 +186,52 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
       token
     };
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('❌ CRITICAL LOGIN ERROR:', error);
     return { success: false, error: 'حدث خطأ أثناء تسجيل الدخول' };
+  }
+}
+
+// Helper function to restore user from backup files
+async function restoreUserFromBackup(email: string): Promise<any> {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    
+    const backupPath = path.join(process.cwd(), 'database-backup.json');
+    const emergencyPath = path.join(process.cwd(), 'database-emergency.json');
+    
+    // Try backup file first
+    if (fs.existsSync(backupPath)) {
+      const backupData = fs.readFileSync(backupPath, 'utf8');
+      const backupDb = JSON.parse(backupData);
+      
+      if (backupDb.users && typeof backupDb.users === 'object') {
+        const user = Object.values(backupDb.users).find((u: any) => u.email === email);
+        if (user) {
+          console.log('  - user found in backup file');
+          return user;
+        }
+      }
+    }
+    
+    // Try emergency backup
+    if (fs.existsSync(emergencyPath)) {
+      const emergencyData = fs.readFileSync(emergencyPath, 'utf8');
+      const emergencyDb = JSON.parse(emergencyData);
+      
+      if (emergencyDb.users && typeof emergencyDb.users === 'object') {
+        const user = Object.values(emergencyDb.users).find((u: any) => u.email === email);
+        if (user) {
+          console.log('  - user found in emergency backup');
+          return user;
+        }
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.log('  - backup restoration error:', error);
+    return null;
   }
 }
 
