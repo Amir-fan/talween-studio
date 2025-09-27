@@ -71,7 +71,7 @@ function AdminDashboardContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [creditsToAdd, setCreditsToAdd] = useState('');
-  
+
   // Use auth context for authentication
   const isAdminAuthenticated = isAdmin && user?.id === 'admin';
 
@@ -79,7 +79,7 @@ function AdminDashboardContent() {
   useEffect(() => {
     if (!authLoading && !isAdminAuthenticated) {
       console.log('🚫 No admin authentication - redirecting to login');
-      router.push('/login?redirect=/admin');
+        router.push('/login?redirect=/admin');
     }
   }, [authLoading, isAdminAuthenticated, router]);
 
@@ -103,7 +103,7 @@ function AdminDashboardContent() {
   // Load data only on client side
   useEffect(() => {
     if (isAdminAuthenticated) {
-      loadData();
+    loadData();
     }
   }, [isAdminAuthenticated]);
 
@@ -134,8 +134,25 @@ function AdminDashboardContent() {
       console.log('Users data error:', usersData.error);
       
       if (usersData.success) {
-        const usersList = usersData.users || [];
-        console.log('Setting users:', usersList);
+        const rawUsers = usersData.users || [];
+        console.log('Raw users from Google Sheets:', rawUsers);
+        console.log('First user structure:', rawUsers[0]);
+        
+        // Map Google Sheets data to expected format
+        const usersList = rawUsers.map((user: any) => ({
+          id: user.id || user.uid || user['المعرف'] || '',
+          email: user.email || user['البريد الإلكتروني'] || '',
+          display_name: user.display_name || user.displayName || user['الاسم'] || '',
+          credits: user.credits || user['النقاط'] || 0,
+          status: user.status || user['الحالة'] || 'active',
+          email_verified: user.email_verified || user.emailVerified || user['تم التأكيد'] || false,
+          subscription_tier: user.subscription_tier || user.subscriptionTier || user['نوع الاشتراك'] || 'FREE',
+          created_at: user.created_at || user.createdAt || user['تاريخ الإنشاء'] || Date.now(),
+          last_login: user.last_login || user.lastLogin || user['آخر دخول'] || Date.now(),
+          total_spent: user.total_spent || user.totalSpent || user['إجمالي الإنفاق'] || 0
+        }));
+        
+        console.log('Mapped users:', usersList);
         setUsers(usersList);
         
         // Calculate stats
@@ -169,7 +186,7 @@ function AdminDashboardContent() {
       alert('يرجى إدخال عدد صحيح من النقاط');
       return;
     }
-
+    
     try {
       console.log('Adding credits:', { userId, credits: creditsToAdd });
       
@@ -178,8 +195,8 @@ function AdminDashboardContent() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          userId,
+        body: JSON.stringify({ 
+          userId, 
           amount: Number(creditsToAdd) 
         })
       });
@@ -238,7 +255,7 @@ function AdminDashboardContent() {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       console.log('Delete response data:', data);
       
@@ -262,12 +279,20 @@ function AdminDashboardContent() {
     }
   };
 
-  const filteredUsers = (users || []).filter(user => 
-    user && 
-    user.email && 
-    (user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.display_name && user.display_name.toLowerCase().includes(searchTerm.toLowerCase())))
-  );
+  const filteredUsers = (users || []).filter(user => {
+    if (!user || !user.email) return false;
+    
+    // If no search term, show all users
+    if (!searchTerm.trim()) return true;
+    
+    const searchLower = searchTerm.toLowerCase();
+    return user.email.toLowerCase().includes(searchLower) ||
+           (user.display_name && user.display_name.toLowerCase().includes(searchLower));
+  });
+  
+  console.log('Debug - users:', users);
+  console.log('Debug - searchTerm:', searchTerm);
+  console.log('Debug - filteredUsers:', filteredUsers);
 
   if (loading) {
     return (
@@ -285,115 +310,115 @@ function AdminDashboardContent() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
+            <div className="flex items-center justify-between">
+              <div>
               <h1 className="text-3xl font-bold text-gray-900">لوحة الإدارة</h1>
               <p className="text-gray-600 mt-2">إدارة المستخدمين والنقاط والطلبات</p>
-            </div>
+              </div>
             <div className="flex space-x-2">
               <Button onClick={loadData} variant="outline" size="sm">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 تحديث
               </Button>
               <Button onClick={handleSyncToSheets} variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
+                  <Download className="h-4 w-4 mr-2" />
                 مزامنة
-              </Button>
+                </Button>
+              </div>
             </div>
-          </div>
         </div>
 
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">إجمالي المستخدمين</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">إجمالي المستخدمين</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
                 <div className="text-2xl font-bold">{stats.totalUsers}</div>
-                <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                   {stats.verifiedUsers} مؤكد
-                </p>
-              </CardContent>
-            </Card>
+              </p>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">إجمالي النقاط</CardTitle>
-                <CreditCard className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">إجمالي النقاط</CardTitle>
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
                 <div className="text-2xl font-bold">{stats.totalCredits}</div>
-                <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                   نقاط متاحة
-                </p>
-              </CardContent>
-            </Card>
+              </p>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">في انتظار التأكيد</CardTitle>
                 <Mail className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
+            </CardHeader>
+            <CardContent>
                 <div className="text-2xl font-bold">{stats.pendingVerification}</div>
-                <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                   مستخدم غير مؤكد
-                </p>
-              </CardContent>
-            </Card>
+              </p>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">الطلبات</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
+            </CardHeader>
+            <CardContent>
                 <div className="text-2xl font-bold">{orders.length}</div>
-                <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                   طلب إجمالي
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+              </p>
+            </CardContent>
+          </Card>
+        </div>
         )}
 
         {/* Users Table */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
                 <CardTitle>المستخدمين</CardTitle>
                 <CardDescription>إدارة المستخدمين والنقاط</CardDescription>
-              </div>
+                  </div>
               <div className="flex items-center space-x-2">
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
                     placeholder="البحث عن مستخدم..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-8 w-64"
-                  />
+                    />
+                  </div>
                 </div>
-              </div>
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
                   <TableHead>البريد الإلكتروني</TableHead>
-                  <TableHead>الاسم</TableHead>
-                  <TableHead>النقاط</TableHead>
-                  <TableHead>الحالة</TableHead>
+                      <TableHead>الاسم</TableHead>
+                      <TableHead>النقاط</TableHead>
+                      <TableHead>الحالة</TableHead>
                   <TableHead>التأكيد</TableHead>
-                  <TableHead>الإجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+                      <TableHead>الإجراءات</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                 {filteredUsers.length > 0 ? filteredUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.email}</TableCell>
@@ -401,46 +426,46 @@ function AdminDashboardContent() {
                     <TableCell>
                       <Badge variant="secondary">{user.credits || 0}</Badge>
                     </TableCell>
-                    <TableCell>
+                        <TableCell>
                       <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
                         {user.status || 'غير محدد'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
                       <Badge variant={user.email_verified ? 'default' : 'destructive'}>
                         {user.email_verified ? 'مؤكد' : 'غير مؤكد'}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
+                        </TableCell>
+                        <TableCell>
                       <div className="flex space-x-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setSelectedUser(user)}
-                        >
-                          إضافة نقاط
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setSelectedUser(user)}
+                            >
+                              إضافة نقاط
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
                           onClick={() => handleDeleteUser(user.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
                 )) : (
-                  <TableRow>
+                    <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                       لا توجد مستخدمين
-                    </TableCell>
-                  </TableRow>
+                        </TableCell>
+                      </TableRow>
                 )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
 
         {/* Add Credits Modal */}
         {selectedUser && (
