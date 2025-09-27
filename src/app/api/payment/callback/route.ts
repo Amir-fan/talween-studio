@@ -38,15 +38,15 @@ export async function GET(request: NextRequest) {
       orderDb.updateStatus(orderId!, 'paid', paymentId || invoiceId);
       
       // Add credits to user in both databases
-      const user = userDb.findById(order.userId);
+      const user = userDb.findById(order.user_id);
       if (user) {
         // Update local database
-        userDb.updateCredits(user.id, order.credits);
+        userDb.updateCredits(user.id, order.credits_purchased || 0);
         
         // Update subscription tier if applicable
-        if (order.packageId && order.packageId !== 'FREE') {
+        if (order.subscription_tier && order.subscription_tier !== 'FREE') {
           userDb.updateUser(user.id, {
-            subscription_tier: order.packageId
+            subscription_tier: order.subscription_tier
           });
         }
 
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
             body: JSON.stringify({
               action: 'addCredits',
               userId: user.id,
-              amount: order.credits,
+              amount: order.credits_purchased || 0,
               apiKey: process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY
             })
           });
@@ -68,17 +68,16 @@ export async function GET(request: NextRequest) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              action: 'sendEmail',
-              emailType: 'paymentSuccess',
               recipientEmail: user.email,
+              emailType: 'paymentSuccess',
               templateData: {
-                name: user.display_name,
+                name: user.display_name || 'مستخدم',
                 orderNumber: orderId,
-                amount: order.amount,
-                credits: order.credits,
+                totalAmount: order.total_amount || order.amount,
+                credits: order.credits_purchased || order.credits,
                 appUrl: process.env.NEXT_PUBLIC_APP_URL
               },
-              apiKey: process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY
+              userId: user.id
             })
           });
         } catch (error) {
@@ -86,8 +85,8 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      console.log(`Payment successful for order ${orderId}, added ${order.credits} credits`);
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/success?orderId=${orderId}&amount=${order.amount}&credits=${order.credits}`);
+      console.log(`Payment successful for order ${orderId}, added ${order.credits_purchased || 0} credits`);
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/success?orderId=${orderId}&amount=${order.total_amount}&credits=${order.credits_purchased || 0}`);
     } else if (statusResult.status === 'Failed') {
       orderDb.updateStatus(orderId!, 'failed');
       console.log(`Payment failed for order ${orderId}`);
@@ -129,15 +128,15 @@ export async function POST(request: NextRequest) {
       orderDb.updateStatus(order.id, 'paid', TransactionId);
       
       // Add credits to user in both databases
-      const user = userDb.findById(order.userId);
+      const user = userDb.findById(order.user_id);
       if (user) {
         // Update local database
-        userDb.updateCredits(user.id, order.credits);
+        userDb.updateCredits(user.id, order.credits_purchased || 0);
         
         // Update subscription tier if applicable
-        if (order.packageId && order.packageId !== 'FREE') {
+        if (order.subscription_tier && order.subscription_tier !== 'FREE') {
           userDb.updateUser(user.id, {
-            subscription_tier: order.packageId
+            subscription_tier: order.subscription_tier
           });
         }
 
@@ -149,7 +148,7 @@ export async function POST(request: NextRequest) {
             body: JSON.stringify({
               action: 'addCredits',
               userId: user.id,
-              amount: order.credits,
+              amount: order.credits_purchased || 0,
               apiKey: process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY
             })
           });
@@ -159,17 +158,16 @@ export async function POST(request: NextRequest) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              action: 'sendEmail',
-              emailType: 'paymentSuccess',
               recipientEmail: user.email,
+              emailType: 'paymentSuccess',
               templateData: {
-                name: user.display_name,
+                name: user.display_name || 'مستخدم',
                 orderNumber: order.id,
-                amount: order.amount,
-                credits: order.credits,
+                totalAmount: order.total_amount || order.amount,
+                credits: order.credits_purchased || order.credits,
                 appUrl: process.env.NEXT_PUBLIC_APP_URL
               },
-              apiKey: process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY
+              userId: user.id
             })
           });
         } catch (error) {
@@ -177,7 +175,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      console.log(`Payment successful for order ${order.id}, added ${order.credits} credits`);
+      console.log(`Payment successful for order ${order.id}, added ${order.credits_purchased || 0} credits`);
     } else if (TransactionStatus === 'Failed') {
       orderDb.updateStatus(order.id, 'failed');
       console.log(`Payment failed for order ${order.id}`);

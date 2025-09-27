@@ -55,20 +55,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Create order record
-    const order = orderDb.create(
+    const orderResult = orderDb.create(
       userId,
       amount,
       packageId,
       credits
     );
-    const orderId = order.id;
+    const orderId = orderResult.id;
+
+    // Get user name from the correct field (handle both Google Sheets and local DB)
+    const userName = user['الاسم'] || user.displayName || user.display_name || 'مستخدم';
+    const userEmail = user['البريد الإلكتروني'] || user.email;
+    
+    console.log('📊 User data for payment:', { userName, userEmail });
 
     // Create payment session
     const paymentData = {
       amount: amount,
       currency: currency,
-      customerName: user.display_name,
-      customerEmail: user.email,
+      customerName: userName,
+      customerEmail: userEmail,
       customerMobile: '+966500000000', // You might want to store this in user profile
       orderId: orderId,
       packageId: packageId,
