@@ -72,7 +72,7 @@ function AdminDashboardContent() {
   const [creditsToAdd, setCreditsToAdd] = useState('');
 
   // Use auth context for authentication
-  const isAdminAuthenticated = isAdmin && user?.id === 'admin';
+  const isAdminAuthenticated = isAdmin && user;
 
   // Debug authentication status
   useEffect(() => {
@@ -378,14 +378,14 @@ function AdminDashboardContent() {
                 تحديث
               </Button>
               <Button onClick={handleSyncToSheets} variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
+                  <Download className="h-4 w-4 mr-2" />
                 مزامنة
               </Button>
               <Button onClick={handleClearAllUsers} variant="destructive" size="sm">
                 <Trash2 className="h-4 w-4 mr-2" />
                 مسح الكل
-              </Button>
-            </div>
+                </Button>
+              </div>
             </div>
         </div>
 
@@ -397,12 +397,12 @@ function AdminDashboardContent() {
               <CardTitle className="text-sm font-medium">إجمالي المستخدمين</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-              <CardContent>
+            <CardContent>
                 <div className="text-2xl font-bold">{stats.totalUsers}</div>
-                <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                   إجمالي المستخدمين
-                </p>
-              </CardContent>
+              </p>
+            </CardContent>
           </Card>
 
           <Card>
@@ -418,18 +418,18 @@ function AdminDashboardContent() {
             </CardContent>
           </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">المستخدمين النشطين</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
+            </CardHeader>
+            <CardContent>
                 <div className="text-2xl font-bold">{stats.activeUsers || 0}</div>
-                <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                   مستخدم نشط
-                </p>
-              </CardContent>
-            </Card>
+              </p>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -472,10 +472,10 @@ function AdminDashboardContent() {
                   <TableHeader>
                     <TableRow>
                   <TableHead>البريد الإلكتروني</TableHead>
-                  <TableHead>الاسم</TableHead>
-                  <TableHead>النقاط</TableHead>
-                  <TableHead>الحالة</TableHead>
-                  <TableHead>الإجراءات</TableHead>
+                      <TableHead>الاسم</TableHead>
+                      <TableHead>النقاط</TableHead>
+                      <TableHead>الحالة</TableHead>
+                      <TableHead>الإجراءات</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -486,11 +486,11 @@ function AdminDashboardContent() {
                     <TableCell>
                       <Badge variant="secondary">{user.credits || 0}</Badge>
                     </TableCell>
-                    <TableCell>
+                        <TableCell>
                       <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
                         {user.status || 'غير محدد'}
-                      </Badge>
-                    </TableCell>
+                          </Badge>
+                        </TableCell>
                         <TableCell>
                       <div className="flex space-x-2">
                             <Button
