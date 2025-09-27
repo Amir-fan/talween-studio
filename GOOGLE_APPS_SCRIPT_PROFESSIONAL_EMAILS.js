@@ -147,7 +147,7 @@ function handleHealthCheck() {
 // Clear All Data
 function handleClearAllData() {
   try {
-    console.log('🗑 Clearing all data from Google Sheets...');
+    console.log('Clearing all data from Google Sheets...');
     
     const sheet = getSheet();
     const lastRow = sheet.getLastRow();
@@ -778,7 +778,7 @@ function getWelcomeEmailTemplate(data) {
         
         <div class="content">
           <div class="icon-container">
-            <span class="icon">✏</span>
+            <span class="icon" style="font-size: 24px; font-weight: bold; color: #10b981;">T</span>
             </div>
           
           <h2 class="title">مرحباً ${data.name || 'عزيزي المستخدم'}!</h2>
@@ -795,19 +795,19 @@ function getWelcomeEmailTemplate(data) {
           
           <div class="features">
             <div class="feature-item">
-              <span class="feature-icon">📖</span>
+              <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">1</span>
               <p class="feature-text">إنشاء قصص مخصصة بأسماء الأطفال</p>
           </div>
             <div class="feature-item">
-              <span class="feature-icon">✏</span>
+              <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">2</span>
               <p class="feature-text">تحويل النصوص إلى صفحات تلوين</p>
             </div>
             <div class="feature-item">
-              <span class="feature-icon">📷</span>
+              <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">3</span>
               <p class="feature-text">تحويل الصور إلى صفحات تلوين</p>
             </div>
             <div class="feature-item">
-              <span class="feature-icon">💾</span>
+              <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">4</span>
               <p class="feature-text">حفظ المحتوى في مكتبتك الشخصية</p>
             </div>
           </div>
@@ -876,7 +876,7 @@ function getPasswordResetEmailTemplate(data) {
         
         <div class="content">
           <div class="icon-container">
-            <span class="icon">🔒</span>
+            <span class="icon" style="font-size: 24px; font-weight: bold; color: #f59e0b;">&nbsp;&nbsp;&nbsp;</span>
             </div>
           
           <h2 class="title">إعادة تعيين كلمة المرور</h2>
@@ -1190,19 +1190,19 @@ function getCreditsAddedTemplate(data) {
           
           <div class="features">
             <div class="feature-item">
-              <span class="feature-icon">📖</span>
+              <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">1</span>
               <p class="feature-text">إنشاء قصص مخصصة بأسماء الأطفال</p>
             </div>
             <div class="feature-item">
-              <span class="feature-icon">✏</span>
+              <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">2</span>
               <p class="feature-text">تحويل النصوص إلى صفحات تلوين</p>
             </div>
             <div class="feature-item">
-              <span class="feature-icon">📷</span>
+              <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">3</span>
               <p class="feature-text">تحويل الصور إلى صفحات تلوين</p>
             </div>
             <div class="feature-item">
-              <span class="feature-icon">💾</span>
+              <span class="feature-icon" style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">4</span>
               <p class="feature-text">حفظ المحتوى في مكتبتك الشخصية</p>
             </div>
           </div>
@@ -1266,7 +1266,7 @@ function getDefaultEmailTemplate(data) {
         
         <div class="content">
           <div class="icon-container">
-            <span class="icon">✉</span>
+            <span class="icon" style="font-size: 24px; font-weight: bold; color: #10b981;">&nbsp;&nbsp;&nbsp;</span>
           </div>
           
           <h2 class="title">رسالة من تلوين ستوديو</h2>
