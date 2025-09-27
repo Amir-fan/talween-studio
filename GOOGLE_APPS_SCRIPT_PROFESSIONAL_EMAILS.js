@@ -967,13 +967,13 @@ function getOrderConfirmationTemplate(data) {
     <body>
       <div class="container">
         <div class="header">
-          <h1 class="logo">تم تأكيد طلبك! ✅</h1>
+          <h1 class="logo">تم تأكيد طلبك!</h1>
           <p class="tagline">شكراً لك على ثقتك</p>
         </div>
         
         <div class="content">
           <div class="icon-container">
-            <span class="icon">🛒</span>
+            <span class="icon" style="font-size: 24px; font-weight: bold; color: white;">&nbsp;&nbsp;&nbsp;</span>
           </div>
           
           <h2 class="title">شكراً لك على طلبك!</h2>
@@ -984,7 +984,7 @@ function getOrderConfirmationTemplate(data) {
           </p>
           
           <div class="order-details">
-            <h3 class="order-title">📋 تفاصيل الطلب</h3>
+            <h3 class="order-title">تفاصيل الطلب</h3>
             <div class="order-info">
               <span class="order-label">رقم الطلب:</span>
               <span class="order-value">#${data.orderNumber || 'غير محدد'}</span>
@@ -995,7 +995,7 @@ function getOrderConfirmationTemplate(data) {
             </div>
             <div class="order-info">
               <span class="order-label">الحالة:</span>
-              <span class="order-value">تم التأكيد ✅</span>
+              <span class="order-value">تم التأكيد</span>
             </div>
             <div class="order-info">
               <span class="order-label">تاريخ الطلب:</span>
@@ -1065,13 +1065,13 @@ function getPaymentSuccessTemplate(data) {
     <body>
       <div class="container">
         <div class="header">
-          <h1 class="logo">تم الدفع بنجاح! 💳</h1>
+          <h1 class="logo">تم الدفع بنجاح!</h1>
           <p class="tagline">شكراً لك على ثقتك</p>
         </div>
         
         <div class="content">
           <div class="icon-container">
-            <span class="icon">✅</span>
+            <span class="icon" style="font-size: 24px; font-weight: bold; color: white;">&nbsp;&nbsp;&nbsp;</span>
             </div>
           
           <h2 class="title">تم الدفع بنجاح!</h2>
@@ -1102,7 +1102,7 @@ function getPaymentSuccessTemplate(data) {
             </div>
             <div class="payment-info">
               <span class="payment-label">حالة الدفع:</span>
-              <span class="payment-value">مكتمل ✅</span>
+              <span class="payment-value">مكتمل</span>
             </div>
           </div>
           
@@ -1167,13 +1167,13 @@ function getCreditsAddedTemplate(data) {
     <body>
       <div class="container">
         <div class="header">
-          <h1 class="logo">تم إضافة النقاط! ⭐</h1>
+          <h1 class="logo">تم إضافة النقاط!</h1>
           <p class="tagline">استمتع بالمزيد من الإبداع</p>
         </div>
         
         <div class="content">
           <div class="icon-container">
-            <span class="icon">⭐</span>
+            <span class="icon" style="font-size: 24px; font-weight: bold; color: white;">&nbsp;&nbsp;&nbsp;</span>
             </div>
           
           <h2 class="title">تم إضافة النقاط إلى حسابك!</h2>
