@@ -25,7 +25,6 @@ import {
   AlertTriangle,
   Trash2
 } from 'lucide-react';
-import { config } from '@/lib/config';
 
 interface User {
   id: string;
@@ -52,15 +51,15 @@ interface Order {
 
 interface EmailLog {
   id: string;
+  user_id: string;
   email_type: string;
-  recipient_email: string;
-  subject: string;
   status: string;
   sent_at: number;
   created_at: number;
 }
 
-export default function AdminDashboard() {
+// Admin Dashboard Component - Client-side only
+function AdminDashboardContent() {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
@@ -71,34 +70,25 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [creditsToAdd, setCreditsToAdd] = useState('');
-  const [isClient, setIsClient] = useState(false);
   
   // Use auth context for authentication
   const isAdminAuthenticated = isAdmin && user?.id === 'admin';
-  const isCheckingAuth = authLoading;
 
-  // Handle client-side mounting
+  // Redirect to login if not authenticated
   useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  // Redirect to login if not authenticated (after auth context loads)
-  useEffect(() => {
-    if (isClient && !authLoading && !isAdminAuthenticated) {
+    if (!authLoading && !isAdminAuthenticated) {
       console.log('🚫 No admin authentication - redirecting to login');
       router.push('/login?redirect=/admin');
     }
-  }, [isClient, authLoading, isAdminAuthenticated, router]);
+  }, [authLoading, isAdminAuthenticated, router]);
 
-  // Show loading while checking authentication or before client-side mounting
-  if (!isClient || isCheckingAuth) {
+  // Show loading while checking authentication
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50/30 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">
-            جاري التحقق من الصلاحيات...
-          </p>
+          <p className="text-muted-foreground">جاري التحميل...</p>
         </div>
       </div>
     );
@@ -111,10 +101,10 @@ export default function AdminDashboard() {
 
   // Load data only on client side
   useEffect(() => {
-    if (isClient && isAdminAuthenticated) {
+    if (isAdminAuthenticated) {
       loadData();
     }
-  }, [isClient, isAdminAuthenticated]);
+  }, [isAdminAuthenticated]);
 
   const loadData = async () => {
     // Only run on client side
@@ -123,11 +113,9 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       console.log('🔍 Loading admin data...');
-      console.log('Google Apps Script URL:', config.googleAppsScriptUrl);
-      console.log('API Key:', config.googleSheetsApiKey);
       
       // Load users from Google Sheets
-      const usersUrl = `${config.googleAppsScriptUrl}?action=getUsers&apiKey=${config.googleSheetsApiKey}`;
+      const usersUrl = `${process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL}?action=getUsers&apiKey=${process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY}`;
       console.log('Users URL:', usersUrl);
       
       const usersResponse = await fetch(usersUrl);
@@ -144,31 +132,23 @@ export default function AdminDashboard() {
       if (usersData.success) {
         setUsers(usersData.users || []);
         
-        // Calculate stats from users data
-        const users = usersData.users || [];
-        const stats = {
-          totalUsers: users.length,
-          verifiedUsers: users.filter((u: any) => u['البريد الإلكتروني مؤكد'] === 'نعم').length,
-          activeUsers: users.filter((u: any) => u['الحالة'] === 'active').length,
-          totalCredits: users.reduce((sum: number, u: any) => sum + parseInt(u['النقاط'] || '0'), 0),
-          totalSpent: users.reduce((sum: number, u: any) => sum + parseInt(u['إجمالي المدفوع'] || '0'), 0),
-          subscriptionTiers: {
-            FREE: users.filter((u: any) => u['مستوى الاشتراك'] === 'FREE').length,
-            EXPLORER: users.filter((u: any) => u['مستوى الاشتراك'] === 'EXPLORER').length,
-            CREATIVE_WORLD: users.filter((u: any) => u['مستوى الاشتراك'] === 'CREATIVE_WORLD').length,
-            CREATIVE_TEACHER: users.filter((u: any) => u['مستوى الاشتراك'] === 'CREATIVE_TEACHER').length,
-          }
-        };
-        setStats(stats);
+        // Calculate stats
+        const totalUsers = usersData.users?.length || 0;
+        const verifiedUsers = usersData.users?.filter((u: User) => u.email_verified).length || 0;
+        const totalCredits = usersData.users?.reduce((sum: number, u: User) => sum + (u.credits || 0), 0) || 0;
+        
+        setStats({
+          totalUsers,
+          verifiedUsers,
+          totalCredits,
+          pendingVerification: totalUsers - verifiedUsers
+        });
       } else {
         console.error('Failed to load users:', usersData.error);
       }
       
-      // For now, set empty arrays for orders and email logs
-      setOrders([]);
-      setEmailLogs([]);
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('Error loading admin data:', error);
     } finally {
       setLoading(false);
     }
@@ -179,17 +159,17 @@ export default function AdminDashboard() {
       alert('يرجى إدخال عدد صحيح من النقاط');
       return;
     }
-    
+
     try {
-      console.log('🔍 Adding credits:', { userId, amount: Number(creditsToAdd) });
+      console.log('Adding credits:', { userId, credits: creditsToAdd });
       
-      const response = await fetch(`${config.googleAppsScriptUrl}?action=addCredits&apiKey=${config.googleSheetsApiKey}`, {
+      const response = await fetch('/api/admin/add-credits', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          action: 'addCredits',
-          apiKey: config.googleSheetsApiKey,
-          userId, 
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
           amount: Number(creditsToAdd) 
         })
       });
@@ -202,7 +182,7 @@ export default function AdminDashboard() {
         alert(`تم إضافة ${creditsToAdd} نقطة بنجاح. النقاط الجديدة: ${data.newCredits || 'غير محدد'}`);
         setCreditsToAdd('');
         setSelectedUser(null);
-        loadData();
+        loadData(); // Reload data
       } else {
         alert(`فشل في إضافة النقاط: ${data.error || 'خطأ غير معروف'}`);
       }
@@ -227,26 +207,23 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!confirm(`هل أنت متأكد من حذف المستخدم "${userName}"؟ هذا الإجراء لا يمكن التراجع عنه.`)) {
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('هل أنت متأكد من حذف هذا المستخدم؟ سيتم حذف جميع بياناته نهائياً.')) {
       return;
     }
 
     try {
-      console.log('🗑️ Deleting user:', { userId, userName });
+      console.log('Deleting user:', userId);
       
-      // Use the new comprehensive delete API
       const response = await fetch('/api/admin/delete-user', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          userId,
-          userName
-        })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId })
       });
-
+      
       console.log('Delete response status:', response.status);
-      console.log('Delete response ok:', response.ok);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -258,355 +235,203 @@ export default function AdminDashboard() {
       if (data.success) {
         const cleanupResults = data.deletedUser?.cleanupResults;
         const details = [
-          `Google Sheets: ${data.deletedUser?.googleSheetsDeleted ? '✅ تم' : '❌ فشل'}`,
-          `قاعدة البيانات المحلية: ${data.deletedUser?.localDatabaseDeleted ? '✅ تم' : '⚠️ غير موجود'}`,
-          cleanupResults ? `الطلبات المحذوفة: ${cleanupResults.ordersDeleted}` : '',
-          cleanupResults ? `سجلات البريد المحذوفة: ${cleanupResults.emailLogsDeleted}` : '',
-          cleanupResults ? `المحتوى المحذوف: ${cleanupResults.contentDeleted}` : ''
-        ].filter(Boolean).join('\n');
-
-        alert(`✅ تم حذف المستخدم "${userName}" بنجاح من جميع قواعد البيانات!\n\nتفاصيل الحذف:\n${details}`);
-        loadData(); // Refresh the data
+          `تم حذف المستخدم: ${data.deletedUser?.email || userId}`,
+          `تم حذف ${cleanupResults?.deletedOrders || 0} طلب`,
+          `تم حذف ${cleanupResults?.deletedEmailLogs || 0} سجل بريد إلكتروني`,
+          `تم حذف ${cleanupResults?.deletedUserContent || 0} محتوى مستخدم`
+        ].join('\n');
+        
+        alert(`تم حذف المستخدم بنجاح!\n\n${details}`);
+        loadData(); // Reload data
       } else {
-        alert(`❌ فشل في حذف المستخدم: ${data.error || 'خطأ غير معروف'}`);
+        alert(`فشل في حذف المستخدم: ${data.error || 'خطأ غير معروف'}`);
       }
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert(`❌ فشل في حذف المستخدم: ${error.message || 'خطأ في الاتصال'}`);
+      alert(`حدث خطأ أثناء حذف المستخدم: ${error.message || 'خطأ في الاتصال'}`);
     }
   };
 
   const filteredUsers = users.filter(user => 
-    (user['البريد الإلكتروني'] || user.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user['الاسم'] || user.display_name || '').toLowerCase().includes(searchTerm.toLowerCase())
+    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.display_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <RefreshCw className="h-8 w-8 animate-spin" />
+      <div className="min-h-screen bg-gray-50/30 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">جاري تحميل البيانات...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50/30">
+      <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">لوحة تحكم الإدارة</h1>
-          <p className="text-gray-600 mt-2">إدارة المستخدمين والطلبات والنظام</p>
-        </div>
-
-        {/* Google Sheets Status */}
-        <div className="mb-6">
-          <Card className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium">حالة Google Sheets</h3>
-                <p className="text-sm text-muted-foreground">
-                  {process.env.NODE_ENV === 'development' ? 
-                    'Google Sheets غير مُعد - استخدم تصدير CSV كبديل' : 
-                    'تحقق من إعدادات البيئة لـ Google Sheets'
-                  }
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  onClick={() => window.open('/api/admin/export-users', '_blank')} 
-                  variant="outline" 
-                  size="sm"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  تصدير CSV
-                </Button>
-              </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">لوحة الإدارة</h1>
+              <p className="text-gray-600 mt-2">إدارة المستخدمين والنقاط والطلبات</p>
             </div>
-          </Card>
+            <div className="flex space-x-2">
+              <Button onClick={loadData} variant="outline" size="sm">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                تحديث
+              </Button>
+              <Button onClick={handleSyncToSheets} variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                مزامنة
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">إجمالي المستخدمين</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalUsers || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats?.verifiedUsers || 0} محقق من البريد
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">إجمالي النقاط</CardTitle>
-              <CreditCard className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalCredits || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                موزعة على المستخدمين
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">إجمالي المبيعات</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${stats?.totalSpent || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                من جميع الطلبات
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">رسائل البريد</CardTitle>
-              <Mail className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{emailLogs.length}</div>
-              <p className="text-xs text-muted-foreground">
-                إجمالي الرسائل المرسلة
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content */}
-        <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="users">المستخدمين</TabsTrigger>
-            <TabsTrigger value="orders">الطلبات</TabsTrigger>
-            <TabsTrigger value="emails">البريد</TabsTrigger>
-            <TabsTrigger value="settings">الإعدادات</TabsTrigger>
-          </TabsList>
-
-          {/* Users Tab */}
-          <TabsContent value="users" className="space-y-6">
+        {stats && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>إدارة المستخدمين</CardTitle>
-                    <CardDescription>عرض وإدارة جميع المستخدمين المسجلين</CardDescription>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button onClick={loadData} variant="outline" size="sm">
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      تحديث
-                    </Button>
-                    <Button onClick={handleSyncToSheets} variant="outline" size="sm">
-                      <Download className="h-4 w-4 mr-2" />
-                      مزامنة Google Sheets
-                    </Button>
-                    <Button onClick={() => {
-                      console.log('🧪 Testing API connection...');
-                      console.log('URL:', config.googleAppsScriptUrl);
-                      console.log('API Key:', config.googleSheetsApiKey);
-                      alert('تحقق من وحدة التحكم (Console) لرؤية تفاصيل الاتصال');
-                    }} variant="outline" size="sm">
-                      اختبار الاتصال
-                    </Button>
-                    <Button 
-                      onClick={() => window.open('/api/admin/export-users', '_blank')} 
-                      variant="outline" 
-                      size="sm"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      تصدير CSV
-                    </Button>
-                  </div>
-                </div>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">إجمالي المستخدمين</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="flex items-center space-x-2 mb-4">
-                  <div className="relative">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="البحث في المستخدمين..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8"
-                    />
-                  </div>
-                </div>
-
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>الاسم</TableHead>
-                      <TableHead>البريد الإلكتروني</TableHead>
-                      <TableHead>النقاط</TableHead>
-                      <TableHead>الحالة</TableHead>
-                      <TableHead>الاشتراك</TableHead>
-                      <TableHead>تاريخ التسجيل</TableHead>
-                      <TableHead>الإجراءات</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredUsers.map((user) => (
-                      <TableRow key={user['المعرف'] || user.id}>
-                        <TableCell className="font-medium">{user['الاسم'] || user.display_name || 'غير محدد'}</TableCell>
-                        <TableCell>{user['البريد الإلكتروني'] || user.email || 'غير محدد'}</TableCell>
-                        <TableCell>{user['النقاط'] || user.credits || 0}</TableCell>
-                        <TableCell>
-                          <Badge variant={(user['الحالة'] || user.status) === 'active' ? 'default' : 'secondary'}>
-                            {(user['الحالة'] || user.status) === 'active' ? 'نشط' : 'غير نشط'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{user['مستوى الاشتراك'] || user.subscription_tier || 'FREE'}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          {user['تاريخ الإنشاء'] || (user.created_at ? new Date(user.created_at * 1000).toLocaleDateString('ar-SA') : 'غير محدد')}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setSelectedUser(user)}
-                            >
-                              إضافة نقاط
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleDeleteUser(user['المعرف'] || user.id, user['الاسم'] || user.display_name || 'المستخدم')}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="text-2xl font-bold">{stats.totalUsers}</div>
+                <p className="text-xs text-muted-foreground">
+                  {stats.verifiedUsers} مؤكد
+                </p>
               </CardContent>
             </Card>
-          </TabsContent>
 
-          {/* Orders Tab */}
-          <TabsContent value="orders" className="space-y-6">
             <Card>
-              <CardHeader>
-                <CardTitle>الطلبات</CardTitle>
-                <CardDescription>عرض جميع الطلبات والمبيعات</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">إجمالي النقاط</CardTitle>
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>رقم الطلب</TableHead>
-                      <TableHead>المستخدم</TableHead>
-                      <TableHead>المبلغ</TableHead>
-                      <TableHead>الحالة</TableHead>
-                      <TableHead>التاريخ</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {orders.map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell className="font-medium">{order.order_number}</TableCell>
-                        <TableCell>{order.user_id}</TableCell>
-                        <TableCell>${order.total_amount}</TableCell>
-                        <TableCell>
-                          <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
-                            {order.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(order.created_at * 1000).toLocaleDateString('ar-SA')}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="text-2xl font-bold">{stats.totalCredits}</div>
+                <p className="text-xs text-muted-foreground">
+                  نقاط متاحة
+                </p>
               </CardContent>
             </Card>
-          </TabsContent>
 
-          {/* Emails Tab */}
-          <TabsContent value="emails" className="space-y-6">
             <Card>
-              <CardHeader>
-                <CardTitle>سجلات البريد الإلكتروني</CardTitle>
-                <CardDescription>عرض جميع الرسائل المرسلة</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">في انتظار التأكيد</CardTitle>
+                <Mail className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>النوع</TableHead>
-                      <TableHead>المستقبل</TableHead>
-                      <TableHead>الموضوع</TableHead>
-                      <TableHead>الحالة</TableHead>
-                      <TableHead>التاريخ</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {emailLogs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell className="font-medium">{log.email_type}</TableCell>
-                        <TableCell>{log.recipient_email}</TableCell>
-                        <TableCell>{log.subject}</TableCell>
-                        <TableCell>
-                          <Badge variant={log.status === 'sent' ? 'default' : 'destructive'}>
-                            {log.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(log.created_at * 1000).toLocaleDateString('ar-SA')}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="text-2xl font-bold">{stats.pendingVerification}</div>
+                <p className="text-xs text-muted-foreground">
+                  مستخدم غير مؤكد
+                </p>
               </CardContent>
             </Card>
-          </TabsContent>
 
-          {/* Settings Tab */}
-          <TabsContent value="settings" className="space-y-6">
             <Card>
-              <CardHeader>
-                <CardTitle>إعدادات النظام</CardTitle>
-                <CardDescription>إدارة إعدادات النظام والمزامنة</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">الطلبات</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium">مزامنة Google Sheets</h3>
-                    <p className="text-sm text-muted-foreground">
-                      مزامنة جميع البيانات مع Google Sheets
-                    </p>
-                  </div>
-                  <Button onClick={handleSyncToSheets}>
-                    <Download className="h-4 w-4 mr-2" />
-                    مزامنة الآن
-                  </Button>
-                </div>
+              <CardContent>
+                <div className="text-2xl font-bold">{orders.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  طلب إجمالي
+                </p>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
+
+        {/* Users Table */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>المستخدمين</CardTitle>
+                <CardDescription>إدارة المستخدمين والنقاط</CardDescription>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="البحث عن مستخدم..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8 w-64"
+                  />
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>البريد الإلكتروني</TableHead>
+                  <TableHead>الاسم</TableHead>
+                  <TableHead>النقاط</TableHead>
+                  <TableHead>الحالة</TableHead>
+                  <TableHead>التأكيد</TableHead>
+                  <TableHead>الإجراءات</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">{user.email}</TableCell>
+                    <TableCell>{user.display_name || 'غير محدد'}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{user.credits || 0}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
+                        {user.status || 'غير محدد'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={user.email_verified ? 'default' : 'destructive'}>
+                        {user.email_verified ? 'مؤكد' : 'غير مؤكد'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedUser(user)}
+                        >
+                          إضافة نقاط
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeleteUser(user.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
 
         {/* Add Credits Modal */}
         {selectedUser && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <Card className="w-96">
               <CardHeader>
-                <CardTitle>إضافة نقاط للمستخدم</CardTitle>
+                <CardTitle>إضافة نقاط</CardTitle>
                 <CardDescription>
-                  إضافة نقاط لـ {selectedUser.display_name}
+                  إضافة نقاط للمستخدم: {selectedUser.email}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -629,7 +454,6 @@ export default function AdminDashboard() {
                   </Button>
                   <Button
                     onClick={() => handleAddCredits(selectedUser.id)}
-                    disabled={!creditsToAdd || isNaN(Number(creditsToAdd))}
                   >
                     إضافة
                   </Button>
@@ -641,4 +465,26 @@ export default function AdminDashboard() {
       </div>
     </div>
   );
+}
+
+// Main Admin Page with SSR protection
+export default function AdminPage() {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-gray-50/30 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <AdminDashboardContent />;
 }
