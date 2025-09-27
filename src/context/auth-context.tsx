@@ -117,6 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const data = await response.json();
       console.log('🔍 Admin login response:', data);
+      console.log('🔍 Response status:', response.status);
       
       if (data.success && data.user) {
         // Check if this is an admin user
@@ -149,10 +150,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } else {
         console.log('❌ Admin login failed:', data.error);
+        console.log('❌ Response data:', data);
         return false;
       }
     } catch (error) {
       console.error('❌ Admin login error:', error);
+      console.error('❌ Error details:', error.message);
       return false;
     }
   };
@@ -233,7 +236,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('talween_user', JSON.stringify(userForStorage));
         setUser(userWithId);
         setUserData(userWithId);
-        setIsAdmin(userWithId.id === 'admin');
+        
+        // Check if user is admin by role, not by hardcoded ID
+        const isAdminUser = userWithId.role === 'admin';
+        setIsAdmin(isAdminUser);
+        
+        // If this is an admin user, also set the admin token cookie
+        if (isAdminUser) {
+          const adminToken = `admin_${Date.now()}`;
+          document.cookie = `admin_token=${adminToken}; path=/; max-age=86400; SameSite=Lax; Secure=false`;
+          console.log('✅ Admin token set by signIn function:', adminToken);
+        }
+        
         return { success: true };
       } else {
         return { success: false, error: data.error };

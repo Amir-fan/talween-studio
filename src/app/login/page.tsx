@@ -53,7 +53,9 @@ function LoginForm() {
     setLoading(true);
     try {
       // Hidden admin check - looks like normal login
+      console.log('🔍 Attempting admin login for:', values.email);
       const adminResult = await loginAsAdmin(values.email, values.password);
+      console.log('🔍 Admin login result:', adminResult);
       if (adminResult) {
         setLoading(false);
         toast({
