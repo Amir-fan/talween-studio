@@ -27,15 +27,18 @@ export function middleware(request: NextRequest) {
   // Protect API admin routes
   if (pathname.startsWith('/api/admin')) {
     const adminToken = request.cookies.get('admin_token');
+    const allCookies = request.cookies.getAll();
     
     console.log('🔍 API ADMIN MIDDLEWARE:');
     console.log('  - pathname:', pathname);
     console.log('  - adminToken:', adminToken?.value);
+    console.log('  - all cookies:', allCookies.map(c => `${c.name}=${c.value}`));
+    console.log('  - cookie string:', request.headers.get('cookie'));
     
     if (!adminToken) {
       console.log('❌ No admin token - blocking request');
       return NextResponse.json(
-        { error: 'Unauthorized - Admin access required' },
+        { error: 'Unauthorized - Admin access required. Please log in as admin.' },
         { status: 401 }
       );
     }

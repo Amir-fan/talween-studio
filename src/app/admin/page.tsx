@@ -74,6 +74,17 @@ function AdminDashboardContent() {
   // Use auth context for authentication
   const isAdminAuthenticated = isAdmin && user?.id === 'admin';
 
+  // Debug authentication status
+  useEffect(() => {
+    console.log('🔍 ADMIN AUTH DEBUG:');
+    console.log('  - authLoading:', authLoading);
+    console.log('  - isAdmin:', isAdmin);
+    console.log('  - user:', user);
+    console.log('  - user?.id:', user?.id);
+    console.log('  - isAdminAuthenticated:', isAdminAuthenticated);
+    console.log('  - document.cookie:', typeof document !== 'undefined' ? document.cookie : 'N/A');
+  }, [authLoading, isAdmin, user, isAdminAuthenticated]);
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !isAdminAuthenticated) {
@@ -287,7 +298,19 @@ function AdminDashboardContent() {
       console.log('Delete response status:', response.status);
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Try to get the actual error message from the response
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If we can't parse the error response, use the status
+          console.log('Could not parse error response:', e);
+        }
+        
+        console.error('Delete user failed:', errorMessage);
+        alert(`حدث خطأ أثناء حذف المستخدم: ${errorMessage}`);
+        return;
       }
 
       const data = await response.json();
