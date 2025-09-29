@@ -83,13 +83,14 @@ export async function registerUser(
       // Also create in Google Sheets (backup)
       try {
         const googleSheetsResult = await googleSheetsUserDb.create(email, password, displayName);
-      if (googleSheetsResult.success) {
-        console.log('  - Google Sheets backup created:', googleSheetsResult.user?.id);
-      } else {
-        console.log('  - Google Sheets backup failed (non-critical):', googleSheetsResult.error);
+        if (googleSheetsResult.success) {
+          console.log('  - Google Sheets backup created:', googleSheetsResult.user?.id);
+        } else {
+          console.log('  - Google Sheets backup failed (non-critical):', googleSheetsResult.error);
+        }
+      } catch (error) {
+        console.log('  - Google Sheets backup failed (non-critical):', error);
       }
-    } catch (error) {
-      console.log('  - Google Sheets backup failed (non-critical):', error);
     }
 
     // Send welcome email (non-blocking)
