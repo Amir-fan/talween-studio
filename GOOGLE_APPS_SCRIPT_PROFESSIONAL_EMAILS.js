@@ -279,18 +279,26 @@ function handleCreateUser(data) {
         .setMimeType(ContentService.MimeType.JSON);
     }
     
-    // Prepare user data
+    // Prepare user data - MUST match the column order in getSheet()
     const userData = [
-      data.id || generateId(),
-      data.email || '',
-      data.displayName || '',
-      data.password || '',
-      data.credits || 50,
-      data.status || 'active',
-      data.subscriptionTier || 'FREE',
-      new Date().toISOString(),
-      new Date().toISOString(), // last login
-      0 // total spent
+      data.id || generateId(),                    // A: المعرف (ID)
+      data.email || '',                           // B: البريد الإلكتروني (Email)
+      data.displayName || '',                     // C: الاسم (Display Name)
+      data.password || '',                        // D: كلمة المرور (Password)
+      data.credits || 50,                         // E: النقاط (Credits)
+      data.status || 'active',                    // F: الحالة (Status)
+      data.emailVerified || true,                 // G: البريد الإلكتروني مؤكد (Email Verified)
+      new Date().toISOString(),                   // H: تاريخ الإنشاء (Created Date)
+      new Date().toISOString(),                   // I: آخر تسجيل دخول (Last Login)
+      data.totalSpent || 0,                       // J: المبلغ الإجمالي (Total Spent)
+      data.phoneNumber || '',                     // K: رقم الهاتف (Phone)
+      data.country || '',                         // L: البلد (Country)
+      data.city || '',                            // M: المدينة (City)
+      data.age || '',                             // N: العمر (Age)
+      data.gender || '',                          // O: الجنس (Gender)
+      data.interests || '',                       // P: الاهتمامات (Interests)
+      data.source || '',                          // Q: المصدر (Source)
+      data.notes || ''                            // R: ملاحظات (Notes)
     ];
     
     console.log('  - userData array:', JSON.stringify(userData, null, 2));
@@ -683,22 +691,24 @@ function getSheet() {
     // Create sheet with Arabic headers if it doesn't exist
     sheet = spreadsheet.insertSheet(SHEET_NAME);
     const headers = [
-      'المعرف',
-      'البريد الإلكتروني',
-      'الاسم',
-      'كلمة المرور',
-      'النقاط',
-      'الحالة',
-      'البريد الإلكتروني مؤكد',
-      'تاريخ الإنشاء',
-      'رقم الهاتف',
-      'البلد',
-      'المدينة',
-      'العمر',
-      'الجنس',
-      'الاهتمامات',
-      'المصدر',
-      'ملاحظات'
+      'المعرف',                    // A: ID
+      'البريد الإلكتروني',         // B: Email
+      'الاسم',                     // C: Display Name
+      'كلمة المرور',               // D: Password
+      'النقاط',                    // E: Credits
+      'الحالة',                    // F: Status
+      'البريد الإلكتروني مؤكد',    // G: Email Verified
+      'تاريخ الإنشاء',             // H: Created Date
+      'آخر تسجيل دخول',            // I: Last Login
+      'المبلغ الإجمالي',           // J: Total Spent
+      'رقم الهاتف',                // K: Phone Number
+      'البلد',                     // L: Country
+      'المدينة',                   // M: City
+      'العمر',                     // N: Age
+      'الجنس',                     // O: Gender
+      'الاهتمامات',                // P: Interests
+      'المصدر',                    // Q: Source
+      'ملاحظات'                    // R: Notes
     ];
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   }
