@@ -115,16 +115,16 @@ export const googleSheetsUserDb = {
 
       if (result.success && result.user) {
         const user: User = {
-          id: result.user.id || result.user.ID,
-          email: result.user.email || result.user.Email,
-          displayName: result.user.name || result.user.Name || result.user.displayName,
-          credits: parseInt(result.user.credits || result.user.Credits || '0'),
+          id: result.user.id || result.user.ID || result.user['المعرف'],
+          email: result.user.email || result.user.Email || result.user['البريد الإلكتروني'],
+          displayName: result.user.name || result.user.Name || result.user.displayName || result.user['الاسم'],
+          credits: parseInt(result.user.credits || result.user.Credits || result.user['النقاط'] || '0'),
           status: 'active',
           emailVerified: true,
-          subscriptionTier: result.user.subscription || result.user.Subscription || 'FREE',
-          createdAt: result.user.created || result.user.Created || new Date().toISOString(),
-          lastLogin: result.user.lastLogin || result.user.LastLogin,
-          totalSpent: parseFloat(result.user.totalPaid || result.user.TotalPaid || '0'),
+          subscriptionTier: result.user.subscription || result.user.Subscription || result.user['البريد الإلكتروني مؤكد'] || 'FREE',
+          createdAt: result.user.created || result.user.Created || result.user['تاريخ الإنشاء'] || new Date().toISOString(),
+          lastLogin: result.user.lastLogin || result.user.LastLogin || result.user['رقم الهاتف'],
+          totalSpent: parseFloat(result.user.totalPaid || result.user.TotalPaid || result.user['البلد'] || '0'),
           role: 'user'
         };
 
@@ -168,16 +168,16 @@ export const googleSheetsUserDb = {
 
       if (result.success && result.user) {
         const user: User = {
-          id: result.user.id || result.user.ID,
-          email: result.user.email || result.user.Email,
-          displayName: result.user.name || result.user.Name || result.user.displayName,
-          credits: parseInt(result.user.credits || result.user.Credits || '0'),
+          id: result.user.id || result.user.ID || result.user['المعرف'],
+          email: result.user.email || result.user.Email || result.user['البريد الإلكتروني'],
+          displayName: result.user.name || result.user.Name || result.user.displayName || result.user['الاسم'],
+          credits: parseInt(result.user.credits || result.user.Credits || result.user['النقاط'] || '0'),
           status: 'active',
           emailVerified: true,
-          subscriptionTier: result.user.subscription || result.user.Subscription || 'FREE',
-          createdAt: result.user.created || result.user.Created || new Date().toISOString(),
-          lastLogin: result.user.lastLogin || result.user.LastLogin,
-          totalSpent: parseFloat(result.user.totalPaid || result.user.TotalPaid || '0'),
+          subscriptionTier: result.user.subscription || result.user.Subscription || result.user['البريد الإلكتروني مؤكد'] || 'FREE',
+          createdAt: result.user.created || result.user.Created || result.user['تاريخ الإنشاء'] || new Date().toISOString(),
+          lastLogin: result.user.lastLogin || result.user.LastLogin || result.user['رقم الهاتف'],
+          totalSpent: parseFloat(result.user.totalPaid || result.user.TotalPaid || result.user['البلد'] || '0'),
           role: 'user'
         };
 
