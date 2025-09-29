@@ -2,7 +2,7 @@
 // This is for server-side operations (API routes, auth, etc.)
 
 const GOOGLE_APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbyz5QjB9BlrtemRf7mOnjTHaSBN9kxxxT7Q0QFt9j3US6aVT2OlzcowbEFFQRb_YoeR/exec';
-const GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY || '4808f174cdf9c9aa94cdd80d02d3b069fa04b49b';
+const GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY || 'AIzaSyC5DtRGIPds3rDzw1odpzDxuzTE3UQbICA';
 
 interface User {
   id: string;
