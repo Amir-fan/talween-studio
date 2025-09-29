@@ -30,9 +30,10 @@ export async function registerUser(
   displayName: string
 ): Promise<AuthResult> {
   try {
-    console.log('🔍 LOCAL DATABASE REGISTRATION - Attempting to register:');
+    console.log('🔍 USER REGISTRATION - Attempting to register:');
     console.log('  - email:', email);
     console.log('  - displayName:', displayName);
+    console.log('  - NODE_ENV:', process.env.NODE_ENV);
 
     // Check if user already exists
     const existingUser = userDb.findByEmail(email);
@@ -40,13 +41,48 @@ export async function registerUser(
       return { success: false, error: 'البريد الإلكتروني مسجل مسبقاً' };
     }
 
-    // Create user in local database (primary)
-    const user = userDb.create(email, password, displayName);
-    console.log('  - local user created:', user.id);
+    let user = null;
 
-    // Also create in Google Sheets (backup)
-    try {
-      const googleSheetsResult = await googleSheetsUserDb.create(email, password, displayName);
+    // In production, prioritize Google Sheets due to Vercel serverless limitations
+    if (process.env.NODE_ENV === 'production') {
+      console.log('  - PRODUCTION MODE: Using Google Sheets as primary database');
+      
+      // Create user in Google Sheets (primary in production)
+      try {
+        const googleSheetsResult = await googleSheetsUserDb.create(email, password, displayName);
+        if (googleSheetsResult.success) {
+          console.log('  - Google Sheets user created:', googleSheetsResult.user?.id);
+          user = googleSheetsResult.user;
+        } else {
+          console.log('  - Google Sheets creation failed:', googleSheetsResult.error);
+          return { success: false, error: 'فشل في إنشاء الحساب' };
+        }
+      } catch (error) {
+        console.log('  - Google Sheets creation error:', error);
+        return { success: false, error: 'فشل في إنشاء الحساب' };
+      }
+      
+      // Also try to create in local database (backup)
+      try {
+        const localResult = userDb.create(email, password, displayName);
+        if (localResult.success) {
+          console.log('  - local backup user created:', localResult.user?.id);
+        } else {
+          console.log('  - local backup creation failed (non-critical):', localResult.error);
+        }
+      } catch (error) {
+        console.log('  - local backup creation failed (non-critical):', error);
+      }
+    } else {
+      console.log('  - DEVELOPMENT MODE: Using local database as primary');
+      
+      // Create user in local database (primary in development)
+      user = userDb.create(email, password, displayName);
+      console.log('  - local user created:', user.id);
+
+      // Also create in Google Sheets (backup)
+      try {
+        const googleSheetsResult = await googleSheetsUserDb.create(email, password, displayName);
       if (googleSheetsResult.success) {
         console.log('  - Google Sheets backup created:', googleSheetsResult.user?.id);
       } else {
@@ -90,31 +126,69 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
     console.log('🔍 BULLETPROOF LOGIN ATTEMPT:');
     console.log('  - email:', email);
     console.log('  - password length:', password.length);
+    console.log('  - NODE_ENV:', process.env.NODE_ENV);
     
-    // Layer 1: Try local database first (primary)
-    let user = userDb.findByEmail(email);
-    console.log('  - user found in local DB:', !!user);
+    let user = null;
     
-    // Layer 1.5: If not found in regular users, check admin users
-    if (!user) {
-      console.log('  - checking admin users...');
-      const adminUser = userDb.findAdminByEmail(email);
-      if (adminUser) {
-        console.log('  - admin user found:', adminUser.email);
-        user = adminUser; // Use admin user as the user object
-      }
-    }
-    
-    // Layer 2: If not found, try Google Sheets fallback
-    if (!user) {
-      console.log('  - trying Google Sheets fallback...');
+    // In production, prioritize Google Sheets due to Vercel serverless limitations
+    if (process.env.NODE_ENV === 'production') {
+      console.log('  - PRODUCTION MODE: Using Google Sheets as primary database');
+      
+      // Layer 1: Try Google Sheets first in production
       try {
         const googleSheetsUser = await googleSheetsUserDb.findByEmail(email);
         if (googleSheetsUser) {
-          console.log('  - user found in Google Sheets, migrating to local DB...');
-          // Create user in local database from Google Sheets data
-          const migrationResult = userDb.create(
-            googleSheetsUser['البريد الإلكتروني'] || googleSheetsUser.email,
+          console.log('  - user found in Google Sheets');
+          user = googleSheetsUser;
+        }
+      } catch (error) {
+        console.log('  - Google Sheets lookup failed:', error.message);
+      }
+      
+      // Layer 2: Fallback to local database in production
+      if (!user) {
+        console.log('  - trying local DB fallback...');
+        user = userDb.findByEmail(email);
+        console.log('  - user found in local DB:', !!user);
+      }
+      
+      // Layer 3: Check admin users
+      if (!user) {
+        console.log('  - checking admin users...');
+        const adminUser = userDb.findAdminByEmail(email);
+        if (adminUser) {
+          console.log('  - admin user found:', adminUser.email);
+          user = adminUser;
+        }
+      }
+    } else {
+      // Development mode: Use local database first
+      console.log('  - DEVELOPMENT MODE: Using local database as primary');
+      
+      // Layer 1: Try local database first
+      user = userDb.findByEmail(email);
+      console.log('  - user found in local DB:', !!user);
+      
+      // Layer 1.5: If not found in regular users, check admin users
+      if (!user) {
+        console.log('  - checking admin users...');
+        const adminUser = userDb.findAdminByEmail(email);
+        if (adminUser) {
+          console.log('  - admin user found:', adminUser.email);
+          user = adminUser;
+        }
+      }
+      
+      // Layer 2: If not found, try Google Sheets fallback
+      if (!user) {
+        console.log('  - trying Google Sheets fallback...');
+        try {
+          const googleSheetsUser = await googleSheetsUserDb.findByEmail(email);
+          if (googleSheetsUser) {
+            console.log('  - user found in Google Sheets, migrating to local DB...');
+            // Create user in local database from Google Sheets data
+            const migrationResult = userDb.create(
+              googleSheetsUser['البريد الإلكتروني'] || googleSheetsUser.email,
             googleSheetsUser['كلمة المرور'] || googleSheetsUser.password || 'temp123',
             googleSheetsUser['الاسم'] || googleSheetsUser.displayName || 'User'
           );

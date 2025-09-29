@@ -1,5 +1,20 @@
 {
-  "users": {},
+  "users": {
+    "aac77340-41c0-436d-bfc5-fc2f60697cad": {
+      "id": "aac77340-41c0-436d-bfc5-fc2f60697cad",
+      "email": "testuser3@example.com",
+      "password": "$2a$12$N4hryuBKPBu9brLi4/P0lu5bOD1ySt3AIC0OlAwaJCzggaK70O9Hq",
+      "display_name": "Test User 3",
+      "credits": 50,
+      "status": "active",
+      "email_verified": true,
+      "verification_token": "1c54b971-2e9b-4ff6-8fc5-25ebf94db800",
+      "subscription_tier": "FREE",
+      "created_at": 1759117054,
+      "updated_at": 1759117054,
+      "total_spent": 0
+    }
+  },
   "orders": {},
   "emailLogs": {
     "c1878f85-ac1c-4929-8f5b-ef97a5b6857b": {
