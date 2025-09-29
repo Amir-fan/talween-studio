@@ -107,6 +107,8 @@ function handleDatabaseAction(data) {
       return handleGetUsers();
     case 'getUser':
       return handleGetUser(data.userId);
+    case 'getUserByEmail':
+      return handleGetUserByEmail(data.email);
     case 'syncCredits':
       return handleSyncCredits(data.userId);
     case 'clearAllData':
@@ -251,6 +253,45 @@ function handleGetUser(userId) {
       .createTextOutput(JSON.stringify({ 
         success: false, 
         error: 'Failed to get user: ' + error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Get User by Email
+function handleGetUserByEmail(email) {
+  try {
+    const sheet = getSheet();
+    const userRow = findUserByEmail(sheet, email);
+    
+    if (!userRow) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ 
+          success: false, 
+          error: 'User not found' 
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // Convert row data to user object
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const user = {};
+    headers.forEach((header, index) => {
+      user[header] = userRow[index];
+    });
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: true, 
+        user: user
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'Failed to get user by email: ' + error.toString() 
       }))
       .setMimeType(ContentService.MimeType.JSON);
   }

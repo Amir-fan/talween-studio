@@ -100,7 +100,7 @@ export const googleSheetsUserDb = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: 'getUser',
+          action: 'getUserByEmail',
           apiKey: GOOGLE_SHEETS_API_KEY,
           email
         })
