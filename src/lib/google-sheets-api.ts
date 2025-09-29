@@ -131,12 +131,13 @@ export const googleSheetsUserDb = {
     console.log('  - result.success:', result.success);
     console.log('  - result.error:', result.error);
     console.log('  - result.userId:', result.userId);
+    console.log('  - full result:', JSON.stringify(result, null, 2));
 
     if (result.success) {
       return {
         success: true,
         user: {
-          id: result.userId,
+          id: result.userId || result.user?.id || 'unknown',
           email,
           displayName,
           verificationToken: 'auto-verified'
