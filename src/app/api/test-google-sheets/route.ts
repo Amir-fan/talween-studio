@@ -7,9 +7,9 @@ export async function GET(request: NextRequest) {
     
     // Check environment variables
     const config = {
-      SPREADSHEET_ID: process.env.GOOGLE_SPREADSHEET_ID ? 'SET' : 'NOT SET',
-      GOOGLE_SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ? 'SET' : 'NOT SET',
-      GOOGLE_PRIVATE_KEY: process.env.GOOGLE_PRIVATE_KEY ? 'SET' : 'NOT SET',
+      GOOGLE_APPS_SCRIPT_URL: process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL ? 'SET' : 'NOT SET',
+      GOOGLE_SHEETS_API_KEY: process.env.GOOGLE_SHEETS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY ? 'SET' : 'NOT SET',
+      GOOGLE_SPREADSHEET_ID: process.env.GOOGLE_SPREADSHEET_ID || process.env.NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID ? 'SET' : 'NOT SET',
     };
     
     console.log('📊 Environment variables:', config);

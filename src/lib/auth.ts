@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { userDb } from './simple-database';
-import { googleSheetsUserDb } from './google-sheets-api';
+import { googleSheetsUserDb } from './google-sheets-server';
 import { sendEmail } from './email-service-apps-script';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
