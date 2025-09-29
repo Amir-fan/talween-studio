@@ -1,8 +1,8 @@
 // Server-side Google Sheets API using Apps Script
 // This is for server-side operations (API routes, auth, etc.)
 
-const GOOGLE_APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbyz5QjB9BlrtemRf7mOnjTHaSBN9kxxxT7Q0QFt9j3US6aVT2OlzcowbEFFQRb_YoeR/exec';
-const GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY || 'AIzaSyC5DtRGIPds3rDzw1odpzDxuzTE3UQbICA';
+const GOOGLE_APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL;
+const GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
 
 interface User {
   id: string;
@@ -29,6 +29,11 @@ export const googleSheetsUserDb = {
   async create(email: string, password: string, displayName: string): Promise<AuthResult> {
     try {
       console.log('🔄 Creating user in Google Sheets (server-side)...');
+      
+      if (!GOOGLE_APPS_SCRIPT_URL || !GOOGLE_SHEETS_API_KEY) {
+        console.error('❌ Missing Google Sheets environment variables');
+        return { success: false, error: 'Google Sheets configuration not found' };
+      }
       
       const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
         method: 'POST',
@@ -84,6 +89,11 @@ export const googleSheetsUserDb = {
     try {
       console.log('🔍 Finding user by email in Google Sheets (server-side)...');
       
+      if (!GOOGLE_APPS_SCRIPT_URL || !GOOGLE_SHEETS_API_KEY) {
+        console.error('❌ Missing Google Sheets environment variables');
+        return { success: false, error: 'Google Sheets configuration not found' };
+      }
+      
       const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
         method: 'POST',
         headers: {
@@ -131,6 +141,11 @@ export const googleSheetsUserDb = {
   async findById(id: string): Promise<AuthResult> {
     try {
       console.log('🔍 Finding user by ID in Google Sheets (server-side)...');
+      
+      if (!GOOGLE_APPS_SCRIPT_URL || !GOOGLE_SHEETS_API_KEY) {
+        console.error('❌ Missing Google Sheets environment variables');
+        return { success: false, error: 'Google Sheets configuration not found' };
+      }
       
       const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
         method: 'POST',
@@ -180,6 +195,11 @@ export const googleSheetsUserDb = {
     try {
       console.log('🔄 Updating credits in Google Sheets (server-side)...');
       
+      if (!GOOGLE_APPS_SCRIPT_URL || !GOOGLE_SHEETS_API_KEY) {
+        console.error('❌ Missing Google Sheets environment variables');
+        return { success: false, error: 'Google Sheets configuration not found' };
+      }
+      
       const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
         method: 'POST',
         headers: {
@@ -214,6 +234,11 @@ export const googleSheetsUserDb = {
   async deleteUser(userId: string): Promise<AuthResult> {
     try {
       console.log('🗑️ Deleting user from Google Sheets (server-side)...');
+      
+      if (!GOOGLE_APPS_SCRIPT_URL || !GOOGLE_SHEETS_API_KEY) {
+        console.error('❌ Missing Google Sheets environment variables');
+        return { success: false, error: 'Google Sheets configuration not found' };
+      }
       
       const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
         method: 'POST',
