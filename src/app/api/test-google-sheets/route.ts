@@ -41,14 +41,14 @@ export async function GET(request: NextRequest) {
       console.error('❌ Google Sheets test failed:', error);
       return NextResponse.json({ 
         success: false, 
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
         config 
       });
     }
   } catch (error) {
     console.error('Error testing Google Sheets:', error);
     return NextResponse.json(
-      { error: 'Failed to test Google Sheets' },
+      { error: 'Failed to test Google Sheets', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
