@@ -739,7 +739,10 @@ function getSheet() {
 
 function findUserByEmail(sheet, email) {
   const data = sheet.getDataRange().getValues();
-  const emailColumnIndex = data[0].indexOf('Email');
+  // Try both English and Arabic column names
+  const emailColumnIndex = data[0].indexOf('Email') !== -1 ? 
+    data[0].indexOf('Email') : 
+    data[0].indexOf('البريد الإلكتروني');
   
   if (emailColumnIndex === -1) return null;
   
@@ -753,7 +756,10 @@ function findUserByEmail(sheet, email) {
 
 function findUserRow(sheet, userId) {
   const data = sheet.getDataRange().getValues();
-  const idColumnIndex = data[0].indexOf('ID');
+  // Try both English and Arabic column names
+  const idColumnIndex = data[0].indexOf('ID') !== -1 ? 
+    data[0].indexOf('ID') : 
+    data[0].indexOf('المعرف');
   
   if (idColumnIndex === -1) return null;
   
