@@ -218,10 +218,10 @@ function handleGetUser(userId) {
     const sheet = getSheet();
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
-    const idColumnIndex = headers.indexOf('المعرف');
+    const idColumnIndex = headers.indexOf('ID');
     
     if (idColumnIndex === -1) {
-      throw new Error('المعرف column not found');
+      throw new Error('ID column not found');
     }
     
     for (let i = 1; i < data.length; i++) {
@@ -279,26 +279,16 @@ function handleCreateUser(data) {
         .setMimeType(ContentService.MimeType.JSON);
     }
     
-    // Prepare user data - MUST match the column order in getSheet()
+    // Prepare user data - Simplified 8-column structure
     const userData = [
-      data.id || generateId(),                    // A: المعرف (ID)
-      data.email || '',                           // B: البريد الإلكتروني (Email)
-      data.displayName || '',                     // C: الاسم (Display Name)
-      data.password || '',                        // D: كلمة المرور (Password)
-      data.credits || 50,                         // E: النقاط (Credits)
-      data.status || 'active',                    // F: الحالة (Status)
-      data.emailVerified || true,                 // G: البريد الإلكتروني مؤكد (Email Verified)
-      new Date().toISOString(),                   // H: تاريخ الإنشاء (Created Date)
-      new Date().toISOString(),                   // I: آخر تسجيل دخول (Last Login)
-      data.totalSpent || 0,                       // J: المبلغ الإجمالي (Total Spent)
-      data.phoneNumber || '',                     // K: رقم الهاتف (Phone)
-      data.country || '',                         // L: البلد (Country)
-      data.city || '',                            // M: المدينة (City)
-      data.age || '',                             // N: العمر (Age)
-      data.gender || '',                          // O: الجنس (Gender)
-      data.interests || '',                       // P: الاهتمامات (Interests)
-      data.source || '',                          // Q: المصدر (Source)
-      data.notes || ''                            // R: ملاحظات (Notes)
+      data.id || generateId(),                    // A: ID
+      data.email || '',                           // B: Email
+      data.displayName || '',                     // C: Name
+      data.credits || 50,                         // D: Credits
+      data.subscriptionTier || 'FREE',            // E: Subscription
+      new Date().toISOString(),                   // F: Created
+      new Date().toISOString(),                   // G: LastLogin
+      data.totalPaid || 0                         // H: TotalPaid
     ];
     
     console.log('  - userData array:', JSON.stringify(userData, null, 2));
@@ -688,27 +678,17 @@ function getSheet() {
   let sheet = spreadsheet.getSheetByName(SHEET_NAME);
   
   if (!sheet) {
-    // Create sheet with Arabic headers if it doesn't exist
+    // Create sheet with English headers if it doesn't exist
     sheet = spreadsheet.insertSheet(SHEET_NAME);
     const headers = [
-      'المعرف',                    // A: ID
-      'البريد الإلكتروني',         // B: Email
-      'الاسم',                     // C: Display Name
-      'كلمة المرور',               // D: Password
-      'النقاط',                    // E: Credits
-      'الحالة',                    // F: Status
-      'البريد الإلكتروني مؤكد',    // G: Email Verified
-      'تاريخ الإنشاء',             // H: Created Date
-      'آخر تسجيل دخول',            // I: Last Login
-      'المبلغ الإجمالي',           // J: Total Spent
-      'رقم الهاتف',                // K: Phone Number
-      'البلد',                     // L: Country
-      'المدينة',                   // M: City
-      'العمر',                     // N: Age
-      'الجنس',                     // O: Gender
-      'الاهتمامات',                // P: Interests
-      'المصدر',                    // Q: Source
-      'ملاحظات'                    // R: Notes
+      'ID',                        // A: ID
+      'Email',                     // B: Email
+      'Name',                      // C: Name
+      'Credits',                   // D: Credits
+      'Subscription',              // E: Subscription
+      'Created',                   // F: Created
+      'LastLogin',                 // G: LastLogin
+      'TotalPaid'                  // H: TotalPaid
     ];
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   }
@@ -718,7 +698,7 @@ function getSheet() {
 
 function findUserByEmail(sheet, email) {
   const data = sheet.getDataRange().getValues();
-  const emailColumnIndex = data[0].indexOf('البريد الإلكتروني');
+  const emailColumnIndex = data[0].indexOf('Email');
   
   if (emailColumnIndex === -1) return null;
   
@@ -732,7 +712,7 @@ function findUserByEmail(sheet, email) {
 
 function findUserRow(sheet, userId) {
   const data = sheet.getDataRange().getValues();
-  const idColumnIndex = data[0].indexOf('المعرف');
+  const idColumnIndex = data[0].indexOf('ID');
   
   if (idColumnIndex === -1) return null;
   
