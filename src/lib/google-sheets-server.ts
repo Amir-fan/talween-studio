@@ -1,7 +1,7 @@
 // Server-side Google Sheets API using Apps Script
 // This is for server-side operations (API routes, auth, etc.)
 
-const GOOGLE_APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL;
+const GOOGLE_APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbzADHiFd3petRWbqhQonzVMv6A1e4AL4cL64x1MIWDaFeWHPcW-t5HKvwCSxGxpfG8B/exec';
 const GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
 
 interface User {
@@ -43,14 +43,13 @@ export const googleSheetsUserDb = {
         body: JSON.stringify({
           action: 'createUser',
           apiKey: GOOGLE_SHEETS_API_KEY,
-          data: {
-            email,
-            password,
-            displayName,
-            credits: 50,
-            subscriptionTier: 'FREE',
-            totalPaid: 0
-          }
+          id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          email,
+          password,
+          displayName,
+          credits: 50,
+          subscriptionTier: 'FREE',
+          totalPaid: 0
         })
       });
 

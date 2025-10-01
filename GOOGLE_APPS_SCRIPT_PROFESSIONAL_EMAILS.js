@@ -34,6 +34,8 @@ function doGet(e) {
         return handleSyncCredits(e.parameter.userId);
       case 'clearAllData':
         return handleClearAllData();
+      case 'forceResetSheet':
+        return handleForceResetSheet();
       default:
         return ContentService
           .createTextOutput(JSON.stringify({ 
@@ -113,6 +115,8 @@ function handleDatabaseAction(data) {
       return handleSyncCredits(data.userId);
     case 'clearAllData':
       return handleClearAllData();
+    case 'forceResetSheet':
+      return handleForceResetSheet();
     default:
       return ContentService
         .createTextOutput(JSON.stringify({ 
@@ -180,6 +184,53 @@ function handleClearAllData() {
   }
 }
 
+// Force Reset Sheet with English Headers
+function handleForceResetSheet() {
+  try {
+    console.log('Force resetting sheet with English headers...');
+    
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = spreadsheet.getSheetByName(SHEET_NAME);
+    
+    if (sheet) {
+      // Delete the existing sheet
+      spreadsheet.deleteSheet(sheet);
+      console.log('Deleted existing sheet');
+    }
+    
+    // Create new sheet with English headers
+    sheet = spreadsheet.insertSheet(SHEET_NAME);
+    const headers = [
+      'ID',                        // A: ID
+      'Email',                     // B: Email
+      'Name',                      // C: Name
+      'Credits',                   // D: Credits
+      'Subscription',              // E: Subscription
+      'Created',                   // F: Created
+      'LastLogin',                 // G: LastLogin
+      'TotalPaid'                  // H: TotalPaid
+    ];
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    console.log('Created new sheet with English headers');
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: true, 
+        message: 'Sheet reset successfully with English headers',
+        headers: headers
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    console.error('Error resetting sheet:', error);
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'Failed to reset sheet: ' + error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 // Get All Users
 function handleGetUsers() {
   try {
@@ -220,7 +271,10 @@ function handleGetUser(userId) {
     const sheet = getSheet();
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
-    const idColumnIndex = headers.indexOf('ID');
+    // Try both English and Arabic column names
+    const idColumnIndex = headers.indexOf('ID') !== -1 ? 
+      headers.indexOf('ID') : 
+      headers.indexOf('المعرف');
     
     if (idColumnIndex === -1) {
       throw new Error('ID column not found');
@@ -320,7 +374,7 @@ function handleCreateUser(data) {
         .setMimeType(ContentService.MimeType.JSON);
     }
     
-    // Prepare user data - Simplified 8-column structure
+    // Prepare user data - Match the actual English headers in the sheet
     const userData = [
       data.id || generateId(),                    // A: ID
       data.email || '',                           // B: Email
@@ -415,8 +469,11 @@ function handleDeleteUser(userId) {
     
     // Get user data before deletion for logging
     const userData = sheet.getRange(userRow, 1, 1, sheet.getLastColumn()).getValues()[0];
-    const userEmail = userData[1]; // البريد الإلكتروني column
-    const userName = userData[2]; // الاسم column
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const emailIndex = headers.indexOf('Email') !== -1 ? headers.indexOf('Email') : headers.indexOf('البريد الإلكتروني');
+    const nameIndex = headers.indexOf('Name') !== -1 ? headers.indexOf('Name') : headers.indexOf('الاسم');
+    const userEmail = userData[emailIndex];
+    const userName = userData[nameIndex];
     
     console.log('User data to delete:', {
       userId: userId,
@@ -467,7 +524,10 @@ function handleAddCredits(userId, amount) {
         .setMimeType(ContentService.MimeType.JSON);
     }
     
-    const creditsColumnIndex = getColumnIndex(sheet, 'النقاط');
+    // Try both English and Arabic column names
+    const creditsColumnIndex = getColumnIndex(sheet, 'Credits') !== 0 ? 
+      getColumnIndex(sheet, 'Credits') : 
+      getColumnIndex(sheet, 'النقاط');
     const currentCredits = sheet.getRange(userRow, creditsColumnIndex).getValue();
     const newCredits = currentCredits + parseInt(amount);
     
@@ -505,7 +565,10 @@ function handleDeductCredits(userId, amount) {
         .setMimeType(ContentService.MimeType.JSON);
     }
     
-    const creditsColumnIndex = getColumnIndex(sheet, 'النقاط');
+    // Try both English and Arabic column names
+    const creditsColumnIndex = getColumnIndex(sheet, 'Credits') !== 0 ? 
+      getColumnIndex(sheet, 'Credits') : 
+      getColumnIndex(sheet, 'النقاط');
     const currentCredits = sheet.getRange(userRow, creditsColumnIndex).getValue();
     const deductAmount = parseInt(amount);
     
@@ -553,7 +616,10 @@ function handleUpdateCredits(userId, credits) {
         .setMimeType(ContentService.MimeType.JSON);
     }
     
-    const creditsColumnIndex = getColumnIndex(sheet, 'النقاط');
+    // Try both English and Arabic column names
+    const creditsColumnIndex = getColumnIndex(sheet, 'Credits') !== 0 ? 
+      getColumnIndex(sheet, 'Credits') : 
+      getColumnIndex(sheet, 'النقاط');
     sheet.getRange(userRow, creditsColumnIndex).setValue(parseInt(credits));
     
     return ContentService

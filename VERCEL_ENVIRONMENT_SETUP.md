@@ -19,7 +19,7 @@ Your Vercel deployment is missing essential environment variables. Here's how to
 
 #### **Google Apps Script URL**
 - **Name**: `NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL`
-- **Value**: `https://script.google.com/macros/s/AKfycbyz5QjB9BlrtemRf7mOnjTHaSBN9kxxxT7Q0QFt9j3US6aVT2OlzcowbEFFQRb_YoeR/exec`
+- **Value**: `https://script.google.com/macros/s/AKfycbzADHiFd3petRWbqhQonzVMv6A1e4AL4cL64x1MIWDaFeWHPcW-t5HKvwCSxGxpfG8B/exec`
 - **Environment**: Production, Preview, Development
 
 #### **Google Sheets API Key**

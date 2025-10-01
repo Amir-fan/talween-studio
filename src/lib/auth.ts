@@ -108,11 +108,11 @@ export async function registerUser(
       user: {
         id: user.id,
         email: user.email,
-        displayName: user.display_name,
+        displayName: user.displayName,
         credits: user.credits,
         status: user.status,
-        emailVerified: user.email_verified,
-        subscriptionTier: user.subscription_tier
+        emailVerified: user.emailVerified,
+        subscriptionTier: user.subscriptionTier
       }
     };
   } catch (error) {
@@ -137,10 +137,10 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
       
       // Layer 1: Try Google Sheets first in production
       try {
-        const googleSheetsUser = await googleSheetsUserDb.findByEmail(email);
-        if (googleSheetsUser) {
+        const googleSheetsResult = await googleSheetsUserDb.findByEmail(email);
+        if (googleSheetsResult.success && googleSheetsResult.user) {
           console.log('  - user found in Google Sheets');
-          user = googleSheetsUser;
+          user = googleSheetsResult.user;
         }
       } catch (error) {
         console.log('  - Google Sheets lookup failed:', error.message);
