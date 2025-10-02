@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user from database
-    const user = userDb.findById(userId);
+    const user = userDb.findUserById(userId);
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
