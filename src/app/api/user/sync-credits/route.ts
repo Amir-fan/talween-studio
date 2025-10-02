@@ -28,10 +28,10 @@ export async function POST(request: NextRequest) {
         id: user.id,
         email: user.email,
         displayName: user.display_name,
-        credits: user.credits,
-        status: user.status,
-        emailVerified: user.email_verified,
-        subscriptionTier: user.subscription_tier
+        credits: user.credits || 0,
+        status: user.status || 'active',
+        emailVerified: user.email_verified || true,
+        subscriptionTier: user.subscription_tier || 'FREE'
       }
     });
   } catch (error) {
