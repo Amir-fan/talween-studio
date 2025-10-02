@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
-import { googleSheetsUserDb } from './google-sheets-api';
 
 const dbPath = path.join(process.cwd(), 'database.json');
 const backupPath = path.join(process.cwd(), 'database-backup.json');
@@ -317,17 +316,7 @@ export const userDb = {
       return { success: false, error: 'Failed to save user data - please try again' };
     }
     
-    // SYNC TO GOOGLE SHEETS (backup layer)
-    console.log('  - Syncing to Google Sheets as backup...');
-    googleSheetsUserDb.create(email, password, displayName).then(result => {
-      if (result.success) {
-        console.log('✅ User synced to Google Sheets successfully');
-      } else {
-        console.log('⚠️ Google Sheets sync failed (non-critical):', result.error);
-      }
-    }).catch(error => {
-      console.log('⚠️ Google Sheets sync error (non-critical):', error);
-    });
+    // Google Sheets sync removed to avoid circular dependency
     
     return { success: true, user: { id, email, displayName, verificationToken } };
   },
