@@ -4,6 +4,7 @@
 import { checkAndDeductCreditsForFeature } from '@/lib/local-credits';
 import { contentDb } from '@/lib/simple-database';
 import { createMockColoringPage } from '@/ai/flows/mock-ai-fallback';
+import { generateColoringPageFromTextFlow } from '@/ai/flows/generate-coloring-page-from-text-flow';
 import type { GenerateColoringPageFromTextInput, GenerateColoringPageFromTextOutput } from './types';
 
 

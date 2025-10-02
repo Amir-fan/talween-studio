@@ -48,23 +48,16 @@ Output in JSON format:
 `,
 });
 
-export const createStoryAndColoringPagesFlow = ai.defineFlow(
-  {
-    name: 'createStoryAndColoringPagesFlow',
-    inputSchema: CreateStoryAndColoringPagesInputSchema,
-    outputSchema: CreateStoryAndColoringPagesOutputSchema,
-  },
-  async input => {
-    const pages = [];
-    for (let i = 1; i <= input.numPages; i++) {
-      const {output} = await pagePrompt({
-        topic: input.topic,
-        pageNumber: i,
-      });
-      if (output) {
-        pages.push(output);
-      }
+export async function createStoryAndColoringPagesFlow(input: z.infer<typeof CreateStoryAndColoringPagesInputSchema>): Promise<z.infer<typeof CreateStoryAndColoringPagesOutputSchema>> {
+  const pages = [];
+  for (let i = 1; i <= input.numPages; i++) {
+    const {output} = await pagePrompt({
+      topic: input.topic,
+      pageNumber: i,
+    });
+    if (output) {
+      pages.push(output);
     }
-    return {pages};
   }
-);
+  return {pages};
+}

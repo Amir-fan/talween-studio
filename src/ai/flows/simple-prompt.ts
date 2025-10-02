@@ -20,10 +20,6 @@ const SimplePromptOutputSchema = z.object({
 });
 export type SimplePromptOutput = z.infer<typeof SimplePromptOutputSchema>;
 
-export async function simplePrompt(input: SimplePromptInput): Promise<SimplePromptOutput> {
-  return simplePromptFlow(input);
-}
-
 const prompt = ai.definePrompt({
   name: 'simplePrompt',
   input: {schema: SimplePromptInputSchema},
@@ -33,14 +29,7 @@ const prompt = ai.definePrompt({
 {{{prompt}}}`,
 });
 
-const simplePromptFlow = ai.defineFlow(
-  {
-    name: 'simplePromptFlow',
-    inputSchema: SimplePromptInputSchema,
-    outputSchema: SimplePromptOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
-  }
-);
+export async function simplePrompt(input: SimplePromptInput): Promise<SimplePromptOutput> {
+  const {output} = await prompt(input);
+  return output!;
+}
