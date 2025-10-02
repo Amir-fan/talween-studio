@@ -23,11 +23,13 @@ export async function POST(request: NextRequest) {
     
     // Use Google AI directly instead of Genkit
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
     
-    console.log('🔍 Generating image with Google AI...');
+    console.log('🔍 Generating image with Google AI using correct model...');
     
-    // Generate image using Google AI directly
+    // Use the correct model for image generation
+    const model = genAI.getGenerativeModel({ model: "imagen-3.0-generate-001" });
+    
+    // Generate image using the correct method
     const { media } = await model.generateContent({
       contents: [{
         parts: [{
@@ -44,10 +46,7 @@ Requirements:
 - Child-friendly design with clear, simple lines
 - Leave large empty spaces for coloring`
         }]
-      }],
-      generationConfig: {
-        responseModalities: ['TEXT', 'IMAGE'],
-      }
+      }]
     });
     
     if (!media?.url) {
