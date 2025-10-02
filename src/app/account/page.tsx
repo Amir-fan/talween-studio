@@ -409,6 +409,10 @@ export default function AccountPage() {
                 </CardTitle>
               </CardHeader>
           <CardContent>
+            <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
+              <p className="text-green-600 font-medium">⚙️ My Account - Coming Soon!</p>
+              <p className="text-green-500 text-sm mt-1">We're working on advanced account management features</p>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
@@ -473,6 +477,10 @@ export default function AccountPage() {
                 <Button asChild className="mt-4">
                   <Link href="/create">ابدأ الإبداع</Link>
                 </Button>
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-blue-600 font-medium">📚 My Library - Coming Soon!</p>
+                  <p className="text-blue-500 text-sm mt-1">We're working on organizing all your creations in one place</p>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
