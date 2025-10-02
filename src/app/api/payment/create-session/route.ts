@@ -69,8 +69,8 @@ export async function POST(request: NextRequest) {
     const orderResult = orderDb.create(
       userId,
       amount,
-      packageId,
-      credits
+      packageId,  // subscriptionTier
+      credits     // creditsPurchased
     );
     const orderId = orderResult.id;
 
