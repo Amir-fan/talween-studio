@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPaymentSession } from '@/lib/myfatoorah-service';
 import { userDb, orderDb } from '@/lib/simple-database';
-import { googleSheetsUserDb } from '@/lib/google-sheets-api';
+import { googleSheetsUserDb } from '@/lib/google-sheets-server';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: NextRequest) {
