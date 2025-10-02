@@ -32,6 +32,12 @@ Your Vercel deployment is missing essential environment variables. Here's how to
 - **Value**: `1e8H6MdRGF0QJNpNL0NvUwJtWv89Wqk6hQsZIocpb-mI`
 - **Environment**: Production, Preview, Development
 
+#### **Google AI API Key (For Image Generation)**
+- **Name**: `GEMINI_API_KEY`
+- **Value**: `[Your Google AI API Key from Google AI Studio]`
+- **Environment**: Production, Preview, Development
+- **Note**: This is required for AI image generation. Get it from [Google AI Studio](https://aistudio.google.com/)
+
 ### 3. After Adding Variables
 1. Click **Save** for each variable
 2. Go to **Deployments** tab

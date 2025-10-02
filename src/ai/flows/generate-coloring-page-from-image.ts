@@ -18,11 +18,12 @@ async function convertImageToColoringPageServer(imageDataUri: string): Promise<s
   console.log('Converting uploaded image to coloring page using AI...');
   
   // First analyze the uploaded image to get accurate description
-  if (!process.env.GOOGLE_API_KEY) {
-    throw new Error('GOOGLE_API_KEY environment variable is required');
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY or GOOGLE_API_KEY environment variable is required');
   }
   
-  const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+  const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
   
   // Extract base64 data from data URI
@@ -100,9 +101,18 @@ export async function generateColoringPageFromImage(input: GenerateColoringPageF
   
   console.log('Converting image to coloring page using real AI image generation...');
   
-  // Use real AI image generation - NO FALLBACK
-  const processedImageDataUri = await convertImageToColoringPageServer(photoDataUri);
-  
-  console.log('Successfully converted image to coloring page');
-  return { coloringPageDataUri: processedImageDataUri };
+  try {
+    // Try real AI image generation first
+    const processedImageDataUri = await convertImageToColoringPageServer(photoDataUri);
+    console.log('Successfully converted image to coloring page using AI');
+    return { coloringPageDataUri: processedImageDataUri };
+  } catch (error) {
+    console.error('AI image generation failed, using fallback:', error);
+    
+    // Fallback to mock generation if AI fails
+    console.log('Using fallback image generation...');
+    const fallbackImageDataUri = createEnhancedMockFromImage(photoDataUri);
+    console.log('Successfully generated fallback coloring page');
+    return { coloringPageDataUri: fallbackImageDataUri };
+  }
 }

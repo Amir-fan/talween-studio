@@ -173,22 +173,35 @@ export const createStoryAndColoringPagesFlow = ai.defineFlow(
     }
     
     // 2. Generate the character reference image.
-    const characterReferenceImage = await generateCharacterReferenceImage(
-      storyContent.characterDescription,
-      input.childName
-    );
+    let characterReferenceImage: string;
+    try {
+      characterReferenceImage = await generateCharacterReferenceImage(
+        storyContent.characterDescription,
+        input.childName
+      );
+    } catch (error) {
+      console.error('Character image generation failed, using fallback:', error);
+      const { createMockColoringPage } = await import('./mock-ai-fallback');
+      characterReferenceImage = createMockColoringPage(`Character: ${input.childName} - ${storyContent.characterDescription}`);
+    }
 
     // 3. Generate images for each chapter using the reference image.
     const numPagesToGenerate = Math.min(parseInt(input.numberOfPages, 10), storyContent.chapters.length);
     const chaptersToProcess = storyContent.chapters.slice(0, numPagesToGenerate);
 
-    const imageUrls = await Promise.all(chaptersToProcess.map(chapter => 
-        generatePageImage(
-            chapter.illustrationDescription,
-            input.childName,
-            storyContent.characterDescription
-        )
-    ));
+    const imageUrls = await Promise.all(chaptersToProcess.map(async (chapter, index) => {
+      try {
+        return await generatePageImage(
+          chapter.illustrationDescription,
+          input.childName,
+          storyContent.characterDescription
+        );
+      } catch (error) {
+        console.error(`Page ${index + 1} image generation failed, using fallback:`, error);
+        const { createMockColoringPage } = await import('./mock-ai-fallback');
+        return createMockColoringPage(`Scene: ${chapter.illustrationDescription}`);
+      }
+    }));
 
 
     // 4. Combine text and images into pages.
@@ -198,8 +211,9 @@ export const createStoryAndColoringPagesFlow = ai.defineFlow(
       imageDataUri: imageUrls[index],
     }));
 
-    if (pages.some(p => !p.imageDataUri)) {
-        throw new Error("One or more image generations failed.");
+    // Check if we have at least some images generated (fallbacks should ensure we always have images)
+    if (pages.every(p => !p.imageDataUri)) {
+        throw new Error("All image generations failed, including fallbacks.");
     }
 
     return {

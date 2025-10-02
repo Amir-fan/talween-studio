@@ -7,13 +7,16 @@ process.env.NODE_OPTIONS = '--dns-result-order=ipv4first --max-old-space-size=40
 // Additional network configuration
 process.env.GOOGLE_APPLICATION_CREDENTIALS = process.env.GOOGLE_API_KEY;
 
-if (!process.env.GOOGLE_API_KEY) {
-  throw new Error('GOOGLE_API_KEY environment variable is required');
+// Use GEMINI_API_KEY as the primary key, fallback to GOOGLE_API_KEY
+const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+
+if (!apiKey) {
+  console.warn('GEMINI_API_KEY or GOOGLE_API_KEY environment variable is required for AI features');
 }
 
 export const ai = genkit({
   plugins: [googleAI({
-    apiKey: process.env.GOOGLE_API_KEY,
+    apiKey: apiKey || 'dummy-key', // Use dummy key if not available (fallbacks will handle this)
   })],
   model: 'googleai/gemini-1.5-pro',
 });

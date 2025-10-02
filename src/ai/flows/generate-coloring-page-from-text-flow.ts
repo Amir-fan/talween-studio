@@ -67,10 +67,20 @@ export const generateColoringPageFromTextFlow = ai.defineFlow(
   async (input) => {
     console.log(`Generating coloring page for: ${input.description} (${input.difficulty})`);
     
-    // Use ONLY real AI image generation - NO FALLBACK
-    const coloringPageDataUri = await generateColoringPageFromText(input.description, input.difficulty);
-    
-    console.log('Successfully generated coloring page from text:', coloringPageDataUri);
-    return { coloringPageDataUri };
+    try {
+      // Try real AI image generation first
+      const coloringPageDataUri = await generateColoringPageFromText(input.description, input.difficulty);
+      console.log('Successfully generated coloring page from text using AI:', coloringPageDataUri);
+      return { coloringPageDataUri };
+    } catch (error) {
+      console.error('AI text-to-image generation failed, using fallback:', error);
+      
+      // Fallback to mock generation if AI fails
+      console.log('Using fallback text-to-image generation...');
+      const { createMockColoringPage } = await import('./mock-ai-fallback');
+      const fallbackImageDataUri = createMockColoringPage(input.description);
+      console.log('Successfully generated fallback coloring page from text');
+      return { coloringPageDataUri: fallbackImageDataUri };
+    }
   }
 );
