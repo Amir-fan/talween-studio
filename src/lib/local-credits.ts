@@ -27,7 +27,8 @@ export async function checkAndDeductCredits(userId: string, amount: number): Pro
 export async function checkAndDeductCreditsForFeature(
   userId: string, 
   feature: FeatureType, 
-  description?: string
+  description?: string,
+  userEmail?: string
 ): Promise<{ success: boolean; error?: string; cost?: number }> {
   
   if (!userId) {
@@ -37,7 +38,17 @@ export async function checkAndDeductCreditsForFeature(
   const cost = PRICING_CONFIG.FEATURE_COSTS[feature];
   
   try {
-    const result = await googleSheetsUserDb.deductCredits(userId, cost);
+    // Attempt by userId first
+    let result = await googleSheetsUserDb.deductCredits(userId, cost);
+
+    // Fallback: if userId not found, try to locate by email in Google Sheets and deduct using the correct ID
+    if (!result.success && userEmail) {
+      const findRes = await googleSheetsUserDb.findByEmail(userEmail);
+      if (findRes.success && findRes.user?.id) {
+        result = await googleSheetsUserDb.deductCredits(findRes.user.id, cost);
+      }
+    }
+
     return { success: result.success, error: result.error, cost: result.success ? cost : undefined };
   } catch (error) {
     console.error('Error deducting credits for feature:', error);

@@ -26,7 +26,8 @@ export async function generateImageAction(
         const creditCheck = await checkAndDeductCreditsForFeature(
           values.userId, 
           'TEXT_TO_COLORING',
-          `تحويل فكرة نصية إلى صفحة تلوين: ${values.description}`
+          `تحويل فكرة نصية إلى صفحة تلوين: ${values.description}`,
+          undefined
         );
         console.log('  - creditCheck result:', creditCheck);
         

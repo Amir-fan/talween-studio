@@ -233,6 +233,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // Store user in localStorage for persistence - include both id and uid for compatibility
         const userForStorage = { ...userWithId, uid: userWithId.id };
+        // Ensure initial credits field is present to reflect server value
+        if (typeof userForStorage.credits !== 'number') {
+          userForStorage.credits = 50;
+        }
         localStorage.setItem('talween_user', JSON.stringify(userForStorage));
         setUser(userWithId);
         setUserData(userWithId);

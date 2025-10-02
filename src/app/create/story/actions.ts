@@ -22,7 +22,8 @@ export async function generateStoryAction(
       const creditCheck = await checkAndDeductCreditsForFeature(
         input.userId, 
         'STORY_WITH_CHILD_NAME',
-        `قصة باسم ${input.childName} (${input.numberOfPages} صفحات)`
+        `قصة باسم ${input.childName} (${input.numberOfPages} صفحات)`,
+        undefined
       );
       if (!creditCheck.success) {
         throw new Error(creditCheck.error === 'Not enough credits' ? 'NotEnoughCredits' : 'Failed to process credits.');

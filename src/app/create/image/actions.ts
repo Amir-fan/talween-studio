@@ -21,7 +21,8 @@ export async function generateImageFromPhotoAction(
       const creditCheck = await checkAndDeductCreditsForFeature(
         values.userId, 
         'PHOTO_TO_COLORING',
-        'تحويل صورة شخصية إلى صفحة تلوين'
+        'تحويل صورة شخصية إلى صفحة تلوين',
+        undefined
       );
       if (!creditCheck.success) {
         throw new Error(creditCheck.error === 'Not enough credits' ? 'NotEnoughCredits' : 'Failed to process credits.');
