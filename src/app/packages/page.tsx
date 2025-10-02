@@ -116,7 +116,7 @@ export default function PackagesPage() {
         return;
       }
 
-      const response = await fetch('/api/payment/create-session-fixed', {
+      const response = await fetch('/api/payment/create-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
