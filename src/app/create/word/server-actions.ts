@@ -2,8 +2,8 @@
 'use server';
 
 import { checkAndDeductCreditsForFeature } from '@/lib/local-credits';
-import { generateColoringPageFromTextFlow } from '@/ai/flows/generate-coloring-page-from-text-flow';
 import { contentDb } from '@/lib/simple-database';
+import { createMockColoringPage } from '@/ai/flows/mock-ai-fallback';
 import type { GenerateColoringPageFromTextInput, GenerateColoringPageFromTextOutput } from './types';
 
 
