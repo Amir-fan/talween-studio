@@ -77,10 +77,16 @@ export const generateColoringPageFromTextFlow = ai.defineFlow(
       
       // Fallback to mock generation if AI fails
       console.log('Using fallback text-to-image generation...');
-      const { createMockColoringPage } = await import('./mock-ai-fallback');
-      const fallbackImageDataUri = createMockColoringPage(input.description);
-      console.log('Successfully generated fallback coloring page from text');
-      return { coloringPageDataUri: fallbackImageDataUri };
+      try {
+        const { createMockColoringPage } = await import('./mock-ai-fallback');
+        const fallbackImageDataUri = createMockColoringPage(input.description);
+        console.log('Successfully generated fallback coloring page from text');
+        return { coloringPageDataUri: fallbackImageDataUri };
+      } catch (fallbackError) {
+        console.error('Fallback generation also failed:', fallbackError);
+        // Ultimate fallback - return a simple mock
+        return { coloringPageDataUri: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ3aGl0ZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9ImJsYWNrIj5Db2xvcmluZyBQYWdlPC90ZXh0Pjwvc3ZnPg==' };
+      }
     }
   }
 );

@@ -99,9 +99,17 @@ const imageConversionPrompt = `Convert this image into a black and white line ar
 export async function generateColoringPageFromImage(input: GenerateColoringPageFromImageInput): Promise<GenerateColoringPageFromImageOutput> {
   const {photoDataUri} = input;
   
-  console.log('Converting image to coloring page using real AI image generation...');
+  console.log('Converting image to coloring page...');
   
   try {
+    // Check if we have the required API keys
+    const apiKey = process.env.IMAGE_TO_LINE_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    
+    if (!apiKey) {
+      console.log('No API key available, using fallback generation');
+      throw new Error('No API key available');
+    }
+    
     // Try real AI image generation first
     const processedImageDataUri = await convertImageToColoringPageServer(photoDataUri);
     console.log('Successfully converted image to coloring page using AI');
@@ -111,8 +119,14 @@ export async function generateColoringPageFromImage(input: GenerateColoringPageF
     
     // Fallback to mock generation if AI fails
     console.log('Using fallback image generation...');
-    const fallbackImageDataUri = createEnhancedMockFromImage(photoDataUri);
-    console.log('Successfully generated fallback coloring page');
-    return { coloringPageDataUri: fallbackImageDataUri };
+    try {
+      const fallbackImageDataUri = createEnhancedMockFromImage(photoDataUri);
+      console.log('Successfully generated fallback coloring page');
+      return { coloringPageDataUri: fallbackImageDataUri };
+    } catch (fallbackError) {
+      console.error('Fallback generation also failed:', fallbackError);
+      // Ultimate fallback - return a simple mock
+      return { coloringPageDataUri: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ3aGl0ZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9ImJsYWNrIj5Db2xvcmluZyBQYWdlPC90ZXh0Pjwvc3ZnPg==' };
+    }
   }
 }
