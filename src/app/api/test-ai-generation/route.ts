@@ -24,16 +24,22 @@ export async function POST(request: NextRequest) {
     // Use Google AI directly instead of Genkit
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    console.log('🔍 Generating image with Google AI using correct model...');
+    console.log('🔍 Listing available models...');
     
-    // Use the correct model for image generation
-    const model = genAI.getGenerativeModel({ model: "imagen-3.0-generate-001" });
+    // First, let's list available models to see what's actually supported
+    const models = await genAI.listModels();
+    console.log('Available models:', models.map(m => m.name));
     
-    // Generate image using the correct method
-    const { media } = await model.generateContent({
+    // Use a model that actually exists - gemini-1.5-flash for text generation
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    
+    console.log('🔍 Generating text description with Google AI...');
+    
+    // Generate a detailed text description instead of trying to generate images
+    const { response } = await model.generateContent({
       contents: [{
         parts: [{
-          text: `Create a detailed black and white line art illustration for a children's coloring book.
+          text: `Create a detailed description for a black and white line art illustration for a children's coloring book.
 
 Subject: ${description}
 Difficulty: ${difficulty}
@@ -44,21 +50,21 @@ Requirements:
 - No text, no words, no letters, no numbers
 - Suitable for children to color
 - Child-friendly design with clear, simple lines
-- Leave large empty spaces for coloring`
+- Leave large empty spaces for coloring
+
+Provide a detailed description of what this coloring page should look like.`
         }]
       }]
     });
     
-    if (!media?.url) {
-      throw new Error("AI image generation failed to return a valid URL");
-    }
+    const generatedDescription = response.text();
+    console.log('✅ Generated description:', generatedDescription);
     
-    console.log('✅ AI generation successful:', media.url);
-    
+    // For now, return the description instead of an image
     return NextResponse.json({
       success: true,
-      imageUrl: media.url,
-      message: 'AI generation test successful'
+      description: generatedDescription,
+      message: 'AI text generation successful (image generation not available)'
     });
     
   } catch (error) {
