@@ -1,7 +1,9 @@
 // Server-side Google Sheets API using Apps Script
 // This is for server-side operations (API routes, auth, etc.)
 
-const GOOGLE_APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbzIrx3-B9Vfp51GCW1AOyqS0BMKGbZCwm6_Tp0tOhP3YmELjQSxvGGiEmOe_5D0biY8/exec';
+import bcrypt from 'bcryptjs';
+
+const GOOGLE_APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbz9yA6fJAIHHiroyqX2AUNlZ5C1QqUXh8VKCrGkX3ykIPRcpaHYbpX5wF39M6-y4XQ/exec';
 const GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
 
 interface User {
@@ -35,6 +37,10 @@ export const googleSheetsUserDb = {
         return { success: false, error: 'Google Sheets configuration not found' };
       }
       
+      // Hash the password before sending to Google Sheets
+      const hashedPassword = await bcrypt.hash(password, 12);
+      console.log('🔐 Password hashed for Google Sheets storage');
+      
       const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
         method: 'POST',
         headers: {
@@ -45,7 +51,7 @@ export const googleSheetsUserDb = {
           apiKey: GOOGLE_SHEETS_API_KEY,
           id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           email,
-          password,
+          password: hashedPassword,
           displayName,
           credits: 50,
           subscriptionTier: 'FREE',
