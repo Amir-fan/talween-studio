@@ -21,14 +21,10 @@ export async function POST(request: NextRequest) {
     
     console.log('🔍 API key available, creating GoogleGenerativeAI instance...');
     
-    // Use Google AI directly instead of Genkit
+    // Use Google AI directly with the correct approach
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    console.log('🔍 Listing available models...');
-    
-    // First, let's list available models to see what's actually supported
-    const models = await genAI.listModels();
-    console.log('Available models:', models.map(m => m.name));
+    console.log('🔍 Using gemini-1.5-flash for text generation...');
     
     // Use a model that actually exists - gemini-1.5-flash for text generation
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
@@ -36,7 +32,7 @@ export async function POST(request: NextRequest) {
     console.log('🔍 Generating text description with Google AI...');
     
     // Generate a detailed text description instead of trying to generate images
-    const { response } = await model.generateContent({
+    const result = await model.generateContent({
       contents: [{
         parts: [{
           text: `Create a detailed description for a black and white line art illustration for a children's coloring book.
@@ -57,7 +53,7 @@ Provide a detailed description of what this coloring page should look like.`
       }]
     });
     
-    const generatedDescription = response.text();
+    const generatedDescription = result.response.text();
     console.log('✅ Generated description:', generatedDescription);
     
     // For now, return the description instead of an image
