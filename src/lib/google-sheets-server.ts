@@ -159,7 +159,7 @@ export const googleSheetsUserDb = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: 'getUserById',
+          action: 'getUser',
           apiKey: GOOGLE_SHEETS_API_KEY,
           userId: id
         })
