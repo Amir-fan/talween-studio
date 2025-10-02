@@ -24,10 +24,10 @@ export async function POST(request: NextRequest) {
     // Use Google AI directly with the correct approach
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    console.log('🔍 Using gemini-1.5-flash for text generation...');
+    console.log('🔍 Using gemini-1.5-pro for text generation...');
     
-    // Use a model that actually exists - gemini-1.5-flash for text generation
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Use a model that actually exists - gemini-1.5-pro for text generation
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
     
     console.log('🔍 Generating text description with Google AI...');
     
