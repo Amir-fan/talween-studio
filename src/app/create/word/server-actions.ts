@@ -1,8 +1,8 @@
 
 'use server';
+import 'server-only';
 
 import { checkAndDeductCreditsForFeature } from '@/lib/local-credits';
-import { contentDb } from '@/lib/simple-database';
 import { createMockColoringPage } from '@/ai/flows/mock-ai-fallback';
 import { generateColoringPageFromTextFlow } from '@/ai/flows/generate-coloring-page-from-text-flow';
 import type { GenerateColoringPageFromTextInput, GenerateColoringPageFromTextOutput } from './types';
@@ -54,9 +54,10 @@ export async function generateImageAction(
       console.log('✅ Fallback generation successful');
     }
     
-    // Save coloring page to database
+    // Save coloring page to database (dynamic import to avoid client bundling)
     if (result && values.userId) {
       try {
+        const { contentDb } = await import('@/lib/simple-database');
         const saveResult = contentDb.create(
           values.userId,
           `صفحة تلوين: ${values.description}`,

@@ -1,9 +1,10 @@
 
 'use server';
+import 'server-only';
 
 import { checkAndDeductCreditsForFeature } from '@/lib/local-credits';
 import { createStoryAndColoringPagesFlow } from '@/ai/flows/create-story-and-coloring-pages';
-import { contentDb } from '@/lib/simple-database';
+// Load contentDb dynamically within the action to avoid bundling server-only modules in client context
 import { v4 as uuidv4 } from 'uuid';
 import type { StoryAndPagesInput, StoryAndPagesOutput } from './types';
 
@@ -53,7 +54,8 @@ export async function generateStoryAction(
       throw new Error("Story generation flow failed to return complete data.");
     }
 
-    // Save story to database
+    // Save story to database (dynamic import keeps this server-only)
+    const { contentDb } = await import('@/lib/simple-database');
     const saveResult = contentDb.create(
       input.userId,
       finalStory.title,

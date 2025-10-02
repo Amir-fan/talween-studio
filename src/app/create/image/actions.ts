@@ -1,11 +1,12 @@
 'use server';
+import 'server-only';
 
 import { checkAndDeductCreditsForFeature } from '@/lib/local-credits';
 import {
   generateColoringPageFromImage,
   GenerateColoringPageFromImageInput,
 } from '@/ai/flows/generate-coloring-page-from-image';
-import { contentDb } from '@/lib/simple-database';
+// Avoid eager import of fs-based DB in client bundles; load at call time
 
 export async function generateImageFromPhotoAction(
   values: GenerateColoringPageFromImageInput & { userId?: string }
@@ -43,9 +44,10 @@ export async function generateImageFromPhotoAction(
       console.log('✅ Fallback image generation successful');
     }
     
-    // Save image conversion to database
+    // Save image conversion to database (dynamic import to keep server-only)
     if (result && values.userId) {
       try {
+        const { contentDb } = await import('@/lib/simple-database');
         const saveResult = contentDb.create(
           values.userId,
           'تحويل صورة إلى صفحة تلوين',
