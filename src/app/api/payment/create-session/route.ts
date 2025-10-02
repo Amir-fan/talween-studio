@@ -6,6 +6,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔍 PAYMENT API - Starting payment session creation');
+    
     // Check if MyFatoorah API key is configured
     if (!process.env.MYFATOORAH_API_KEY) {
       console.error('MyFatoorah API key not configured in environment variables');
@@ -19,6 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { amount, currency, packageId, credits, userId } = await request.json();
+    console.log('🔍 PAYMENT API - Request data:', { amount, currency, packageId, credits, userId });
 
     if (!amount || !currency || !packageId || !credits || !userId) {
       return NextResponse.json(
@@ -33,17 +36,25 @@ export async function POST(request: NextRequest) {
     let user = null;
     
     try {
+      console.log('🔍 PAYMENT API - Looking up user in Google Sheets...');
       // Try Google Sheets first
       user = await googleSheetsUserDb.findById(userId);
       console.log('📊 User found in Google Sheets:', !!user);
+      if (user) {
+        console.log('📊 User data from Google Sheets:', { id: user.id, email: user.email, displayName: user.displayName });
+      }
     } catch (error) {
       console.log('📊 Google Sheets error, trying local database:', error);
     }
     
     // Fallback to local database if Google Sheets fails
     if (!user) {
+      console.log('🔍 PAYMENT API - Looking up user in local database...');
       user = userDb.findById(userId);
       console.log('💾 User found in local database:', !!user);
+      if (user) {
+        console.log('💾 User data from local database:', { id: user.id, email: user.email, displayName: user.displayName });
+      }
     }
     
     if (!user) {
