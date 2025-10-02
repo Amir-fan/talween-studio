@@ -66,17 +66,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Create order record
+    console.log('🔍 PAYMENT API - Creating order with:', { userId, amount, packageId, credits });
     const orderResult = orderDb.create(
       userId,
       amount,
       packageId,  // subscriptionTier
       credits     // creditsPurchased
     );
+    console.log('🔍 PAYMENT API - Order created:', orderResult);
     const orderId = orderResult.id;
 
     // Get user name from the correct field (handle both Google Sheets and local DB)
-    const userName = user['الاسم'] || user.displayName || user.display_name || 'مستخدم';
-    const userEmail = user['البريد الإلكتروني'] || user.email;
+    console.log('🔍 PAYMENT API - User object structure:', Object.keys(user));
+    console.log('🔍 PAYMENT API - User data:', user);
+    
+    const userName = user['الاسم'] || user.displayName || user.display_name || user.Name || 'مستخدم';
+    const userEmail = user['البريد الإلكتروني'] || user.email || user.Email;
     
     console.log('📊 User data for payment:', { userName, userEmail });
 
