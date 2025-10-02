@@ -125,26 +125,19 @@ function AdminDashboardContent() {
     try {
       console.log('🔍 Loading admin data...');
       
-      // Load users from Google Sheets
-      const usersUrl = `${config.googleAppsScriptUrl}?action=getUsers&apiKey=${config.googleSheetsApiKey}`;
-      console.log('Users URL:', usersUrl);
-      
-      const usersResponse = await fetch(usersUrl);
+      // Load users from local database first (which should have Google Sheets users synced)
+      const usersResponse = await fetch('/api/admin/data');
       console.log('Users response status:', usersResponse.status);
-      console.log('Users response ok:', usersResponse.ok);
       
       if (!usersResponse.ok) {
         throw new Error(`HTTP error! status: ${usersResponse.status}`);
       }
       
-      const usersData = await usersResponse.json();
-      console.log('Users data:', usersData);
-      console.log('Users data success:', usersData.success);
-      console.log('Users data users:', usersData.users);
-      console.log('Users data error:', usersData.error);
+      const data = await usersResponse.json();
+      console.log('Admin data:', data);
       
-      if (usersData.success) {
-        const rawUsers = usersData.users || [];
+      if (data.users) {
+        const rawUsers = data.users || [];
         console.log('Raw users from Google Sheets:', rawUsers);
         console.log('First user structure:', rawUsers[0]);
         

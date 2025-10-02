@@ -30,10 +30,36 @@ export async function POST(request: NextRequest) {
       localDeleteResult = { success: false, error: localError.message };
     }
 
-    // Step 2: Skip Google Sheets deletion for now (focus on local database)
-    console.log('📊 Step 2: Skipping Google Sheets deletion (focusing on local database)');
-    let googleSheetsSuccess = true; // Assume success since we're skipping
-    let googleSheetsError = 'Skipped for reliability';
+    // Step 2: Delete from Google Sheets
+    console.log('📊 Step 2: Deleting from Google Sheets...');
+    let googleSheetsSuccess = false;
+    let googleSheetsError = '';
+    
+    try {
+      const response = await fetch(`${config.googleAppsScriptUrl}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'deleteUser',
+          userId: userId,
+          apiKey: config.googleSheetsApiKey
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('📊 Google Sheets deletion result:', result);
+      googleSheetsSuccess = result.success;
+      googleSheetsError = result.error || '';
+    } catch (error) {
+      console.error('📊 Google Sheets deletion error:', error);
+      googleSheetsError = error.message;
+    }
 
     // Return success if local deletion succeeded (primary requirement)
     const localSuccess = localDeleteResult && localDeleteResult.success;
