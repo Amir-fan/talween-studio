@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     // Step 1: Add credits to local database
     console.log('💾 Step 1: Adding credits to local database...');
-    const localUser = userDb.findUserById(userId);
+    const localUser = userDb.findById(userId);
     let localSuccess = false;
     let localNewCredits = 0;
 
