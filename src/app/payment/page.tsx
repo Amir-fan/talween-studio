@@ -42,7 +42,7 @@ function PaymentPageContent() {
       // Create MyFatoorah payment session
       try {
         setLoading(true);
-        const response = await fetch('/api/payment/create-session', {
+        const response = await fetch('/api/payment/create-session-fixed', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
