@@ -204,11 +204,12 @@ function handleForceResetSheet() {
       'ID',                        // A: ID
       'Email',                     // B: Email
       'Name',                      // C: Name
-      'Credits',                   // D: Credits
-      'Subscription',              // E: Subscription
-      'Created',                   // F: Created
-      'LastLogin',                 // G: LastLogin
-      'TotalPaid'                  // H: TotalPaid
+      'Password',                  // D: Password
+      'Credits',                   // E: Credits
+      'Subscription',              // F: Subscription
+      'Created',                   // G: Created
+      'LastLogin',                 // H: LastLogin
+      'TotalPaid'                  // I: TotalPaid
     ];
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     console.log('Created new sheet with English headers');
@@ -379,11 +380,12 @@ function handleCreateUser(data) {
       data.id || generateId(),                    // A: ID
       data.email || '',                           // B: Email
       data.displayName || '',                     // C: Name
-      data.credits || 50,                         // D: Credits
-      data.subscriptionTier || 'FREE',            // E: Subscription
-      new Date().toISOString(),                   // F: Created
-      new Date().toISOString(),                   // G: LastLogin
-      data.totalPaid || 0                         // H: TotalPaid
+      data.password || '',                        // D: Password
+      data.credits || 50,                         // E: Credits
+      data.subscriptionTier || 'FREE',            // F: Subscription
+      new Date().toISOString(),                   // G: Created
+      new Date().toISOString(),                   // H: LastLogin
+      data.totalPaid || 0                         // I: TotalPaid
     ];
     
     console.log('  - userData array:', JSON.stringify(userData, null, 2));
@@ -791,11 +793,12 @@ function getSheet() {
       'ID',                        // A: ID
       'Email',                     // B: Email
       'Name',                      // C: Name
-      'Credits',                   // D: Credits
-      'Subscription',              // E: Subscription
-      'Created',                   // F: Created
-      'LastLogin',                 // G: LastLogin
-      'TotalPaid'                  // H: TotalPaid
+      'Password',                  // D: Password
+      'Credits',                   // E: Credits
+      'Subscription',              // F: Subscription
+      'Created',                   // G: Created
+      'LastLogin',                 // H: LastLogin
+      'TotalPaid'                  // I: TotalPaid
     ];
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   }
