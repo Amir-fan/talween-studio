@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ai } from '@/ai/genkit';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🔍 TESTING AI GENERATION DIRECTLY WITH GOOGLE AI...');
+    console.log('🔍 TESTING AI GENERATION WITH GENKIT (ORIGINAL APPROACH)...');
     
     const { description, difficulty } = await request.json();
     
@@ -19,23 +19,14 @@ export async function POST(request: NextRequest) {
       throw new Error('No API key available');
     }
     
-    console.log('🔍 API key available, creating GoogleGenerativeAI instance...');
+    console.log('🔍 API key available, using Genkit for AI generation...');
     
-    // Use Google AI directly with the correct approach
-    const genAI = new GoogleGenerativeAI(apiKey);
+    // Use Genkit with the original approach that was working
+    console.log('🔍 Generating image with Genkit using imagen-4.0-generate-preview-06-06...');
     
-    console.log('🔍 Using gemini-1.5-pro for text generation...');
-    
-    // Use a model that actually exists - gemini-1.5-pro for text generation
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
-    
-    console.log('🔍 Generating text description with Google AI...');
-    
-    // Generate a detailed text description instead of trying to generate images
-    const result = await model.generateContent({
-      contents: [{
-        parts: [{
-          text: `Create a detailed description for a black and white line art illustration for a children's coloring book.
+    const { media } = await ai.generate({
+      model: 'googleai/imagen-4.0-generate-preview-06-06',
+      prompt: `Create a detailed black and white line art illustration for a children's coloring book.
 
 Subject: ${description}
 Difficulty: ${difficulty}
@@ -46,21 +37,22 @@ Requirements:
 - No text, no words, no letters, no numbers
 - Suitable for children to color
 - Child-friendly design with clear, simple lines
-- Leave large empty spaces for coloring
-
-Provide a detailed description of what this coloring page should look like.`
-        }]
-      }]
+- Leave large empty spaces for coloring`,
+      config: {
+        responseModalities: ['TEXT', 'IMAGE'],
+      },
     });
     
-    const generatedDescription = result.response.text();
-    console.log('✅ Generated description:', generatedDescription);
+    if (!media?.url) {
+      throw new Error("AI image generation failed to return a valid URL");
+    }
     
-    // For now, return the description instead of an image
+    console.log('✅ AI image generation successful:', media.url);
+    
     return NextResponse.json({
       success: true,
-      description: generatedDescription,
-      message: 'AI text generation successful (image generation not available)'
+      imageUrl: media.url,
+      message: 'AI image generation successful with Genkit'
     });
     
   } catch (error) {
