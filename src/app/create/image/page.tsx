@@ -100,7 +100,8 @@ export default function CreateWithImagePage() {
 
       const result = await generateImageFromPhotoAction({ 
         photoDataUri: previewUrl,
-        userId: user?.id || 'admin'
+        userId: user?.id || 'admin',
+        userEmail: user?.email
       });
       
       if (result.success && result.data) {

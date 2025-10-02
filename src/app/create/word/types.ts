@@ -9,6 +9,7 @@ export const GenerateColoringPageFromTextInputSchema = z.object({
     required_error: 'الرجاء اختيار مستوى الصعوبة.',
   }),
   userId: z.string().optional(),
+  userEmail: z.string().email().optional(),
 });
 export type GenerateColoringPageFromTextInput = z.infer<typeof GenerateColoringPageFromTextInputSchema>;
 

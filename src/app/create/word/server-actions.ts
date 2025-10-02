@@ -27,7 +27,7 @@ export async function generateImageAction(
           values.userId, 
           'TEXT_TO_COLORING',
           `تحويل فكرة نصية إلى صفحة تلوين: ${values.description}`,
-          undefined
+          values.userEmail
         );
         console.log('  - creditCheck result:', creditCheck);
         

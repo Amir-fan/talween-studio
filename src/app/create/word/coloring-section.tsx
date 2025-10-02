@@ -49,7 +49,8 @@ export function ColoringSection() {
     defaultValues: {
       description: '',
       difficulty: 'Simple',
-      userId: user?.id || 'admin'
+      userId: user?.id || 'admin',
+      userEmail: user?.email
     },
   });
 
@@ -57,6 +58,7 @@ export function ColoringSection() {
   useState(() => {
     if (user) {
       form.setValue('userId', user.id);
+      form.setValue('userEmail', user.email);
     } else {
         form.setValue('userId', 'admin');
     }

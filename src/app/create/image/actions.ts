@@ -9,7 +9,7 @@ import {
 // Avoid eager import of fs-based DB in client bundles; load at call time
 
 export async function generateImageFromPhotoAction(
-  values: GenerateColoringPageFromImageInput & { userId?: string }
+  values: GenerateColoringPageFromImageInput & { userId?: string; userEmail?: string }
 ): Promise<{
   success: boolean;
   data?: { coloringPageDataUri: string };
@@ -22,7 +22,7 @@ export async function generateImageFromPhotoAction(
         values.userId, 
         'PHOTO_TO_COLORING',
         'تحويل صورة شخصية إلى صفحة تلوين',
-        undefined
+        values.userEmail
       );
       if (!creditCheck.success) {
         throw new Error(creditCheck.error === 'Not enough credits' ? 'NotEnoughCredits' : 'Failed to process credits.');
