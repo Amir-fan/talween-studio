@@ -238,6 +238,56 @@ export const googleSheetsUserDb = {
     }
   },
 
+  async addCredits(userId: string, amount: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      if (!GOOGLE_APPS_SCRIPT_URL || !GOOGLE_SHEETS_API_KEY) {
+        return { success: false, error: 'Google Sheets configuration not found' };
+      }
+      const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'addCredits',
+          apiKey: GOOGLE_SHEETS_API_KEY,
+          userId: userId,
+          amount: amount
+        })
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result = await response.json();
+      return { success: !!result.success, error: result.error };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to add credits' };
+    }
+  },
+
+  async deductCredits(userId: string, amount: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      if (!GOOGLE_APPS_SCRIPT_URL || !GOOGLE_SHEETS_API_KEY) {
+        return { success: false, error: 'Google Sheets configuration not found' };
+      }
+      const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'deductCredits',
+          apiKey: GOOGLE_SHEETS_API_KEY,
+          userId: userId,
+          amount: amount
+        })
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result = await response.json();
+      return { success: !!result.success, error: result.error };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to deduct credits' };
+    }
+  },
+
   async deleteUser(userId: string): Promise<AuthResult> {
     try {
       console.log('🗑️ Deleting user from Google Sheets (server-side)...');

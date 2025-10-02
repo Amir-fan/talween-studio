@@ -3,7 +3,8 @@
  * Replaces local database with Google Sheets as primary database
  */
 
-import { googleSheetsUserDb } from './google-sheets-api';
+// Use server-side implementation to avoid client env issues when called from server actions
+import { googleSheetsUserDb } from './google-sheets-server';
 import { PRICING_CONFIG, type FeatureType } from './pricing';
 
 export async function checkAndDeductCredits(userId: string, amount: number): Promise<{ success: boolean; error?: string }> {
@@ -70,12 +71,12 @@ export async function getUserCredits(userId: string): Promise<{ success: boolean
   }
 
   try {
-    const user = await googleSheetsUserDb.findById(userId);
-    if (!user) {
-      return { success: false, error: 'User not found.' };
+    const result = await googleSheetsUserDb.findById(userId);
+    if (!result.success || !result.user) {
+      return { success: false, error: result.error || 'User not found.' };
     }
 
-    const credits = parseInt(user['النقاط'] || user.credits || '0');
+    const credits = parseInt((result.user as any).credits as any || '0');
     return { success: true, credits };
   } catch (error) {
     console.error('Error getting user credits:', error);
