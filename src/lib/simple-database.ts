@@ -120,9 +120,23 @@ function saveDatabase() {
     
     const dataString = JSON.stringify(db, null, 2);
     
-    // Write to main database file
-    fs.writeFileSync(dbPath, dataString, 'utf8');
-    console.log('✅ Database saved successfully');
+    // Write to main database file; if filesystem is read-only, fall back to /tmp
+    try {
+      fs.writeFileSync(dbPath, dataString, 'utf8');
+      console.log('✅ Database saved successfully');
+    } catch (primaryError: any) {
+      const msg = primaryError?.code || primaryError?.message || String(primaryError);
+      if (msg.includes('EROFS') || msg.includes('read-only')) {
+        const tmpPath = '/tmp/database.json';
+        const tmpBackup = '/tmp/database-backup.json';
+        console.warn('⚠️ Read-only filesystem detected. Saving database to tmp:', tmpPath);
+        fs.writeFileSync(tmpPath, dataString, 'utf8');
+        try { fs.writeFileSync(tmpBackup, dataString, 'utf8'); } catch {}
+        console.log('✅ Database saved to tmp successfully');
+      } else {
+        throw primaryError;
+      }
+    }
     
     // Optional: Create backup (non-critical)
     try {
@@ -136,6 +150,11 @@ function saveDatabase() {
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error('❌ Database save error:', error);
+    // Do not throw in read-only environments; log and continue
+    if (msg.includes('EROFS') || msg.includes('read-only')) {
+      console.warn('Continuing without persistent save due to read-only filesystem.');
+      return;
+    }
     throw new Error(`Database save failed: ${msg}`);
   }
 }
