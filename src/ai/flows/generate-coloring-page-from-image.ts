@@ -31,81 +31,77 @@ async function convertImageToColoringPageServer(imageDataUri: string): Promise<s
   const sourceMime = mimeMatch?.[1] || 'image/jpeg';
   const base64Data = b64;
   
-  // Analyze the uploaded image in detail
-  // 1) Prefer REST v1 endpoint (more widely available) with gemini-1.5-flash-latest
-  // 2) Fallback to SDK with several model names if needed
-  const analyzeViaRest = async (): Promise<string> => {
-    const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
-    const body = {
-      contents: [
-        {
-          parts: [
-            { text: "Describe EXACTLY what is in this image (subject, pose, angle, composition, and all details)." },
-            {
-              inline_data: {
-                mime_type: sourceMime,
-                data: base64Data
-              }
-            }
-          ]
-        }
-      ]
-    } as any;
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    if (!res.ok) {
-      throw new Error(`REST analyze failed: ${res.status}`);
-    }
-    const json = await res.json();
-    const text = (json?.candidates?.[0]?.content?.parts || [])
-      .map((p: any) => p?.text)
-      .filter(Boolean)
-      .join(' ')
-      .trim();
-    return text || '';
-  };
-
-  // Try multiple stable model names via SDK if REST didn't work
-  const analyze = async (modelName: string) => {
-    const model = genAI.getGenerativeModel({ model: modelName });
-    return await model.generateContent([
-      "Look at this image very carefully. I need you to describe EXACTLY what you see - the main subject, its exact appearance, pose, angle, details, and background. Be extremely specific about every detail including colors, shapes, textures, facial features (if applicable), and any unique characteristics. Focus on the EXACT composition, framing, and angle. This will be used to recreate the EXACT same image in coloring book style - do NOT change the angle, pose, or add extra elements.",
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType: sourceMime
-        }
-      }
-    ]);
-  };
-
-  let analysisText = '';
-  try {
-    analysisText = await analyzeViaRest();
-  } catch (restErr) {
-    console.warn('Gemini REST v1 analyze failed:', restErr instanceof Error ? restErr.message : restErr);
-  }
-  if (!analysisText) {
-    const candidates = ['gemini-1.5-flash-latest', 'gemini-1.5-pro-latest', 'gemini-1.5-flash', 'gemini-1.5-pro'];
-    let lastErr: any = null;
-    for (const m of candidates) {
+  // Analyze the uploaded image in detail by first querying available models
+  const listModels = async () => {
+    const urls = [
+      `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+    ];
+    for (const url of urls) {
       try {
-        const res = await analyze(m);
-        analysisText = res.response.text();
-        if (analysisText) break;
-      } catch (e) {
-        lastErr = e;
-        console.warn(`Gemini analyze failed for ${m}:`, e instanceof Error ? e.message : e);
-        continue;
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const json = await res.json();
+        if (json?.models?.length) return json.models as any[];
+      } catch {
+        // ignore and try next
       }
     }
-    if (!analysisText) {
-      const msg = lastErr ? (lastErr instanceof Error ? lastErr.message : String(lastErr)) : 'Unknown error';
-      throw new Error(`Gemini analysis failed across models (REST + SDK fallbacks): ${msg}`);
-    }
+    return [] as any[];
+  };
+
+  const models = await listModels();
+  const modelNames = models.map((m: any) => m.name || m.baseModel).filter(Boolean);
+  // Prefer flash-latest, then other flash, then pro-latest
+  const preferred = [
+    'gemini-1.5-flash-latest',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-exp',
+    'gemini-1.5-flash',
+    'gemini-1.5-pro-latest',
+  ];
+  const pick = preferred.find(p => modelNames.some(n => n.includes(p)))
+    || modelNames.find(n => /gemini.*flash/i.test(n))
+    || modelNames.find(n => /gemini.*pro/i.test(n));
+
+  if (!pick) {
+    throw new Error(`No suitable Gemini model found. Available: ${modelNames.join(', ') || 'none'}`);
+  }
+
+  // Decide REST endpoint version
+  const useV1 = modelNames.some(n => n.includes(pick) && n.startsWith('models/')) ? true : true;
+  const restEndpoint = useV1
+    ? `https://generativelanguage.googleapis.com/v1/models/${pick}:generateContent?key=${apiKey}`
+    : `https://generativelanguage.googleapis.com/v1beta/models/${pick}:generateContent?key=${apiKey}`;
+
+  const analysisBody: any = {
+    contents: [
+      {
+        parts: [
+          { text: 'Describe EXACTLY what is in this image (subject, pose, angle, composition, and all details).' },
+          { inline_data: { mime_type: sourceMime, data: base64Data } }
+        ]
+      }
+    ]
+  };
+
+  const analysisRes = await fetch(restEndpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(analysisBody)
+  });
+  if (!analysisRes.ok) {
+    const errText = await analysisRes.text();
+    throw new Error(`Gemini analyze failed for model ${pick}: ${analysisRes.status} ${errText}`);
+  }
+  const analysisJson = await analysisRes.json();
+  const analysisText = (analysisJson?.candidates?.[0]?.content?.parts || [])
+    .map((p: any) => p?.text)
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+  if (!analysisText) {
+    throw new Error('Gemini analyze returned empty description');
   }
 
   const imageDescription = analysisText || 'a person';
