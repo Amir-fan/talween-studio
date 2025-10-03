@@ -54,11 +54,11 @@ async function convertImageToColoringPageServer(imageDataUri: string): Promise<s
   const modelNames = models.map((m: any) => m.name || m.baseModel).filter(Boolean);
   // Prefer flash-latest, then other flash, then pro-latest
   const preferred = [
-    'gemini-1.5-flash-latest',
+    'gemini-2.5-flash',
     'gemini-2.0-flash',
-    'gemini-2.0-flash-exp',
-    'gemini-1.5-flash',
-    'gemini-1.5-pro-latest',
+    'gemini-2.0-flash-001',
+    'gemini-2.0-flash-lite',
+    'gemini-2.0-flash-lite-001'
   ];
   const pick = preferred.find(p => modelNames.some(n => n.includes(p)))
     || modelNames.find(n => /gemini.*flash/i.test(n))
