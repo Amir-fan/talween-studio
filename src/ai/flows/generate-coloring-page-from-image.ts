@@ -46,7 +46,7 @@ async function convertImageToColoringPageServer(imageDataUri: string): Promise<s
   };
 
   let analysisText = '';
-  const candidates = ['gemini-1.5-flash', 'gemini-1.5-pro-latest', 'gemini-1.5-pro'];
+  const candidates = ['gemini-1.5-flash-latest', 'gemini-1.5-pro-latest', 'gemini-1.5-flash', 'gemini-1.5-pro'];
   let lastErr: any = null;
   for (const m of candidates) {
     try {
@@ -60,7 +60,10 @@ async function convertImageToColoringPageServer(imageDataUri: string): Promise<s
     }
   }
   if (!analysisText) {
-    if (lastErr) throw lastErr;
+    if (lastErr) {
+      const msg = lastErr instanceof Error ? lastErr.message : String(lastErr);
+      throw new Error(`Gemini analysis failed across models (flash-latest, pro-latest, flash, pro): ${msg}`);
+    }
     throw new Error('Failed to analyze image with Gemini models');
   }
 
