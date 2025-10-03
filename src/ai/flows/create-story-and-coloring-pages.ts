@@ -97,6 +97,7 @@ Additional Requirements:
 - Draw in black lines on white background only
 - Professional coloring book style with clean, bold black lines
 - Children will color this themselves
+- NO TEXT OR LETTERS of any kind (no signs, labels, or writing)
 - IMPORTANT: If character is a BOY, never add hijab
 - If character is a GIRL and setting is Islamic, draw her with hijab covering all hair`,
       config: {
@@ -132,6 +133,7 @@ Additional Requirements:
 - Draw in black lines on white background only
 - Professional coloring book style with clean, bold black lines
 - Children will color this themselves
+- NO TEXT OR LETTERS of any kind (no signs, labels, or writing)
 - IMPORTANT: If character is a BOY, never add hijab
 - If character is a GIRL and setting is Islamic, draw her with hijab covering all hair
 - Keep the SAME character appearance throughout all scenes`,

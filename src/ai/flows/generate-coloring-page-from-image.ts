@@ -127,6 +127,8 @@ Additional Requirements:
 - Do NOT add extra people, objects, or elements
 - This must be the EXACT same image converted to line art style only
 - Work for ANY type of image - people, animals, objects, anything`,
+      // Emphasize no text directly in the prompt to avoid unsupported negativePrompt
+      // NO TEXT OR LETTERS (no words, no signs, no numbers, no labels, no logos)
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
       },
