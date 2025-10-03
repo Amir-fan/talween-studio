@@ -165,3 +165,27 @@ export async function generateWithRetry(
   // This should never be reached, but just in case
   return createFallbackBlackWhiteImage('Coloring Page');
 }
+
+/**
+ * Strict retry that NEVER returns a mock fallback.
+ * Throws an error if validation fails after all retries.
+ */
+export async function generateWithRetryStrict(
+  generateFunction: () => Promise<string>,
+  maxRetries: number = 2
+): Promise<string> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Attempt ${attempt} to generate black and white image (strict)...`);
+      const result = await generateFunction();
+      const validation = await validateBlackAndWhiteImage(result);
+      if (validation.isValid && !validation.hasColors) {
+        return result;
+      }
+      console.warn(`Attempt ${attempt} failed validation (strict)`);
+    } catch (error) {
+      console.error(`Attempt ${attempt} failed (strict):`, error);
+    }
+  }
+  throw new Error('Black-and-white image generation failed validation after retries.');
+}

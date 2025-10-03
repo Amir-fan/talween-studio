@@ -4,6 +4,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import { generateWithRetryStrict, STRICT_BLACK_WHITE_PROMPT } from '@/lib/image-validation';
 import { GenerateColoringPageFromTextInputSchema, GenerateColoringPageFromTextOutputSchema } from '@/app/create/word/types';
 import type { GenerateColoringPageFromTextInput, GenerateColoringPageFromTextOutput } from '@/app/create/word/types';
 
@@ -31,55 +32,38 @@ Rules:
 async function generateColoringPageFromText(description: string, difficulty: string): Promise<string> {
   console.log(`Generating AI image for: ${description} (${difficulty})`);
   
-  const { media } = await ai.generate({
-    model: 'googleai/imagen-4.0-generate-preview-06-06',
-    prompt: `Create a detailed black and white line art illustration for a children's coloring book.
+  const url = await generateWithRetryStrict(async () => {
+    const { media } = await ai.generate({
+      model: 'googleai/imagen-4.0-generate-preview-06-06',
+      prompt: `${STRICT_BLACK_WHITE_PROMPT}
+
+Create a detailed black and white line art illustration for a children's coloring book.
 
 Subject: ${description}
 Difficulty: ${difficulty}
 
-Requirements:
-- Professional coloring book style with clean, bold black outlines
-- NO COLORS - only black lines on white background
+Additional Requirements:
 - No text, no words, no letters, no numbers
-- Suitable for children to color
-- Child-friendly design with clear, simple lines
 - Leave large empty spaces for coloring`,
-    config: {
-      responseModalities: ['TEXT', 'IMAGE'],
-    },
+      config: {
+        responseModalities: ['TEXT', 'IMAGE'],
+      },
+    });
+    if (!media?.url) {
+      throw new Error('AI image generation failed to return a valid URL');
+    }
+    return media.url;
   });
 
-  if (!media?.url) {
-    throw new Error("AI image generation failed to return a valid URL");
-  }
-  
-  console.log('Successfully generated AI image:', media.url);
-  return media.url;
+  console.log('Successfully generated AI image:', url);
+  return url;
 }
 
 export async function generateColoringPageFromTextFlow(input: GenerateColoringPageFromTextInput): Promise<GenerateColoringPageFromTextOutput> {
   console.log(`Generating coloring page for: ${input.description} (${input.difficulty})`);
   
-  try {
-    // Try real AI image generation first
-    const coloringPageDataUri = await generateColoringPageFromText(input.description, input.difficulty);
-    console.log('Successfully generated coloring page from text using AI:', coloringPageDataUri);
-    return { coloringPageDataUri };
-  } catch (error) {
-    console.error('AI text-to-image generation failed, using fallback:', error);
-    
-    // Fallback to mock generation if AI fails
-    console.log('Using fallback text-to-image generation...');
-    try {
-      const { createMockColoringPage } = await import('./mock-ai-fallback');
-      const fallbackImageDataUri = createMockColoringPage(input.description);
-      console.log('Successfully generated fallback coloring page from text');
-      return { coloringPageDataUri: fallbackImageDataUri };
-    } catch (fallbackError) {
-      console.error('Fallback generation also failed:', fallbackError);
-      // Ultimate fallback - return a simple mock
-      return { coloringPageDataUri: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ3aGl0ZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9ImJsYWNrIj5Db2xvcmluZyBQYWdlPC90ZXh0Pjwvc3ZnPg==' };
-    }
-  }
+  // Strict: if the real model fails, bubble the error so the UI can show a proper message
+  const coloringPageDataUri = await generateColoringPageFromText(input.description, input.difficulty);
+  console.log('Successfully generated coloring page from text using AI:', coloringPageDataUri);
+  return { coloringPageDataUri };
 }

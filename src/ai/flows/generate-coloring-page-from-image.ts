@@ -10,9 +10,9 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import {createMockColoringPageFromImage, createEnhancedMockFromImage} from './mock-ai-fallback';
+// Remove mock fallbacks; enforce strict generation
 import {GoogleGenerativeAI} from '@google/generative-ai';
-import { generateWithRetry, STRICT_BLACK_WHITE_PROMPT } from '@/lib/image-validation';
+import { generateWithRetryStrict, STRICT_BLACK_WHITE_PROMPT } from '@/lib/image-validation';
 // Use image analysis + generation for accurate conversion
 async function convertImageToColoringPageServer(imageDataUri: string): Promise<string> {
   console.log('Converting uploaded image to coloring page using AI...');
@@ -44,7 +44,7 @@ async function convertImageToColoringPageServer(imageDataUri: string): Promise<s
   console.log('AI analyzed image as:', imageDescription);
   
   // Use retry mechanism to ensure black and white output
-  const imageUrl = await generateWithRetry(async () => {
+  const imageUrl = await generateWithRetryStrict(async () => {
     const { media } = await ai.generate({
       model: 'googleai/imagen-4.0-generate-preview-06-06',
       prompt: `${STRICT_BLACK_WHITE_PROMPT}
@@ -110,23 +110,12 @@ export async function generateColoringPageFromImage(input: GenerateColoringPageF
       throw new Error('No API key available');
     }
     
-    // Try real AI image generation first
+    // Try real AI image generation first (strict - no mock fallback)
     const processedImageDataUri = await convertImageToColoringPageServer(photoDataUri);
     console.log('Successfully converted image to coloring page using AI');
     return { coloringPageDataUri: processedImageDataUri };
   } catch (error) {
-    console.error('AI image generation failed, using fallback:', error);
-    
-    // Fallback to mock generation if AI fails
-    console.log('Using fallback image generation...');
-    try {
-      const fallbackImageDataUri = createEnhancedMockFromImage(photoDataUri);
-      console.log('Successfully generated fallback coloring page');
-      return { coloringPageDataUri: fallbackImageDataUri };
-    } catch (fallbackError) {
-      console.error('Fallback generation also failed:', fallbackError);
-      // Ultimate fallback - return a simple mock
-      return { coloringPageDataUri: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ3aGl0ZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9ImJsYWNrIj5Db2xvcmluZyBQYWdlPC90ZXh0Pjwvc3ZnPg==' };
-    }
+    console.error('AI image generation failed (strict):', error);
+    throw error;
   }
 }

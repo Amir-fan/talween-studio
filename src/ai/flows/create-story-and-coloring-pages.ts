@@ -10,10 +10,10 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import {createMockCharacterReference, createMockSceneImage, createMockStory, createMockColoringPage} from './mock-ai-fallback';
+// Remove mock fallbacks; enforce strict generation
 import { StoryAndPagesInputSchema, StoryAndPagesOutputSchema } from '@/app/create/story/types';
 import type { StoryAndPagesOutput, StoryAndPagesInput } from '@/app/create/story/types';
-import { generateWithRetry, STRICT_BLACK_WHITE_PROMPT } from '@/lib/image-validation';
+import { generateWithRetryStrict, STRICT_BLACK_WHITE_PROMPT } from '@/lib/image-validation';
 
 
 const ChapterSchema = z.object({
@@ -85,7 +85,7 @@ Output Format:
 async function generateCharacterReferenceImage(description: string, characterName: string): Promise<string> {
   console.log(`Generating AI character image for: ${characterName}`);
   
-  const imageUrl = await generateWithRetry(async () => {
+  const imageUrl = await generateWithRetryStrict(async () => {
     const { media } = await ai.generate({
       model: 'googleai/imagen-4.0-generate-preview-06-06',
       prompt: `${STRICT_BLACK_WHITE_PROMPT}
@@ -120,7 +120,7 @@ Additional Requirements:
 async function generatePageImage(sceneDescription: string, characterName: string, characterDescription: string): Promise<string> {
   console.log(`Generating AI scene image for: ${sceneDescription}`);
   
-  const imageUrl = await generateWithRetry(async () => {
+  const imageUrl = await generateWithRetryStrict(async () => {
     const { media } = await ai.generate({
       model: 'googleai/imagen-4.0-generate-preview-06-06',
       prompt: `${STRICT_BLACK_WHITE_PROMPT}
@@ -174,9 +174,8 @@ export async function createStoryAndColoringPagesFlow(input: StoryAndPagesInput)
         input.childName
       );
     } catch (error) {
-      console.error('Character image generation failed, using fallback:', error);
-      const { createMockColoringPage } = await import('./mock-ai-fallback');
-      characterReferenceImage = createMockColoringPage(`Character: ${input.childName} - ${storyContent.characterDescription}`);
+      console.error('Character image generation failed (strict):', error);
+      throw error;
     }
 
     // 3. Generate images for each chapter using the reference image.
@@ -191,9 +190,8 @@ export async function createStoryAndColoringPagesFlow(input: StoryAndPagesInput)
           storyContent.characterDescription
         );
       } catch (error) {
-        console.error(`Page ${index + 1} image generation failed, using fallback:`, error);
-        const { createMockColoringPage } = await import('./mock-ai-fallback');
-        return createMockColoringPage(`Scene: ${chapter.illustrationDescription}`);
+        console.error(`Page ${index + 1} image generation failed (strict):`, error);
+        throw error;
       }
     }));
 
@@ -204,9 +202,9 @@ export async function createStoryAndColoringPagesFlow(input: StoryAndPagesInput)
       imageDataUri: imageUrls[index],
     }));
 
-    // Check if we have at least some images generated (fallbacks should ensure we always have images)
+    // Ensure at least one image
     if (pages.every(p => !p.imageDataUri)) {
-        throw new Error("All image generations failed, including fallbacks.");
+        throw new Error("All image generations failed.");
     }
 
     return {
@@ -214,20 +212,7 @@ export async function createStoryAndColoringPagesFlow(input: StoryAndPagesInput)
       pages: pages,
     };
   } catch (error) {
-    console.error('Story generation failed:', error);
-    
-    // Provide a fallback story instead of throwing error
-    console.log('Using fallback story generation...');
-    const fallbackStory = {
-      title: `قصة ${input.childName}`,
-      pages: Array.from({ length: Math.min(parseInt(input.numberOfPages, 10), 3) }, (_, i) => ({
-        pageNumber: i + 1,
-        text: `صفحة ${i + 1}: مغامرة ${input.childName} في ${input.setting}`,
-        imageDataUri: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ3aGl0ZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9ImJsYWNrIj5Db2xvcmluZyBQYWdlPC90ZXh0Pjwvc3ZnPg=='
-      }))
-    };
-    
-    console.log('Successfully generated fallback story');
-    return fallbackStory;
+    console.error('Story generation failed (strict):', error);
+    throw error;
   }
 }
