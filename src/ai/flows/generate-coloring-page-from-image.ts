@@ -31,7 +31,44 @@ async function convertImageToColoringPageServer(imageDataUri: string): Promise<s
   const sourceMime = mimeMatch?.[1] || 'image/jpeg';
   const base64Data = b64;
   
-  // Analyze the uploaded image in detail (try multiple stable model names)
+  // Analyze the uploaded image in detail
+  // 1) Prefer REST v1 endpoint (more widely available) with gemini-1.5-flash-latest
+  // 2) Fallback to SDK with several model names if needed
+  const analyzeViaRest = async (): Promise<string> => {
+    const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+    const body = {
+      contents: [
+        {
+          parts: [
+            { text: "Describe EXACTLY what is in this image (subject, pose, angle, composition, and all details)." },
+            {
+              inline_data: {
+                mime_type: sourceMime,
+                data: base64Data
+              }
+            }
+          ]
+        }
+      ]
+    } as any;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+      throw new Error(`REST analyze failed: ${res.status}`);
+    }
+    const json = await res.json();
+    const text = (json?.candidates?.[0]?.content?.parts || [])
+      .map((p: any) => p?.text)
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+    return text || '';
+  };
+
+  // Try multiple stable model names via SDK if REST didn't work
   const analyze = async (modelName: string) => {
     const model = genAI.getGenerativeModel({ model: modelName });
     return await model.generateContent([
@@ -46,25 +83,29 @@ async function convertImageToColoringPageServer(imageDataUri: string): Promise<s
   };
 
   let analysisText = '';
-  const candidates = ['gemini-1.5-flash-latest', 'gemini-1.5-pro-latest', 'gemini-1.5-flash', 'gemini-1.5-pro'];
-  let lastErr: any = null;
-  for (const m of candidates) {
-    try {
-      const res = await analyze(m);
-      analysisText = res.response.text();
-      if (analysisText) break;
-    } catch (e) {
-      lastErr = e;
-      console.warn(`Gemini analyze failed for ${m}:`, e instanceof Error ? e.message : e);
-      continue;
-    }
+  try {
+    analysisText = await analyzeViaRest();
+  } catch (restErr) {
+    console.warn('Gemini REST v1 analyze failed:', restErr instanceof Error ? restErr.message : restErr);
   }
   if (!analysisText) {
-    if (lastErr) {
-      const msg = lastErr instanceof Error ? lastErr.message : String(lastErr);
-      throw new Error(`Gemini analysis failed across models (flash-latest, pro-latest, flash, pro): ${msg}`);
+    const candidates = ['gemini-1.5-flash-latest', 'gemini-1.5-pro-latest', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    let lastErr: any = null;
+    for (const m of candidates) {
+      try {
+        const res = await analyze(m);
+        analysisText = res.response.text();
+        if (analysisText) break;
+      } catch (e) {
+        lastErr = e;
+        console.warn(`Gemini analyze failed for ${m}:`, e instanceof Error ? e.message : e);
+        continue;
+      }
     }
-    throw new Error('Failed to analyze image with Gemini models');
+    if (!analysisText) {
+      const msg = lastErr ? (lastErr instanceof Error ? lastErr.message : String(lastErr)) : 'Unknown error';
+      throw new Error(`Gemini analysis failed across models (REST + SDK fallbacks): ${msg}`);
+    }
   }
 
   const imageDescription = analysisText || 'a person';
