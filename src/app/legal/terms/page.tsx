@@ -35,7 +35,8 @@ export default function TermsPage() {
           
           <h2 className="text-2xl font-semibold text-gray-800 mb-4">6. الاتصال</h2>
           <p className="text-gray-600 mb-6">
-            إذا كان لديك أي أسئلة حول هذه الشروط، يرجى الاتصال بنا عبر البريد الإلكتروني.
+            إذا كان لديك أي أسئلة حول هذه الشروط، يمكنك التواصل معنا عبر البريد الإلكتروني
+            <a href="mailto:hello@talween.com" className="text-primary underline mx-1">hello@talween.com</a>.
           </p>
         </div>
       </div>

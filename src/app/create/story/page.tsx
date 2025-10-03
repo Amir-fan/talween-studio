@@ -841,17 +841,17 @@ function CreateStoryPage() {
                         </div>
                     )}
                 </CardContent>
-                 <CardFooter className="justify-between p-8">
-                    <Button onClick={prevStep} size="lg" variant="outline" disabled={loading}>
+                 <CardFooter className="p-4 md:p-8 flex flex-col-reverse md:flex-row md:justify-between gap-3 md:gap-0">
+                    <Button onClick={prevStep} size="lg" variant="outline" disabled={loading} className="w-full md:w-auto">
                         <ArrowRight className="ml-2 h-5 w-5" />
                         السابق
                     </Button>
-                    <div className="flex gap-4">
-                        <Button onClick={handleGenerateStory} size="lg" variant="outline" disabled={loading} className="bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100">
+                    <div className="flex flex-col md:flex-row gap-3 md:gap-4 w-full md:w-auto">
+                        <Button onClick={handleGenerateStory} size="lg" variant="outline" disabled={loading} className="bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100 w-full md:w-auto">
                             <Wand2 className="ml-2 h-5 w-5" />
                             إعادة إنشاء ({PRICING_CONFIG.FEATURE_COSTS.STORY_WITH_CHILD_NAME} نقطة)
                         </Button>
-                        <Button onClick={nextStep} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500" disabled={loading || !story}>
+                        <Button onClick={nextStep} size="lg" className="bg-gradient-to-l from-primary to-amber-400 font-bold text-primary-foreground hover:to-amber-500 w-full md:w-auto" disabled={loading || !story}>
                             التالي
                             <ArrowLeft className="mr-2 h-5 w-5" />
                         </Button>

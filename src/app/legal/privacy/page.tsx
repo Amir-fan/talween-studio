@@ -40,7 +40,8 @@ export default function PrivacyPage() {
           
           <h2 className="text-2xl font-semibold text-gray-800 mb-4">7. الاتصال بنا</h2>
           <p className="text-gray-600 mb-6">
-            إذا كان لديك أي أسئلة حول سياسة الخصوصية، يرجى الاتصال بنا.
+            إذا كان لديك أي أسئلة حول سياسة الخصوصية، يرجى التواصل معنا عبر البريد الإلكتروني
+            <a href="mailto:hello@talween.com" className="text-primary underline mx-1">hello@talween.com</a>.
           </p>
         </div>
       </div>
