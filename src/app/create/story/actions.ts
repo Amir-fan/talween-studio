@@ -37,23 +37,8 @@ export async function generateStoryAction(
     console.log('🔍 Starting story generation flow...');
     let finalStory: StoryAndPagesOutput;
     
-    try {
-      finalStory = await createStoryAndColoringPagesFlow(input);
-      console.log('✅ Story generation successful');
-    } catch (storyError) {
-      console.error('❌ Story generation failed, using fallback:', storyError);
-      
-      // Ultimate fallback story
-      finalStory = {
-        title: `قصة ${input.childName}`,
-        pages: Array.from({ length: Math.min(parseInt(input.numberOfPages, 10), 3) }, (_, i) => ({
-          pageNumber: i + 1,
-          text: `صفحة ${i + 1}: مغامرة ${input.childName} في ${input.setting}`,
-          imageDataUri: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ3aGl0ZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9ImJsYWNrIj5Db2xvcmluZyBQYWdlPC90ZXh0Pjwvc3ZnPg=='
-        }))
-      };
-      console.log('✅ Fallback story generation successful');
-    }
+    finalStory = await createStoryAndColoringPagesFlow(input);
+    console.log('✅ Story generation successful');
 
     if (!finalStory || !finalStory.pages || finalStory.pages.length === 0) {
       throw new Error("Story generation flow failed to return complete data.");

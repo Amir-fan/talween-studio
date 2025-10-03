@@ -46,7 +46,7 @@ Lesson/Moral: {{lesson}}
 Story Rules:
 Language: Arabic only.
 Story length: Short, divided into 3 chapters maximum.
-Each chapter must include: • Chapter Title (2–3 words). • Narrative (60–100 words) suitable for {{ageGroup}} years old. • Illustration Description: a single, simple scene description for coloring.
+Each chapter must include: • Chapter Title (2–3 words). • Narrative (90–130 words) suitable for {{ageGroup}} years old. • Illustration Description: a single, concrete scene description for coloring that references the main character by name and the chosen setting.
 
 Story Structure:
 - Clear beginning, middle, and end with a complete story arc
@@ -67,10 +67,10 @@ IMPORTANT GENDER RULES:
 - If the character is a GIRL and setting is secular (regular school, park, home): Normal clothing without hijab
 - The character's gender and appearance must remain CONSISTENT throughout all chapters
 
-Illustration Description Rules:
+Illustration Description Rules (for black-and-white coloring page):
 - Describe only one scene per chapter
-- Keep it simple and clear: (e.g., "{{childName}} standing in front of the school with his backpack")
-- No colors mentioned — line art only
+- Keep it simple, clear, and visually rich: (e.g., "{{childName}} standing in front of {{setting}} holding a small book, with one tree behind")
+- No colors, shading, or gray — line art only
 - Focus on the main action or moment of that chapter
 
 Output Format:
@@ -198,7 +198,7 @@ export async function createStoryAndColoringPagesFlow(input: StoryAndPagesInput)
     // 4. Combine text and images into pages.
     const pages = chaptersToProcess.map((chapter, index) => ({
       pageNumber: index + 1,
-      text: `${chapter.chapterTitle}\n\n${chapter.narrative}`,
+      text: `${chapter.chapterTitle} - ${input.childName} في ${input.setting}\n\n${chapter.narrative}`,
       imageDataUri: imageUrls[index],
     }));
 
