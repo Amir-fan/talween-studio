@@ -26,8 +26,11 @@ async function convertImageToColoringPageServer(imageDataUri: string): Promise<s
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
   
-  // Extract base64 data from data URI
-  const base64Data = imageDataUri.split(',')[1];
+  // Extract mime and base64 data from data URI
+  const [meta, b64] = imageDataUri.split(',');
+  const mimeMatch = meta?.match(/^data:(.*?);base64$/);
+  const sourceMime = mimeMatch?.[1] || 'image/jpeg';
+  const base64Data = b64;
   
   // Analyze the uploaded image in detail
   const analysisResult = await model.generateContent([
@@ -35,7 +38,7 @@ async function convertImageToColoringPageServer(imageDataUri: string): Promise<s
     {
       inlineData: {
         data: base64Data,
-        mimeType: "image/jpeg"
+        mimeType: sourceMime
       }
     }
   ]);
@@ -74,8 +77,19 @@ Additional Requirements:
     return media.url;
   });
 
-  console.log('Successfully converted image to coloring page using AI');
-  return imageUrl;
+  // Fetch the generated image and return as data URI to avoid remote domain issues
+  try {
+    const response = await fetch(imageUrl);
+    const contentType = response.headers.get('content-type') || 'image/png';
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const base64Out = buffer.toString('base64');
+    const dataUri = `data:${contentType};base64,${base64Out}`;
+    console.log('Successfully converted image to coloring page using AI');
+    return dataUri;
+  } catch (fetchErr) {
+    console.warn('Could not convert generated URL to data URI, returning URL instead');
+    return imageUrl;
+  }
 }
 
 const GenerateColoringPageFromImageInputSchema = z.object({
