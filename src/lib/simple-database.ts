@@ -129,12 +129,14 @@ function saveDatabase() {
       fs.writeFileSync(backupPath, dataString, 'utf8');
       console.log('✅ Backup created');
     } catch (backupError) {
-      console.log('⚠️ Backup creation failed (non-critical):', backupError.message);
+      const msg = backupError instanceof Error ? backupError.message : String(backupError);
+      console.log('⚠️ Backup creation failed (non-critical):', msg);
     }
     
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
     console.error('❌ Database save error:', error);
-    throw new Error(`Database save failed: ${error.message}`);
+    throw new Error(`Database save failed: ${msg}`);
   }
 }
 
@@ -447,10 +449,11 @@ export const userDb = {
         saveDatabase();
         console.log('✅ Database saved successfully');
       } catch (saveError) {
+        const msg = saveError instanceof Error ? saveError.message : String(saveError);
         console.error('❌ Database save failed:', saveError);
         return { 
           success: false, 
-          error: `Database save failed: ${saveError.message}`,
+          error: `Database save failed: ${msg}`,
           results 
         };
       }
@@ -462,10 +465,11 @@ export const userDb = {
       };
       
     } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
       console.error('❌ CRITICAL ERROR in deleteUserCompletely:', error);
       return { 
         success: false, 
-        error: `Critical error during deletion: ${error.message}`,
+        error: `Critical error during deletion: ${msg}`,
         results: {
           userDeleted: false,
           ordersDeleted: 0,

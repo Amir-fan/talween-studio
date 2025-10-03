@@ -24,18 +24,37 @@ export async function GET(request: NextRequest) {
     const localUsers = userDb.getAllUsers();
     console.log('  - Local users found:', localUsers.length);
     
-    // Combine and deduplicate users (Google Sheets takes priority)
-    const allUsers = [...googleSheetsUsers, ...localUsers];
-    const uniqueUsers = allUsers.reduce((acc, user) => {
-      const existingIndex = acc.findIndex(u => u.email === user.email);
-      if (existingIndex === -1) {
-        acc.push(user);
-      } else {
-        // Update with Google Sheets data if available
-        if (googleSheetsUsers.some(gs => gs.email === user.email)) {
-          acc[existingIndex] = user;
-        }
-      }
+    // Normalize Google Sheets users to a unified shape, then dedupe by email
+    const normalizedSheets = googleSheetsUsers.map((u: any) => ({
+      id: u.ID || u.id || u['المعرف'],
+      email: u.Email || u.email || u['البريد الإلكتروني'],
+      display_name: u.Name || u.name || u.displayName || u['الاسم'],
+      credits: Number(u.Credits || u.credits || u['النقاط'] || 0),
+      status: u.Status || u.status || 'active',
+      subscription_tier: u.Subscription || u.subscription || 'FREE',
+      created_at: u.Created || u.created || Date.now(),
+      last_login: u.LastLogin || u.lastLogin || Date.now(),
+      total_spent: Number(u.TotalPaid || u.totalPaid || 0)
+    }));
+
+    const normalizedLocal = (localUsers || []).map((u: any) => ({
+      id: u.id,
+      email: u.email,
+      display_name: u.display_name,
+      credits: u.credits,
+      status: u.status,
+      subscription_tier: u.subscription_tier,
+      created_at: u.created_at,
+      last_login: u.last_login,
+      total_spent: u.total_spent
+    }));
+
+    const combined = [...normalizedSheets, ...normalizedLocal];
+    const uniqueUsers = combined.reduce((acc: any[], user: any) => {
+      if (!user?.email) return acc;
+      const idx = acc.findIndex(u => u.email === user.email);
+      if (idx === -1) acc.push(user);
+      else acc[idx] = user; // prefer normalizedSheets order first
       return acc;
     }, [] as any[]);
     

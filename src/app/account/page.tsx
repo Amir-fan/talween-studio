@@ -194,9 +194,14 @@ export default function AccountPage() {
 
   if (!stats) {
     return (
-      <div className="min-h-screen bg-yellow-50/30 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground">فشل في تحميل بيانات الحساب</p>
+      <div className="min-h-screen bg-transparent">
+        <div className="container mx-auto px-4 py-16">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center p-12 border rounded-xl bg-primary/5">
+              <h1 className="font-headline text-4xl font-bold text-foreground mb-4">قريباً جداً</h1>
+              <p className="text-xl text-muted-foreground">قسم حسابي الشخصي قيد التطوير حالياً</p>
+            </div>
+          </div>
         </div>
       </div>
     );

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { config } from '@/lib/config';
 import { userDb } from '@/lib/simple-database';
+import { googleSheetsUserDb } from '@/lib/google-sheets-server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,29 +33,9 @@ export async function POST(request: NextRequest) {
       console.log('💾 User not found in local database, skipping local update');
     }
 
-    // Step 2: Add credits via Google Sheets API
+    // Step 2: Add credits via Google Sheets API (server wrapper)
     console.log('📊 Step 2: Adding credits to Google Sheets...');
-    const response = await fetch(`${config.googleAppsScriptUrl}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        action: 'addCredits',
-        userId: userId,
-        amount: Number(amount),
-        apiKey: config.googleSheetsApiKey
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const result = await response.json();
-    console.log('📊 Google Sheets result:', result);
-
-    // Return success if either update succeeded
+    const result = await googleSheetsUserDb.addCredits(userId, Number(amount));
     const googleSheetsSuccess = result.success;
 
     if (!localSuccess && !googleSheetsSuccess) {
@@ -65,7 +46,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const finalCredits = googleSheetsSuccess ? result.newCredits : localNewCredits;
+    const finalCredits = googleSheetsSuccess ? undefined : localNewCredits;
 
     return NextResponse.json({ 
       success: true, 
@@ -75,7 +56,7 @@ export async function POST(request: NextRequest) {
         localUpdated: localSuccess,
         googleSheetsUpdated: googleSheetsSuccess,
         localCredits: localNewCredits,
-        googleSheetsCredits: result.newCredits
+        googleSheetsCredits: finalCredits
       }
     });
 

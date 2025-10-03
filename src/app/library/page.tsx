@@ -144,19 +144,8 @@ export default function LibraryPage() {
         {filteredItems.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent>
-              <Heart className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                {filter === 'all' ? 'مكتبتك فارغة' : `لا توجد عناصر من نوع ${getTypeLabel(filter)}`}
-              </h3>
-              <p className="text-gray-600 mb-6">
-                {filter === 'all' 
-                  ? 'ابدأ بإنشاء قصص وصفحات تلوين واحفظها في مكتبتك'
-                  : 'ابدأ بإنشاء عناصر من هذا النوع واحفظها في مكتبتك'
-                }
-              </p>
-              <Button onClick={() => router.push('/create')} className="bg-gradient-to-l from-primary to-amber-400">
-                ابدأ الإنشاء
-              </Button>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-2">قريباً جداً</h3>
+              <p className="text-gray-600 mb-6">مكتبتي الشخصية قيد التطوير حالياً</p>
             </CardContent>
           </Card>
         ) : (
