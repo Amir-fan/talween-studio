@@ -24,7 +24,6 @@ async function convertImageToColoringPageServer(imageDataUri: string): Promise<s
   }
   
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
   
   // Extract mime and base64 data from data URI
   const [meta, b64] = imageDataUri.split(',');
@@ -32,18 +31,40 @@ async function convertImageToColoringPageServer(imageDataUri: string): Promise<s
   const sourceMime = mimeMatch?.[1] || 'image/jpeg';
   const base64Data = b64;
   
-  // Analyze the uploaded image in detail
-  const analysisResult = await model.generateContent([
-    "Look at this image very carefully. I need you to describe EXACTLY what you see - the main subject, its exact appearance, pose, angle, details, and background. Be extremely specific about every detail including colors, shapes, textures, facial features (if applicable), and any unique characteristics. Focus on the EXACT composition, framing, and angle. This will be used to recreate the EXACT same image in coloring book style - do NOT change the angle, pose, or add extra elements.",
-    {
-      inlineData: {
-        data: base64Data,
-        mimeType: sourceMime
+  // Analyze the uploaded image in detail (try multiple stable model names)
+  const analyze = async (modelName: string) => {
+    const model = genAI.getGenerativeModel({ model: modelName });
+    return await model.generateContent([
+      "Look at this image very carefully. I need you to describe EXACTLY what you see - the main subject, its exact appearance, pose, angle, details, and background. Be extremely specific about every detail including colors, shapes, textures, facial features (if applicable), and any unique characteristics. Focus on the EXACT composition, framing, and angle. This will be used to recreate the EXACT same image in coloring book style - do NOT change the angle, pose, or add extra elements.",
+      {
+        inlineData: {
+          data: base64Data,
+          mimeType: sourceMime
+        }
       }
+    ]);
+  };
+
+  let analysisText = '';
+  const candidates = ['gemini-1.5-flash', 'gemini-1.5-pro-latest', 'gemini-1.5-pro'];
+  let lastErr: any = null;
+  for (const m of candidates) {
+    try {
+      const res = await analyze(m);
+      analysisText = res.response.text();
+      if (analysisText) break;
+    } catch (e) {
+      lastErr = e;
+      console.warn(`Gemini analyze failed for ${m}:`, e instanceof Error ? e.message : e);
+      continue;
     }
-  ]);
-  
-  const imageDescription = analysisResult.response.text() || 'a person';
+  }
+  if (!analysisText) {
+    if (lastErr) throw lastErr;
+    throw new Error('Failed to analyze image with Gemini models');
+  }
+
+  const imageDescription = analysisText || 'a person';
   console.log('AI analyzed image as:', imageDescription);
   
   // Use retry mechanism to ensure black and white output
