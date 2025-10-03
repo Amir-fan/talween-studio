@@ -18,6 +18,6 @@ export const ai = genkit({
   plugins: [googleAI({
     apiKey: apiKey || 'dummy-key', // Use dummy key if not available (fallbacks will handle this)
   })],
-  // Use a widely available default; individual calls can override
-  model: 'googleai/gemini-1.5-flash-latest',
+  // Use a widely available default for v1beta-compatible endpoints
+  model: 'googleai/gemini-1.5-flash',
 });

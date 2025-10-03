@@ -70,7 +70,8 @@ async function convertImageToColoringPageServer(imageDataUri: string): Promise<s
 
   // Decide REST endpoint version
   const useV1 = modelNames.some(n => n.includes(pick) && n.startsWith('models/')) ? true : true;
-  const restEndpoint = useV1
+  // Use v1beta for 1.5-* names, v1 for 2.0*
+  const restEndpoint = pick.startsWith('gemini-2')
     ? `https://generativelanguage.googleapis.com/v1/models/${pick}:generateContent?key=${apiKey}`
     : `https://generativelanguage.googleapis.com/v1beta/models/${pick}:generateContent?key=${apiKey}`;
 
