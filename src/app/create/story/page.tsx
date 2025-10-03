@@ -465,6 +465,7 @@ function CreateStoryPage() {
 
       const input: StoryAndPagesInput = {
           userId: user.id,
+          userEmail: user.email,
           childName,
           ageGroup,
           numberOfPages,

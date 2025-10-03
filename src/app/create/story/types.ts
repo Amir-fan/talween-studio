@@ -16,6 +16,7 @@ export type StoryAndPagesOutput = z.infer<typeof StoryAndPagesOutputSchema>;
 
 export const StoryAndPagesInputSchema = z.object({
   userId: z.string().describe("The authenticated user's ID."),
+  userEmail: z.string().email().optional(),
   childName: z.string().describe("Child's name in Arabic"),
   ageGroup: z.enum(['3-5', '6-8', '9-12']).describe('The age group of the child.'),
   numberOfPages: z.enum(['4', '8', '12', '16']).describe('The number of pages for the story.'),

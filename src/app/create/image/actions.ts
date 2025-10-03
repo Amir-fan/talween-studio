@@ -25,7 +25,11 @@ export async function generateImageFromPhotoAction(
         values.userEmail
       );
       if (!creditCheck.success) {
-        throw new Error(creditCheck.error === 'Not enough credits' ? 'NotEnoughCredits' : 'Failed to process credits.');
+        const err = creditCheck.error || '';
+        if (err.includes('Insufficient') || err.includes('Not enough')) {
+          throw new Error('NotEnoughCredits');
+        }
+        throw new Error(creditCheck.error || 'Failed to process credits.');
       }
     }
 
