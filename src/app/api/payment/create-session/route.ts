@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPaymentSession } from '@/lib/myfatoorah-service';
+import { orderDb } from '@/lib/simple-database';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,8 +28,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate order ID
+    // Generate order ID and create a local order record for admin stats
     const orderId = `TAL-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    try {
+      orderDb.create(userId, amount, undefined, credits);
+    } catch (e) {
+      console.log('Order pre-create failed (non-blocking):', e);
+    }
     console.log('🔍 PAYMENT API - Generated order ID:', orderId);
 
     // Create payment session with simplified user data

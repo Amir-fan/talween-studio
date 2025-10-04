@@ -32,6 +32,14 @@ Rules:
 async function generateColoringPageFromText(description: string, difficulty: string): Promise<string> {
   console.log(`Generating AI image for: ${description} (${difficulty})`);
   
+  // Context-aware guidance to avoid incorrect outdoor street scenes with cars for children
+  const hasSchoolContext = /\b(مدرس|مدرسة|صف|فصل|درس|تعليم|لوح|طالب|أطفال|طفل)\b/i.test(description)
+    || /\b(child|kid|kids|class|lesson|school|teacher|students|classroom)\b/i.test(description);
+
+  const extraGuidance = hasSchoolContext
+    ? `Scene Setting: inside a classroom interior. Do NOT draw streets, cars, traffic, sidewalks, road signs, or outdoor elements. Minimal classroom hints only (simple board outline or a desk), leaving large empty spaces for coloring.`
+    : `If no specific location is required, use a plain white background. Do NOT add streets, cars, traffic, or outdoor elements unless explicitly requested.`;
+
   const url = await generateWithRetryStrict(async () => {
     const { media } = await ai.generate({
       model: 'googleai/imagen-4.0-generate-preview-06-06',
@@ -44,7 +52,8 @@ Difficulty: ${difficulty}
 
 Additional Requirements:
 - No text, no words, no letters, no numbers
-- Leave large empty spaces for coloring`,
+- Leave large empty spaces for coloring
+- ${extraGuidance}`,
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
       },

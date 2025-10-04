@@ -448,7 +448,72 @@ function AdminDashboardContent() {
               </p>
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">إجمالي الاشتراكات</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalSubscriptions || 0}</div>
+              <p className="text-xs text-muted-foreground">اشتراك مدفوع</p>
+            </CardContent>
+          </Card>
         </div>
+        )}
+
+        {/* Subscription & Packages Breakdown */}
+        {stats && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>تفصيل الاشتراكات</CardTitle>
+                <CardDescription>عدد الاشتراكات حسب الباقة</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>الباقة</TableHead>
+                      <TableHead className="text-right">العدد</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Object.entries(stats.subscriptionCounts || {}).map(([tier, count]: any) => (
+                      <TableRow key={tier}>
+                        <TableCell>{tier}</TableCell>
+                        <TableCell className="text-right">{count}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>تفصيل المشتريات</CardTitle>
+                <CardDescription>الأعداد حسب نوع الطلب</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>الحزمة/الطلب</TableHead>
+                      <TableHead className="text-right">العدد</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Object.entries(stats.packageCounts || {}).map(([pack, count]: any) => (
+                      <TableRow key={pack}>
+                        <TableCell>{pack}</TableCell>
+                        <TableCell className="text-right">{count}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Users Table */}

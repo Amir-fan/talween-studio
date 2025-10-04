@@ -65,6 +65,19 @@ export async function GET(request: NextRequest) {
     
     // Get all orders
     const orders = orderDb.getAllOrders ? orderDb.getAllOrders() : [];
+
+    // Subscription and package stats
+    const subscriptionCounts = orders.reduce((acc: any, o: any) => {
+      const tier = o.subscription_tier || 'CREDITS_ONLY';
+      acc[tier] = (acc[tier] || 0) + (o.status === 'paid' ? 1 : 0);
+      return acc;
+    }, {} as Record<string, number>);
+
+    const packageCounts = orders.reduce((acc: any, o: any) => {
+      const pack = o.order_number?.split('-')[0] || 'ORDER';
+      acc[pack] = (acc[pack] || 0) + (o.status === 'paid' ? 1 : 0);
+      return acc;
+    }, {} as Record<string, number>);
     const emailLogs = []; // You'll need to implement this in database.ts
     
     // Calculate stats
@@ -74,6 +87,9 @@ export async function GET(request: NextRequest) {
       activeUsers: uniqueUsers.filter(u => (u.status || u.Status) === 'active').length,
       totalCredits: uniqueUsers.reduce((sum, u) => sum + (u.credits || u.Credits || 0), 0),
       totalSpent: uniqueUsers.reduce((sum, u) => sum + (u.total_spent || u.TotalPaid || 0), 0),
+      totalSubscriptions: Object.entries(subscriptionCounts).reduce((s, [,c]) => s + (c as number), 0),
+      subscriptionCounts,
+      packageCounts,
     };
     
     console.log('  - Stats:', stats);
