@@ -30,6 +30,26 @@ export async function POST(request: NextRequest) {
 
     if (result.success) {
       console.log('✅ Registration successful');
+      // Fire LeadConnector webhook (non-blocking)
+      try {
+        await fetch('https://services.leadconnectorhq.com/hooks/2xJ6VY43ugovZK68Cz74/webhook-trigger/3bffa62e-ae01-4db8-ac41-844ff1eabddf', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            event: 'signup',
+            email,
+            name: displayName,
+            userId: result.user?.id,
+            credits: result.user?.credits,
+            source: 'talween-studio',
+            timestamp: Date.now()
+          })
+        });
+      } catch (e) {
+        console.log('Lead capture webhook failed (non-blocking):', e);
+      }
       return NextResponse.json({
         success: true,
         message: 'تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.',
