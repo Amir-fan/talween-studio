@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { amount, currency, packageId, credits, userId } = await request.json();
+    const { amount, currency, packageId, credits, userId, orderId: providedOrderId } = await request.json();
     console.log('🔍 PAYMENT API - Request data:', { amount, currency, packageId, credits, userId });
 
     if (!amount || !currency || !packageId || !credits || !userId) {
@@ -28,10 +28,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate order ID and create a local order record for admin stats
-    const orderId = `TAL-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // Create a local order record first and use its ID everywhere to keep references consistent
+    let orderId: string | null = providedOrderId || null;
     try {
-      orderDb.create(userId, amount, undefined, credits);
+      if (orderId) {
+        const existing = orderDb.findById(orderId);
+        if (!existing) {
+          const { id: dbOrderId } = orderDb.create(userId, amount, undefined, credits);
+          orderId = dbOrderId;
+        }
+      } else {
+        const { id: dbOrderId } = orderDb.create(userId, amount, undefined, credits);
+        orderId = dbOrderId;
+      }
     } catch (e) {
       console.log('Order pre-create failed (non-blocking):', e);
     }
@@ -48,7 +57,8 @@ export async function POST(request: NextRequest) {
       packageId: packageId,
       credits: credits,
       description: `شراء ${credits} نقطة - ${packageId}`,
-      returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/payment/success?orderId=${orderId}`,
+      // Route through server callback endpoint so credits are added before the thank-you page
+      returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/callback?orderId=${orderId}`,
       errorUrl: `${process.env.NEXT_PUBLIC_APP_URL}/payment/error?orderId=${orderId}`,
     };
 
@@ -58,6 +68,14 @@ export async function POST(request: NextRequest) {
     console.log('🔍 PAYMENT API - Payment result:', paymentResult);
 
     if (paymentResult.success) {
+      // Store invoice id on the order (as payment_intent_id) with pending status
+      try {
+        if (paymentResult.invoiceId) {
+          orderDb.updateStatus(orderId, 'pending', paymentResult.invoiceId);
+        }
+      } catch (e) {
+        console.log('Failed to store invoiceId on order (non-blocking):', e);
+      }
       return NextResponse.json({
         success: true,
         paymentUrl: paymentResult.paymentUrl,

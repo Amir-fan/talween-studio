@@ -61,6 +61,9 @@ function PaymentSuccessContent() {
             <p className="text-muted-foreground">
               شكراً لك! تم تأكيد طلبك بنجاح
             </p>
+            <p className="mt-2 text-sm">
+              رصيدك الحالي سيتم تحديثه تلقائياً. إذا لم يظهر فوراً، اضغط تحديث في حسابك.
+            </p>
           </div>
 
           {/* Payment Details */}
