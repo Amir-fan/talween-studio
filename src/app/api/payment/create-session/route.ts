@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { amount, currency, packageId, credits, userId, orderId: providedOrderId } = await request.json();
+    const { amount, currency, packageId, credits, userId, orderId: providedOrderId, discountCode } = await request.json();
     console.log('🔍 PAYMENT API - Request data:', { amount, currency, packageId, credits, userId });
 
     if (!amount || !currency || !packageId || !credits || !userId) {
@@ -47,8 +47,24 @@ export async function POST(request: NextRequest) {
     console.log('🔍 PAYMENT API - Generated order ID:', orderId);
 
     // Create payment session with simplified user data
+    // Apply discount if provided
+    let finalAmount = amount;
+    let appliedDiscount: { code?: string; percentOff?: number } | null = null;
+    try {
+      if (discountCode) {
+        const resp = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/discounts/validate`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: discountCode, amount })
+        });
+        const data = await resp.json();
+        if (data.success) {
+          finalAmount = data.finalAmount;
+          appliedDiscount = { code: discountCode, percentOff: data.percentOff };
+        }
+      }
+    } catch {}
+
     const paymentData = {
-      amount: amount,
+      amount: finalAmount,
       currency: currency,
       customerName: 'User', // Simplified - will be updated after payment
       customerEmail: 'user@example.com', // Simplified - will be updated after payment
@@ -56,7 +72,7 @@ export async function POST(request: NextRequest) {
       orderId: orderId,
       packageId: packageId,
       credits: credits,
-      description: `شراء ${credits} نقطة - ${packageId}`,
+      description: `شراء ${credits} نقطة - ${packageId}${appliedDiscount ? ` (خصم ${appliedDiscount.percentOff}%: ${appliedDiscount.code})` : ''}`,
       // Route through server callback endpoint so credits are added before the thank-you page
       returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/callback?orderId=${orderId}`,
       errorUrl: `${process.env.NEXT_PUBLIC_APP_URL}/payment/error?orderId=${orderId}`,

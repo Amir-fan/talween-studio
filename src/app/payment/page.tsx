@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Coins, Shield, CreditCard, Loader2, AlertCircle, ExternalLink, ArrowRight, CheckCircle } from 'lucide-react';
+import { Coins, Shield, CreditCard, Loader2, AlertCircle, ExternalLink, ArrowRight, CheckCircle, Tag } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/context/auth-context';
@@ -19,6 +19,8 @@ function PaymentPageContent() {
   const [paymentData, setPaymentData] = useState<any>(null);
   const [paymentUrl, setPaymentUrl] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [discountCode, setDiscountCode] = useState<string>('');
+  const [discountApplied, setDiscountApplied] = useState<{percentOff:number, finalAmount:number} | null>(null);
 
   useEffect(() => {
     const initializePayment = async () => {
@@ -51,7 +53,8 @@ function PaymentPageContent() {
             currency: 'USD',
             packageId,
             credits: parseInt(credits),
-            userId: user?.id || '5d0c39ef-89cb-4a57-9a6e-857253659c7f' // Use actual user ID or fallback for testing
+            userId: user?.id || '5d0c39ef-89cb-4a57-9a6e-857253659c7f',
+            discountCode: discountCode || undefined
           })
         });
 
@@ -150,6 +153,26 @@ function PaymentPageContent() {
               <CardContent>
                 {paymentUrl ? (
                   <div className="space-y-6">
+                    {/* Discount input */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium mb-2">رمز الخصم</label>
+                      <div className="flex gap-2">
+                        <input value={discountCode} onChange={(e)=>setDiscountCode(e.target.value)} placeholder="ادخل الكود" className="flex-1 rounded border px-3 py-2" />
+                        <Button type="button" variant="outline" onClick={async ()=>{
+                          try{
+                            const resp = await fetch('/api/discounts/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:discountCode,amount:paymentData?.amount})});
+                            const data = await resp.json();
+                            if(data.success){ setDiscountApplied({percentOff:data.percentOff, finalAmount:data.finalAmount});}
+                            else{ setDiscountApplied(null); setError(data.error||'رمز الخصم غير صالح'); }
+                          }catch{ setDiscountApplied(null);} 
+                        }}>
+                          <Tag className="ml-2 h-4 w-4"/>تطبيق
+                        </Button>
+                      </div>
+                      {discountApplied && (
+                        <p className="mt-2 text-sm text-green-600">تم تطبيق خصم {discountApplied.percentOff}% — المبلغ بعد الخصم ${discountApplied.finalAmount}</p>
+                      )}
+                    </div>
                     <div className="text-center py-8">
                       <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <CreditCard className="h-8 w-8 text-blue-600" />

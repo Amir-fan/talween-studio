@@ -73,6 +73,7 @@ interface Database {
   emailLogs: { [key: string]: EmailLog };
   userContent: { [key: string]: UserContent };
   adminUsers: { [key: string]: any };
+  discounts?: { [key: string]: any };
 }
 
 let db: Database = {
@@ -80,7 +81,8 @@ let db: Database = {
   orders: {},
   emailLogs: {},
   userContent: {},
-  adminUsers: {}
+  adminUsers: {},
+  discounts: {}
 };
 
 // Load database from file
@@ -95,7 +97,8 @@ function loadDatabase() {
         orders: (loadedDb.orders && typeof loadedDb.orders === 'object' && !Array.isArray(loadedDb.orders)) ? loadedDb.orders : {},
         emailLogs: (loadedDb.emailLogs && typeof loadedDb.emailLogs === 'object' && !Array.isArray(loadedDb.emailLogs)) ? loadedDb.emailLogs : {},
         userContent: (loadedDb.userContent && typeof loadedDb.userContent === 'object' && !Array.isArray(loadedDb.userContent)) ? loadedDb.userContent : {},
-        adminUsers: (loadedDb.adminUsers && typeof loadedDb.adminUsers === 'object' && !Array.isArray(loadedDb.adminUsers)) ? loadedDb.adminUsers : {}
+        adminUsers: (loadedDb.adminUsers && typeof loadedDb.adminUsers === 'object' && !Array.isArray(loadedDb.adminUsers)) ? loadedDb.adminUsers : {},
+        discounts: (loadedDb.discounts && typeof loadedDb.discounts === 'object' && !Array.isArray(loadedDb.discounts)) ? loadedDb.discounts : {}
       };
     }
   } catch (error) {
@@ -106,7 +109,8 @@ function loadDatabase() {
       orders: {},
       emailLogs: {},
       userContent: {},
-      adminUsers: {}
+      adminUsers: {},
+      discounts: {}
     };
   }
 }
@@ -545,6 +549,36 @@ export const orderDb = {
 
   getAllOrders: () => {
     return Object.values(db.orders);
+  }
+};
+
+// Discounts management
+export const discountDb = {
+  create: (code: string, percentOff: number, maxUses?: number, expiresAt?: number) => {
+    const id = uuidv4();
+    db.discounts = db.discounts || {};
+    db.discounts[id] = {
+      id,
+      code: code.toUpperCase(),
+      percentOff,
+      maxUses: maxUses || null,
+      uses: 0,
+      active: true,
+      created_at: Math.floor(Date.now() / 1000),
+      expires_at: expiresAt || null
+    };
+    saveDatabase();
+    return db.discounts[id];
+  },
+  list: () => Object.values(db.discounts || {}),
+  findByCode: (code: string) => {
+    const all = db.discounts || {};
+    return Object.values(all).find((d: any) => d.code === code.toUpperCase());
+  },
+  incrementUse: (id: string) => {
+    if (!db.discounts || !db.discounts[id]) return;
+    db.discounts[id].uses = (db.discounts[id].uses || 0) + 1;
+    saveDatabase();
   }
 };
 
