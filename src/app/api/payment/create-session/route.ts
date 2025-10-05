@@ -1,25 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPaymentSession } from '@/lib/myfatoorah-service';
+import { createPaymentSession as createMockPaymentSession } from '@/lib/myfatoorah-service-mock';
 import { orderDb, userDb } from '@/lib/simple-database';
 
 export async function POST(request: NextRequest) {
   try {
     console.log('🔍 PAYMENT API - Starting payment session creation');
-    
-    // Check if MyFatoorah API key is configured
-    if (!process.env.MYFATOORAH_API_KEY) {
+
+    const { amount, currency, packageId, credits, userId, orderId: providedOrderId, discountCode, mock } = await request.json();
+    console.log('🔍 PAYMENT API - Request data:', { amount, currency, packageId, credits, userId });
+
+    const shouldUseMock = Boolean(mock) || process.env.PAYMENT_USE_MOCK === 'true';
+
+    // Only require API key if not using mock mode
+    if (!shouldUseMock && !process.env.MYFATOORAH_API_KEY) {
       console.error('MyFatoorah API key not configured in environment variables');
       return NextResponse.json(
         { 
-          error: 'MyFatoorah API key not configured. Please check your Vercel environment variables.',
+          error: 'MyFatoorh API key missing. Enable mock mode or set the key.',
           debug: 'MYFATOORAH_API_KEY is missing from environment variables'
         },
         { status: 500 }
       );
     }
-
-    const { amount, currency, packageId, credits, userId, orderId: providedOrderId, discountCode } = await request.json();
-    console.log('🔍 PAYMENT API - Request data:', { amount, currency, packageId, credits, userId });
 
     if (!amount || !currency || !packageId || !credits || !userId) {
       return NextResponse.json(
@@ -93,7 +96,7 @@ export async function POST(request: NextRequest) {
     };
 
     console.log('🔍 PAYMENT API - Creating payment session...');
-    const paymentResult = await createPaymentSession(paymentData);
+    const paymentResult = await (shouldUseMock ? createMockPaymentSession(paymentData) : createPaymentSession(paymentData));
 
     console.log('🔍 PAYMENT API - Payment result:', paymentResult);
 
