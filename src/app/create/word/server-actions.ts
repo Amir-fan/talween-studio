@@ -3,7 +3,6 @@
 import 'server-only';
 
 import { checkAndDeductCreditsForFeature } from '@/lib/local-credits';
-import { createMockColoringPage } from '@/ai/flows/mock-ai-fallback';
 import { generateColoringPageFromTextFlow } from '@/ai/flows/generate-coloring-page-from-text-flow';
 import type { GenerateColoringPageFromTextInput, GenerateColoringPageFromTextOutput } from './types';
 
@@ -33,8 +32,8 @@ export async function generateImageAction(
         
         if (!creditCheck.success) {
             console.log('❌ Credit check failed:', creditCheck.error);
-            const err = creditCheck.error || '';
-            if (err.includes('Insufficient') || err.includes('Not enough')) {
+            const err = (creditCheck.error || '').toLowerCase();
+            if (err.includes('insufficient') || err.includes('not enough') || err.includes('notenoughcredits')) {
               throw new Error('NotEnoughCredits');
             }
             throw new Error(creditCheck.error || 'Failed to process credits.');
