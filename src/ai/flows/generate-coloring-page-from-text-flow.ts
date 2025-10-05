@@ -53,6 +53,16 @@ NEGATIVE PROMPT (MANDATORY): street, road, sidewalk, crosswalk, vehicle, car, bu
 ` : '')
     : `If no specific location is required, use a plain white background. Do NOT add streets, cars, traffic, or outdoor elements unless explicitly requested.`;
 
+  // Build a subject that encodes constraints directly in the content (Arabic + English)
+  const arabicClassroomSubject = `داخل الصف/الفصل من الداخل فقط، بدون أي شوارع أو سيارات أو مباني خارجية أو إشارات مرور أو أشجار أو سماء.
+خلفية بيضاء وبسيطة مع سبورة بيضاء فارغة أو طاولة فقط.
+لا نصوص أو حروف على السبورة أو اللافتات.
+الطفل يشرح الدرس داخل الفصل.`;
+
+  const subjectForModel = hasSchoolContext
+    ? `${description}\n${arabicClassroomSubject}\n(INDOOR classroom only, no street/cars/outdoor)`
+    : description;
+
   const url = await generateWithRetryStrict(async () => {
     const { media } = await ai.generate({
       model: 'googleai/imagen-4.0-generate-preview-06-06',
@@ -60,7 +70,7 @@ NEGATIVE PROMPT (MANDATORY): street, road, sidewalk, crosswalk, vehicle, car, bu
 
 Create a detailed black and white line art illustration for a children's coloring book.
 
-Subject: ${description}
+Subject: ${subjectForModel}
 Difficulty: ${difficulty}
 
 Additional Requirements:
