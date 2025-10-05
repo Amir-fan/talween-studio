@@ -33,8 +33,15 @@ async function generateColoringPageFromText(description: string, difficulty: str
   console.log(`Generating AI image for: ${description} (${difficulty})`);
   
   // Context-aware guidance to avoid incorrect outdoor street scenes with cars for children
-  const hasSchoolContext = /\b(مدرس|مدرسة|صف|فصل|درس|تعليم|لوح|طالب|أطفال|طفل)\b/i.test(description)
-    || /\b(child|kid|kids|class|lesson|school|teacher|students|classroom)\b/i.test(description);
+  // Arabic word boundaries are unreliable with \b, so use substring includes
+  const lower = (description || '').toLowerCase();
+  const arabicHints = [
+    'مدرس', 'مدرسة', 'صف', 'فصل', 'درس', 'التدريس', 'تعليم', 'لوح', 'سبورة', 'طالب', 'طلاب', 'أطفال', 'طفل', 'فصل دراسي', 'صف دراسي', 'حصة'
+  ];
+  const englishHints = [
+    'child', 'kid', 'kids', 'class', 'lesson', 'school', 'teacher', 'students', 'classroom', 'pupil'
+  ];
+  const hasSchoolContext = arabicHints.some(w => description.includes(w)) || englishHints.some(w => lower.includes(w));
 
   // Stronger guardrails for Detailed mode
   const isDetailed = /detailed|مفصل/i.test(difficulty || '');
@@ -50,6 +57,7 @@ Any signs must be BLANK SHAPES with no letters.
     ? strongClassroomGuard + (isDetailed ? `
 Detail policy: add detail ONLY to the subject (child pose, clothing folds, hair lines) and small classroom props. Do NOT add exterior detail or outdoor context. Leave large white areas for coloring.
 NEGATIVE PROMPT (MANDATORY): street, road, sidewalk, crosswalk, vehicle, car, bus, truck, bike, scooter, traffic light, traffic sign, billboard, city, buildings, skyline, park, tree, bush, mountain, cloud, sun.
+If any forbidden outdoor element slips in, REMOVE it and REPLACE with a blank white wall.
 ` : '')
     : `If no specific location is required, use a plain white background. Do NOT add streets, cars, traffic, or outdoor elements unless explicitly requested.`;
 
