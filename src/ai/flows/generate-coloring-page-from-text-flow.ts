@@ -43,6 +43,10 @@ async function generateColoringPageFromText(description: string, difficulty: str
   ];
   const hasSchoolContext = arabicHints.some(w => description.includes(w)) || englishHints.some(w => lower.includes(w));
 
+  // Force indoor classroom for these exact phrases
+  const strictLessonPhrases = ['طفل يعطي الدرس', 'طفل يلقي الدرس', 'طفل يشرح الدرس'];
+  const mustForceClassroom = strictLessonPhrases.some(p => description.includes(p));
+
   // Stronger guardrails for Detailed mode
   const isDetailed = /detailed|مفصل/i.test(difficulty || '');
   const strongClassroomGuard = `
@@ -69,7 +73,7 @@ If any forbidden outdoor element slips in, REMOVE it and REPLACE with a blank wh
 لا نصوص أو حروف على السبورة أو اللافتات.
 الطفل يشرح الدرس داخل الفصل.`;
 
-  const subjectForModel = hasSchoolContext
+  const subjectForModel = (hasSchoolContext || mustForceClassroom)
     ? `${canonicalArabicSubject}\n${description}\n${arabicClassroomSubject}\n(INDOOR classroom only, NO street/cars/vehicles/traffic/outdoor, CLOSE CROP on child + whiteboard)`
     : description;
 
@@ -86,7 +90,8 @@ Difficulty: ${difficulty}
  Additional Requirements:
 - No text, no words, no letters, no numbers
 - Leave large empty spaces for coloring
-- ${extraGuidance}`,
+- ${extraGuidance}
+${mustForceClassroom ? 'STRICT: Background is a plain white classroom wall with a blank whiteboard; there are ZERO outdoor objects (cars, roads, signs, trees). If any appear, remove them.' : ''}`,
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
       },
