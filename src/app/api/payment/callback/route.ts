@@ -50,11 +50,12 @@ export async function GET(request: NextRequest) {
     if (statusResult.status === 'Paid') {
       orderDb.updateStatus(orderId!, 'paid', paymentId || invoiceId);
       
-      // Add credits to user in both databases
+      // Add credits to user in both databases (ensure we have credits_purchased)
       const user = userDb.findById(order.user_id);
       if (user) {
         // Update local database
-        userDb.updateCredits(user.id, order.credits_purchased || 0);
+        const amountToAdd = order.credits_purchased || order.credits || 0;
+        userDb.updateCredits(user.id, amountToAdd);
         
         // Update subscription tier if applicable
         if (order.subscription_tier && order.subscription_tier !== 'FREE') {
@@ -71,7 +72,7 @@ export async function GET(request: NextRequest) {
             body: JSON.stringify({
               action: 'addCredits',
               userId: user.id,
-              amount: order.credits_purchased || 0,
+              amount: amountToAdd,
               apiKey: process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY
             })
           });

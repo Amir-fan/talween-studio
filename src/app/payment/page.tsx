@@ -34,6 +34,12 @@ function PaymentPageContent() {
         return;
       }
 
+      // Wait until user is loaded to ensure we pass the correct userId to the order
+      if (!user || !user.id) {
+        // Defer until user is available
+        return;
+      }
+
       setPaymentData({
         orderId,
         amount: parseFloat(amount),
@@ -53,7 +59,7 @@ function PaymentPageContent() {
             currency: 'USD',
             packageId,
             credits: parseInt(credits),
-            userId: user?.id || '5d0c39ef-89cb-4a57-9a6e-857253659c7f',
+            userId: user.id,
             discountCode: discountCode || undefined
           })
         });
@@ -86,7 +92,7 @@ function PaymentPageContent() {
     };
 
     initializePayment();
-  }, [searchParams, router]);
+  }, [searchParams, router, user]);
 
   const handleProceedToPayment = () => {
     console.log('Payment URL:', paymentUrl);
