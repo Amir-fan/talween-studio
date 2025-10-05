@@ -6,31 +6,16 @@ import { useSearchParams, useRouter } from 'next/navigation';
 function PendingContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [checking, setChecking] = useState(false);
-
   useEffect(() => {
     const orderId = searchParams.get('orderId');
     if (!orderId) {
       router.push('/packages');
       return;
     }
-
-    const interval = setInterval(async () => {
-      if (checking) return;
-      setChecking(true);
-      try {
-        // Leverage verify route which redirects through callback
-        const res = await fetch(`/api/payment/verify?orderId=${encodeURIComponent(orderId)}`, { method: 'GET' });
-        // It will redirect; we just stop polling and let the router update
-        if (res.redirected) {
-          window.location.href = res.url;
-        }
-      } catch {}
-      finally { setChecking(false); }
-    }, 2500);
-
-    return () => clearInterval(interval);
-  }, [searchParams, router, checking]);
+    // Navigate the browser to the verify endpoint so server-side redirects
+    // (callback -> success/error/pending) are followed by the browser.
+    window.location.assign(`/api/payment/verify?orderId=${encodeURIComponent(orderId)}`);
+  }, [searchParams, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">
