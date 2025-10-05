@@ -83,28 +83,14 @@ export function ColoringSection() {
       }
       
       if (user && !isAdmin) {
-        console.log('🔍 CLIENT CREDIT CHECK:');
-        console.log('  - user.credits:', user.credits);
-        console.log('  - isAdmin:', isAdmin);
-        
+        console.log('🔍 CLIENT CREDIT CHECK (read-only):');
         const cost = PRICING_CONFIG.FEATURE_COSTS.TEXT_TO_COLORING;
-        console.log('  - cost:', cost);
-        
-        // Simple credit check: if user has enough credits, proceed
-        if (user.credits >= cost) {
-          console.log('✅ User has enough credits, proceeding with generation');
-          
-          // Deduct credits from localStorage
-          const creditResult = deductLocalUserCredits(user.id, cost);
-          console.log('  - creditResult:', creditResult);
-          
-          // Refresh user data to show updated credits
-          refreshUserData();
-        } else {
-          console.log('❌ Not enough credits:', user.credits, '<', cost);
+        if (user.credits < cost) {
+          console.log('❌ Not enough credits (client pre-check)');
           setShowCreditsPopup(true);
           return;
         }
+        // Do NOT deduct locally; server will be the single source of truth
       }
 
       const finalValues = { ...values, userId: user?.id || 'admin' };
@@ -119,6 +105,8 @@ export function ColoringSection() {
       const result = await generateImageAction(finalValues);
       if (result.success && result.data) {
         setImageDataUri(result.data.coloringPageDataUri);
+        // Sync latest credits from server after successful deduction
+        try { refreshUserData(); } catch {}
       } else {
         if (result.error === 'NotEnoughCredits') {
             setShowCreditsPopup(true);
