@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPaymentSession } from '@/lib/myfatoorah-service';
-import { orderDb } from '@/lib/simple-database';
+import { orderDb, userDb } from '@/lib/simple-database';
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,6 +45,12 @@ export async function POST(request: NextRequest) {
       console.log('Order pre-create failed (non-blocking):', e);
     }
     console.log('🔍 PAYMENT API - Generated order ID:', orderId);
+    if (!orderId) {
+      return NextResponse.json(
+        { error: 'فشل إنشاء رقم الطلب، الرجاء المحاولة مرة أخرى' },
+        { status: 500 }
+      );
+    }
 
     // Create payment session with simplified user data
     // Apply discount if provided
@@ -63,19 +69,26 @@ export async function POST(request: NextRequest) {
       }
     } catch {}
 
+    // Pull real user info for invoice fields
+    const user = userDb.findById(userId);
+    const customerName = (user?.display_name || 'Talween User').toString().slice(0, 100);
+    const customerEmail = (user?.email || 'hello@talween.com').toString();
+    const customerMobile = (user?.phone || '+965500000000').toString();
+
+    const orderIdStr = orderId as string;
     const paymentData = {
       amount: finalAmount,
       currency: currency,
-      customerName: 'User', // Simplified - will be updated after payment
-      customerEmail: 'user@example.com', // Simplified - will be updated after payment
-      customerMobile: '+966500000000',
-      orderId: orderId,
+      customerName,
+      customerEmail,
+      customerMobile,
+      orderId: orderIdStr,
       packageId: packageId,
       credits: credits,
-      description: `شراء ${credits} نقطة - ${packageId}${appliedDiscount ? ` (خصم ${appliedDiscount.percentOff}%: ${appliedDiscount.code})` : ''}`,
+      description: `تالوين — شراء ${credits} نقطة (${packageId})${appliedDiscount ? ` — خصم ${appliedDiscount.percentOff}%: ${appliedDiscount.code}` : ''}`,
       // Route through server callback endpoint so credits are added before the thank-you page
-      returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/callback?orderId=${orderId}`,
-      errorUrl: `${process.env.NEXT_PUBLIC_APP_URL}/payment/error?orderId=${orderId}`,
+      returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/callback?orderId=${orderIdStr}`,
+      errorUrl: `${process.env.NEXT_PUBLIC_APP_URL}/payment/error?orderId=${orderIdStr}`,
     };
 
     console.log('🔍 PAYMENT API - Creating payment session...');
@@ -87,7 +100,7 @@ export async function POST(request: NextRequest) {
       // Store invoice id on the order (as payment_intent_id) with pending status
       try {
         if (paymentResult.invoiceId) {
-          orderDb.updateStatus(orderId, 'pending', paymentResult.invoiceId);
+          orderDb.updateStatus(orderIdStr, 'pending', paymentResult.invoiceId);
         }
       } catch (e) {
         console.log('Failed to store invoiceId on order (non-blocking):', e);
@@ -95,7 +108,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         paymentUrl: paymentResult.paymentUrl,
-        orderId: orderId,
+        orderId: orderIdStr,
         invoiceId: paymentResult.invoiceId,
         message: 'Payment session created successfully'
       });
