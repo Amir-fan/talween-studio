@@ -29,6 +29,7 @@ export interface PaymentStatus {
   success: boolean;
   status: 'Paid' | 'Pending' | 'Failed' | 'Cancelled';
   transactionId?: string;
+  rawStatus?: string;
   error?: string;
 }
 
@@ -148,10 +149,17 @@ export async function checkPaymentStatus(key: string, keyType: 'InvoiceId' | 'Pa
 
     if (result.IsSuccess) {
       const invoice = result.Data.InvoiceTransactions[0];
+      const rawStatus = String(invoice.TransactionStatus || '').toLowerCase();
+      let normalized: 'Paid' | 'Pending' | 'Failed' | 'Cancelled' = 'Pending';
+      if (/(paid|success|succeed|captur)/i.test(rawStatus)) normalized = 'Paid';
+      else if (/(pending|init|inprogress|process|authori)/i.test(rawStatus)) normalized = 'Pending';
+      else if (/(fail|declin|reject|error)/i.test(rawStatus)) normalized = 'Failed';
+      else if (/(cancel)/i.test(rawStatus)) normalized = 'Cancelled';
       return {
         success: true,
-        status: invoice.TransactionStatus as 'Paid' | 'Pending' | 'Failed' | 'Cancelled',
+        status: normalized,
         transactionId: invoice.TransactionId,
+        rawStatus: invoice.TransactionStatus,
       };
     } else {
       return {
