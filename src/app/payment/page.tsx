@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Coins, Shield, CreditCard, Loader2, AlertCircle, ExternalLink, ArrowRight } from 'lucide-react';
+import { Coins, Shield, CreditCard, Loader2, AlertCircle, ExternalLink, ArrowRight, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/context/auth-context';
