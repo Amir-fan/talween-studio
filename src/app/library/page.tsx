@@ -144,8 +144,9 @@ export default function LibraryPage() {
         {filteredItems.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent>
-              <h3 className="text-2xl font-semibold text-gray-900 mb-2">قريباً جداً</h3>
-              <p className="text-gray-600 mb-6">مكتبتي الشخصية قيد التطوير حالياً</p>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-2">لا توجد عناصر بعد</h3>
+              <p className="text-gray-600 mb-6">ابدأ بإنشاء قصة أو صفحة تلوين لحفظها هنا.</p>
+              <Button onClick={() => router.push('/create')}>ابدأ الآن</Button>
             </CardContent>
           </Card>
         ) : (

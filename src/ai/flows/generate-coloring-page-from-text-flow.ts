@@ -36,8 +36,12 @@ async function generateColoringPageFromText(description: string, difficulty: str
   const hasSchoolContext = /\b(مدرس|مدرسة|صف|فصل|درس|تعليم|لوح|طالب|أطفال|طفل)\b/i.test(description)
     || /\b(child|kid|kids|class|lesson|school|teacher|students|classroom)\b/i.test(description);
 
+  // Stronger guardrails for Detailed mode
+  const strongClassroomGuard = `
+Scene Setting (MANDATORY): INDOOR classroom interior. Absolutely NO streets, NO cars, NO traffic, NO sidewalks, NO road signs, NO vehicles, NO outdoor scenery. Keep background minimal (simple board or desk) and leave large white areas.`;
+
   const extraGuidance = hasSchoolContext
-    ? `Scene Setting: inside a classroom interior. Do NOT draw streets, cars, traffic, sidewalks, road signs, or outdoor elements. Minimal classroom hints only (simple board outline or a desk), leaving large empty spaces for coloring.`
+    ? strongClassroomGuard
     : `If no specific location is required, use a plain white background. Do NOT add streets, cars, traffic, or outdoor elements unless explicitly requested.`;
 
   const url = await generateWithRetryStrict(async () => {

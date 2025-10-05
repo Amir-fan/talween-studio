@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Coins, Shield, CreditCard, CheckCircle, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
+import { Coins, Shield, CreditCard, Loader2, AlertCircle, ExternalLink, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/context/auth-context';
@@ -151,8 +151,8 @@ function PaymentPageContent() {
                 {paymentUrl ? (
                   <div className="space-y-6">
                     <div className="text-center py-8">
-                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <CheckCircle className="h-8 w-8 text-green-600" />
+                      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <CreditCard className="h-8 w-8 text-blue-600" />
                       </div>
                       <h3 className="text-lg font-semibold mb-2">جلسة الدفع جاهزة</h3>
                       <p className="text-muted-foreground mb-6">
@@ -161,11 +161,11 @@ function PaymentPageContent() {
                       
                       <Button
                         onClick={handleProceedToPayment}
-                        className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-                        size="lg"
+                        className="w-full text-white text-base md:text-lg py-6 bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800"
+                        size="xl"
                       >
-                        <ExternalLink className="ml-2 h-5 w-5" />
-                        الانتقال إلى صفحة الدفع
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                        متابعة إلى الدفع الآمن
                       </Button>
                     </div>
 
