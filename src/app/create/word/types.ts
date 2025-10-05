@@ -10,6 +10,16 @@ export const GenerateColoringPageFromTextInputSchema = z.object({
   }),
   userId: z.string().optional(),
   userEmail: z.string().email().optional(),
+}).refine((data) => {
+  const banned = [
+    'سلاح','مسدس','بندقية','رصاص','قنبلة','مخدر','مخدرات','كحول','عري','إباحية','دموي','قتل','انتحار','إيذاء','إيذاء النفس',
+    'gun','pistol','rifle','weapon','bullet','bomb','drug','drugs','alcohol','nude','nudity','porn','gore','kill','murder','suicide','self harm','self-harm'
+  ];
+  const d = (data.description || '').toLowerCase();
+  return !banned.some(term => d.includes(term));
+}, {
+  message: 'الوصف يحتوي على محتوى غير مسموح به (أسلحة/مخدرات/عري/إيذاء).',
+  path: ['description']
 });
 export type GenerateColoringPageFromTextInput = z.infer<typeof GenerateColoringPageFromTextInputSchema>;
 

@@ -74,25 +74,8 @@ export default function CreateWithImagePage() {
       }
       
       if (user && !isAdmin) {
-        console.log('🔍 CLIENT CREDIT CHECK:');
-        console.log('  - user.credits:', user.credits);
-        console.log('  - isAdmin:', isAdmin);
-        
         const cost = PRICING_CONFIG.FEATURE_COSTS.PHOTO_TO_COLORING;
-        console.log('  - cost:', cost);
-        
-        // Simple credit check: if user has enough credits, proceed
-        if (user.credits >= cost) {
-          console.log('✅ User has enough credits, proceeding with generation');
-          
-          // Deduct credits from localStorage
-          const creditResult = deductLocalUserCredits(user.id, cost);
-          console.log('  - creditResult:', creditResult);
-          
-          // Refresh user data to show updated credits
-          refreshUserData();
-        } else {
-          console.log('❌ Not enough credits:', user.credits, '<', cost);
+        if ((user.credits ?? 0) < cost) {
           setShowCreditsPopup(true);
           return;
         }
@@ -106,6 +89,7 @@ export default function CreateWithImagePage() {
       
       if (result.success && result.data) {
         setColoringPageUrl(result.data.coloringPageDataUri);
+        try { await refreshUserData(); } catch {}
       } else {
         if (result.error === 'NotEnoughCredits') {
           setShowCreditsPopup(true);
