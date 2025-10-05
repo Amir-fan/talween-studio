@@ -35,16 +35,23 @@ async function generateColoringPageFromText(description: string, difficulty: str
   // Context-aware guidance to avoid incorrect outdoor street scenes with cars for children
   // Arabic word boundaries are unreliable with \b, so use substring includes
   const lower = (description || '').toLowerCase();
+  // Only treat as school/classroom if the description explicitly mentions school/classroom terms.
+  // Do NOT trigger on generic child/kid words to avoid false positives like "kid on a plane".
   const arabicHints = [
-    'مدرس', 'مدرسة', 'صف', 'فصل', 'درس', 'التدريس', 'تعليم', 'لوح', 'سبورة', 'طالب', 'طلاب', 'أطفال', 'طفل', 'فصل دراسي', 'صف دراسي', 'حصة'
+    'مدرس', 'مدرسة', 'فصل', 'فصل دراسي', 'صف دراسي', 'درس', 'التدريس', 'تعليم', 'لوح', 'سبورة', 'حصة'
   ];
   const englishHints = [
-    'child', 'kid', 'kids', 'class', 'lesson', 'school', 'teacher', 'students', 'classroom', 'pupil'
+    'classroom', 'school', 'teacher', 'lesson'
   ];
   const hasSchoolContext = arabicHints.some(w => description.includes(w)) || englishHints.some(w => lower.includes(w));
 
   // Force indoor classroom for these exact phrases
-  const strictLessonPhrases = ['طفل يعطي الدرس', 'طفل يلقي الدرس', 'طفل يشرح الدرس'];
+  const strictLessonPhrases = [
+    // Arabic explicit teaching phrases
+    'طفل يعطي الدرس', 'طفل يلقي الدرس', 'طفل يشرح الدرس',
+    // English explicit teaching phrases
+    'kid teaching', 'child teaching', 'kid gives lesson', 'child gives lesson', 'kid giving lesson', 'child giving lesson', 'teaching the class'
+  ];
   const mustForceClassroom = strictLessonPhrases.some(p => description.includes(p));
 
   // Stronger guardrails for Detailed mode
