@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
       } catch {}
     }
 
-    // Check payment status (MyFatoorah expects InvoiceId)
-    const statusResult = await checkPaymentStatus((invoiceId as string));
+    // Check payment status (prefer PaymentId when present, otherwise InvoiceId)
+    const statusResult = await checkPaymentStatus(paymentId || (invoiceId as string), paymentId ? 'PaymentId' : 'InvoiceId');
     
     if (!statusResult.success) {
       console.error('Payment status check failed:', statusResult.error);

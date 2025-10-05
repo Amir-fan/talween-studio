@@ -126,7 +126,7 @@ export async function createPaymentSession(paymentData: PaymentRequest): Promise
 }
 
 // Check payment status
-export async function checkPaymentStatus(invoiceId: string): Promise<PaymentStatus> {
+export async function checkPaymentStatus(key: string, keyType: 'InvoiceId' | 'PaymentId' = 'InvoiceId'): Promise<PaymentStatus> {
   try {
     if (!MYFATOORAH_API_KEY) {
       throw new Error('MyFatoorah API key not configured. Please set MYFATOORAH_API_KEY environment variable.');
@@ -139,8 +139,8 @@ export async function checkPaymentStatus(invoiceId: string): Promise<PaymentStat
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        Key: invoiceId,
-        KeyType: 'InvoiceId'
+        Key: key,
+        KeyType: keyType
       }),
     });
 
