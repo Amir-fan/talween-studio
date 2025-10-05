@@ -54,13 +54,15 @@ NEGATIVE PROMPT (MANDATORY): street, road, sidewalk, crosswalk, vehicle, car, bu
     : `If no specific location is required, use a plain white background. Do NOT add streets, cars, traffic, or outdoor elements unless explicitly requested.`;
 
   // Build a subject that encodes constraints directly in the content (Arabic + English)
-  const arabicClassroomSubject = `داخل الصف/الفصل من الداخل فقط، بدون أي شوارع أو سيارات أو مباني خارجية أو إشارات مرور أو أشجار أو سماء.
+  // Canonical subject to anchor composition firmly indoors (Arabic + English hints)
+  const canonicalArabicSubject = `طفل يقف داخل الفصل أمام سبورة بيضاء فارغة، يمسك بعصا تعليمية ويشير إلى السبورة. كاميرا قريبة من الطفل (نصف الجسم)، لا تظهر أي نوافذ أو مناظر خارجية.`;
+  const arabicClassroomSubject = `داخل الصف/الفصل من الداخل فقط، بدون أي شوارع أو سيارات أو مباني خارجية أو إشارات مرور أو أشجار أو سماء أو رصيف أو طريق.
 خلفية بيضاء وبسيطة مع سبورة بيضاء فارغة أو طاولة فقط.
 لا نصوص أو حروف على السبورة أو اللافتات.
 الطفل يشرح الدرس داخل الفصل.`;
 
   const subjectForModel = hasSchoolContext
-    ? `${description}\n${arabicClassroomSubject}\n(INDOOR classroom only, no street/cars/outdoor)`
+    ? `${canonicalArabicSubject}\n${description}\n${arabicClassroomSubject}\n(INDOOR classroom only, NO street/cars/vehicles/traffic/outdoor, CLOSE CROP on child + whiteboard)`
     : description;
 
   const url = await generateWithRetryStrict(async () => {
@@ -73,7 +75,7 @@ Create a detailed black and white line art illustration for a children's colorin
 Subject: ${subjectForModel}
 Difficulty: ${difficulty}
 
-Additional Requirements:
+ Additional Requirements:
 - No text, no words, no letters, no numbers
 - Leave large empty spaces for coloring
 - ${extraGuidance}`,
