@@ -37,11 +37,20 @@ async function generateColoringPageFromText(description: string, difficulty: str
     || /\b(child|kid|kids|class|lesson|school|teacher|students|classroom)\b/i.test(description);
 
   // Stronger guardrails for Detailed mode
+  const isDetailed = /detailed|مفصل/i.test(difficulty || '');
   const strongClassroomGuard = `
-Scene Setting (MANDATORY): INDOOR classroom interior. Absolutely NO streets, NO cars, NO traffic, NO sidewalks, NO road signs, NO vehicles, NO outdoor scenery. Keep background minimal (simple board or desk) and leave large white areas.`;
+Scene Setting (MANDATORY): INDOOR classroom interior only.
+Allowed elements: child, simple desk, chair, plain whiteboard/blackboard outline. Optional: one window with pure white fill (no outdoor view).
+Forbidden elements (must NOT appear): street, road, sidewalk, crosswalk, car, bus, truck, bike, traffic light, traffic signs, billboards, buildings, city, trees, bushes, park, clouds, sun, mountains, any outdoor scenery.
+Background must stay mostly EMPTY WHITE with a few clean classroom hints only.
+Any signs must be BLANK SHAPES with no letters.
+`;
 
   const extraGuidance = hasSchoolContext
-    ? strongClassroomGuard
+    ? strongClassroomGuard + (isDetailed ? `
+Detail policy: add detail ONLY to the subject (child pose, clothing folds, hair lines) and small classroom props. Do NOT add exterior detail or outdoor context. Leave large white areas for coloring.
+NEGATIVE PROMPT (MANDATORY): street, road, sidewalk, crosswalk, vehicle, car, bus, truck, bike, scooter, traffic light, traffic sign, billboard, city, buildings, skyline, park, tree, bush, mountain, cloud, sun.
+` : '')
     : `If no specific location is required, use a plain white background. Do NOT add streets, cars, traffic, or outdoor elements unless explicitly requested.`;
 
   const url = await generateWithRetryStrict(async () => {
