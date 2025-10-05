@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { userDb } from '@/lib/simple-database';
+import { googleSheetsUserDb } from '@/lib/google-sheets-server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +13,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user from database
+    // Prefer Google Sheets as the source of truth; fallback to local DB
+    let sheetsUser = await googleSheetsUserDb.findById(userId);
+    if (sheetsUser.success && sheetsUser.user) {
+      const u = sheetsUser.user as any;
+      return NextResponse.json({
+        success: true,
+        user: {
+          id: u.id,
+          email: u.email,
+          displayName: u.displayName,
+          credits: Number(u.credits || 0),
+          status: u.status || 'active',
+          emailVerified: !!u.emailVerified,
+          subscriptionTier: u.subscriptionTier || 'FREE'
+        }
+      });
+    }
+
+    // Fallback to local DB
     const user = userDb.findById(userId);
     if (!user) {
       return NextResponse.json(
@@ -20,8 +39,6 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
-
-    // Return updated user data
     return NextResponse.json({
       success: true,
       user: {

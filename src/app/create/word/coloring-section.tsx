@@ -106,7 +106,7 @@ export function ColoringSection() {
       if (result.success && result.data) {
         setImageDataUri(result.data.coloringPageDataUri);
         // Sync latest credits from server after successful deduction
-        try { refreshUserData(); } catch {}
+        try { await refreshUserData(); } catch {}
       } else {
         if (result.error === 'NotEnoughCredits') {
             setShowCreditsPopup(true);
