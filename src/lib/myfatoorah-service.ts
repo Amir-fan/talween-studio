@@ -2,7 +2,7 @@
 // Professional payment processing for MENA region
 
 const MYFATOORAH_API_KEY = process.env.MYFATOORAH_API_KEY;
-const MYFATOORAH_BASE_URL = process.env.MYFATOORAH_BASE_URL || 'https://api.myfatoorah.com';
+const MYFATOORAH_BASE_URL = (process.env.MYFATOORAH_BASE_URL || 'https://api.myfatoorah.com').replace(/\/+$/, '');
 
 export interface PaymentRequest {
   amount: number;

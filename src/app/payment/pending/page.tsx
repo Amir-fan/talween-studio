@@ -8,7 +8,8 @@ export default function PaymentPendingPage({ searchParams }: { searchParams: { o
   }
   // Server-side redirect straight to verification endpoint so the server
   // drives follow-up redirects to success/error.
-  redirect(`/api/payment/verify?orderId=${encodeURIComponent(orderId as string)}`);
+  const basePath = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, '') || '';
+  redirect(`${basePath}/api/payment/verify?orderId=${encodeURIComponent(orderId as string)}`);
 }
 
 

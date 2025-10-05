@@ -69,6 +69,11 @@ function PaymentPageContent() {
         
         if (data.success) {
           setPaymentUrl(data.paymentUrl);
+          // If this is a mock payment URL (our internal test gateway), go there immediately
+          if (data.paymentUrl.includes('/payment/mock-gateway')) {
+            window.location.assign(data.paymentUrl);
+            return;
+          }
         } else {
           setError(data.error || 'فشل في إنشاء جلسة الدفع');
         }

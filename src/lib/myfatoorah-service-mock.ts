@@ -41,7 +41,8 @@ export async function createPaymentSession(paymentData: PaymentRequest): Promise
     const invoiceId = `MOCK-${Date.now()}`;
     
     // Create mock payment URL (simulates external payment gateway)
-    const mockPaymentUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment/mock-gateway?orderId=${paymentData.orderId}&amount=${paymentData.amount}&packageId=${paymentData.packageId || 'UNKNOWN'}&credits=${paymentData.credits || 0}`;
+  const base = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/+$/, '');
+  const mockPaymentUrl = `${base}/payment/mock-gateway?orderId=${paymentData.orderId}&amount=${paymentData.amount}&packageId=${paymentData.packageId || 'UNKNOWN'}&credits=${paymentData.credits || 0}`;
     
     return {
       success: true,

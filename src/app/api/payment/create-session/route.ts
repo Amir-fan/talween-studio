@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
     const customerMobile = (user?.phone || '+965500000000').toString();
 
     const orderIdStr = orderId as string;
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/+$/, '');
     const paymentData = {
       amount: finalAmount,
       currency: currency,
@@ -87,8 +88,8 @@ export async function POST(request: NextRequest) {
       credits: credits,
       description: `تالوين — شراء ${credits} نقطة (${packageId})${appliedDiscount ? ` — خصم ${appliedDiscount.percentOff}%: ${appliedDiscount.code}` : ''}`,
       // Route through server callback endpoint so credits are added before the thank-you page
-      returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/callback?orderId=${orderIdStr}`,
-      errorUrl: `${process.env.NEXT_PUBLIC_APP_URL}/payment/error?orderId=${orderIdStr}`,
+      returnUrl: `${baseUrl}/api/payment/callback?orderId=${orderIdStr}`,
+      errorUrl: `${baseUrl}/payment/error?orderId=${orderIdStr}`,
     };
 
     console.log('🔍 PAYMENT API - Creating payment session...');
