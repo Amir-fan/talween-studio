@@ -23,7 +23,8 @@ import {
   Filter,
   Shield,
   AlertTriangle,
-  Trash2
+  Trash2,
+  Tag
 } from 'lucide-react';
 import { config } from '@/lib/config';
 
@@ -70,6 +71,10 @@ function AdminDashboardContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [creditsToAdd, setCreditsToAdd] = useState('');
+  const [discounts, setDiscounts] = useState<any[]>([]);
+  const [newCode, setNewCode] = useState('');
+  const [newPercent, setNewPercent] = useState('10');
+  const [newMaxUses, setNewMaxUses] = useState('');
 
   // Use auth context for authentication
   const isAdminAuthenticated = isAdmin && user;
@@ -184,6 +189,15 @@ function AdminDashboardContent() {
         console.error('Failed to load users:', usersData.error);
         alert(`فشل في تحميل المستخدمين: ${usersData.error || 'خطأ غير معروف'}`);
       }
+
+      // Load discounts list
+      try {
+        const resp = await fetch('/api/discounts/list');
+        if (resp.ok) {
+          const d = await resp.json();
+          if (d.success) setDiscounts(d.discounts || []);
+        }
+      } catch {}
       
     } catch (error) {
       console.error('Error loading admin data:', error);
@@ -515,6 +529,52 @@ function AdminDashboardContent() {
             </Card>
           </div>
         )}
+
+        {/* Discounts Management */}
+        <Card className="mb-8">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2"><Tag className="h-4 w-4"/>إدارة أكواد الخصم</CardTitle>
+                <CardDescription>إنشاء أكواد خصم وتتبع استخدامها</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+              <Input placeholder="الكود" value={newCode} onChange={(e)=>setNewCode(e.target.value.toUpperCase())}/>
+              <Input placeholder="نسبة الخصم %" value={newPercent} onChange={(e)=>setNewPercent(e.target.value)} />
+              <Input placeholder="أقصى استخدام (اختياري)" value={newMaxUses} onChange={(e)=>setNewMaxUses(e.target.value)} />
+              <Button onClick={async ()=>{
+                const resp = await fetch('/api/discounts/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:newCode,percentOff:Number(newPercent||0),maxUses:newMaxUses?Number(newMaxUses):undefined})});
+                const r = await resp.json();
+                if (r.success){ setDiscounts(r.discounts||[]); setNewCode(''); setNewPercent('10'); setNewMaxUses(''); }
+              }}>إنشاء</Button>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>الكود</TableHead>
+                  <TableHead>الخصم%</TableHead>
+                  <TableHead>الاستخدامات</TableHead>
+                  <TableHead>الحد</TableHead>
+                  <TableHead>الحالة</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(discounts||[]).map((d:any)=> (
+                  <TableRow key={d.id}>
+                    <TableCell>{d.code}</TableCell>
+                    <TableCell>{d.percentOff}</TableCell>
+                    <TableCell>{d.uses||0}</TableCell>
+                    <TableCell>{d.maxUses||'-'}</TableCell>
+                    <TableCell>{d.active? 'نشط':'متوقف'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
 
         {/* Users Table */}
             <Card>
