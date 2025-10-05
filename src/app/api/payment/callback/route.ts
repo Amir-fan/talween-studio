@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkPaymentStatus } from '@/lib/myfatoorah-service';
+import { checkPaymentStatus } from '@/lib/myfatoor ah-service';
 import { orderDb, userDb } from '@/lib/simple-database';
 
 export async function GET(request: NextRequest) {
@@ -28,8 +28,11 @@ export async function GET(request: NextRequest) {
       } catch {}
     }
 
-    // Check payment status (prefer PaymentId when present, otherwise InvoiceId)
-    const statusResult = await checkPaymentStatus(paymentId || (invoiceId as string), paymentId ? 'PaymentId' : 'InvoiceId');
+    // If mock mode or a MOCK-* PaymentId is provided, short-circuit as Paid
+    const isMock = process.env.PAYMENT_USE_MOCK === 'true' || (paymentId?.startsWith('MOCK-') ?? false);
+    const statusResult = isMock
+      ? { success: true, status: 'Paid', transactionId: paymentId || 'MOCK-TXN' }
+      : await checkPaymentStatus(paymentId || (invoiceId as string), paymentId ? 'PaymentId' : 'InvoiceId');
     
     if (!statusResult.success) {
       console.error('Payment status check failed:', statusResult.error);
