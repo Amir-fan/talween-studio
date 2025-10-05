@@ -99,3 +99,26 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const orderId = searchParams.get('orderId');
+    if (!orderId) {
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?error=${encodeURIComponent('Missing orderId')}`);
+    }
+
+    // Pull stored invoiceId
+    const order = orderDb.findById(orderId);
+    if (!order) {
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?error=${encodeURIComponent('Order not found')}`);
+    }
+
+    const invoiceId = (order as any).payment_intent_id || orderId;
+
+    // Reuse callback endpoint to keep logic consistent
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/api/payment/callback?orderId=${orderId}&invoiceId=${invoiceId}`);
+  } catch (error) {
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?error=${encodeURIComponent('Verification error')}`);
+  }
+}

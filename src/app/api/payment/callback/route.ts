@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const paymentId = searchParams.get('paymentId');
-    const invoiceId = searchParams.get('invoiceId');
+    let invoiceId = searchParams.get('invoiceId');
     const orderId = searchParams.get('orderId');
 
     console.log('MyFatoorah callback received:', { paymentId, invoiceId, orderId });
@@ -18,8 +18,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check payment status
-    const statusResult = await checkPaymentStatus(invoiceId || orderId!);
+    // Ensure we use the correct InvoiceId; if missing from query, pull from our stored order
+    if (!invoiceId && orderId) {
+      try {
+        const existingOrder = orderDb.findById(orderId);
+        if (existingOrder && existingOrder.payment_intent_id) {
+          invoiceId = existingOrder.payment_intent_id;
+        }
+      } catch {}
+    }
+
+    // Check payment status (MyFatoorah expects InvoiceId)
+    const statusResult = await checkPaymentStatus((invoiceId as string));
     
     if (!statusResult.success) {
       console.error('Payment status check failed:', statusResult.error);
