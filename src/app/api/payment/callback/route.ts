@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkPaymentStatus } from '@/lib/myfatoor ah-service';
+import { checkPaymentStatus } from '@/lib/myfatoorah-service';
 import { orderDb, userDb } from '@/lib/simple-database';
 
 export async function GET(request: NextRequest) {
