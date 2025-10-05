@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkPaymentStatus } from '@/lib/myfatoorah-service';
 import { orderDb, userDb } from '@/lib/simple-database';
+import { googleSheetsUserDb } from '@/lib/google-sheets-server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,53 +51,21 @@ export async function GET(request: NextRequest) {
     if (statusResult.status === 'Paid') {
       orderDb.updateStatus(orderId!, 'paid', paymentId || invoiceId);
       
-      // Add credits to user in both databases (ensure we have credits_purchased)
-      const user = userDb.findById(order.user_id);
-      if (user) {
-        // Update local database
-        const amountToAdd = order.credits_purchased || order.credits || 0;
-        userDb.updateCredits(user.id, amountToAdd);
-        
-        // Update subscription tier if applicable
+      // Add credits to user in local DB (if exists) and Google Sheets (always)
+      const amountToAdd = order.credits_purchased || (order as any).credits || 0;
+      const localUser = userDb.findById(order.user_id);
+      if (localUser) {
+        userDb.updateCredits(localUser.id, amountToAdd);
         if (order.subscription_tier && order.subscription_tier !== 'FREE') {
-          userDb.updateUser(user.id, {
-            subscription_tier: order.subscription_tier
-          });
+          userDb.updateUser(localUser.id, { subscription_tier: order.subscription_tier });
         }
+      }
 
-        // Update Google Sheets
-        try {
-          await fetch(`${process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'addCredits',
-              userId: user.id,
-              amount: amountToAdd,
-              apiKey: process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY
-            })
-          });
-
-          // Send thank you email
-          await fetch(`${process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              recipientEmail: user.email,
-              emailType: 'paymentSuccess',
-              templateData: {
-                name: user.display_name || 'مستخدم',
-                orderNumber: orderId,
-                totalAmount: order.total_amount || order.amount,
-                credits: order.credits_purchased || order.credits,
-                appUrl: process.env.NEXT_PUBLIC_APP_URL
-              },
-              userId: user.id
-            })
-          });
-        } catch (error) {
-          console.error('Error updating Google Sheets or sending email:', error);
-        }
+      // Always update Google Sheets using the order's user_id
+      try {
+        await googleSheetsUserDb.addCredits(order.user_id, amountToAdd);
+      } catch (e) {
+        console.error('Google Sheets addCredits failed:', e);
       }
 
       console.log(`Payment successful for order ${orderId}, added ${order.credits_purchased || 0} credits`);
