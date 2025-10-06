@@ -30,17 +30,17 @@ export async function convertImageToColoringPage(imageDataUri: string): Promise<
 }
 
 /**
- * Convert image directly to SVG line art using Gemini
+ * Convert image to line art using direct image-to-image AI conversion
  */
 async function convertImageToSVGWithGemini(imageDataUri: string, apiKey: string): Promise<string> {
-  console.log('🎨 Converting image to SVG line art with Gemini...');
+  console.log('🎨 Converting image to line art using direct AI conversion...');
   
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ 
     model: "gemini-2.0-flash-exp",
     generationConfig: {
-      temperature: 0.1,
-      maxOutputTokens: 4000, // Increased for SVG content
+      temperature: 0.0,
+      maxOutputTokens: 2000,
     }
   });
 
@@ -49,30 +49,21 @@ async function convertImageToSVGWithGemini(imageDataUri: string, apiKey: string)
   const mimeMatch = meta?.match(/^data:(.*?);base64$/);
   const mimeType = mimeMatch?.[1] || 'image/jpeg';
 
-  const systemInstruction = "Convert the provided image into clean black SVG line art for coloring books—no shading, no fills.";
-  
-  const prompt = `Convert this image into a clean black SVG line art suitable for coloring books.
+  const prompt = `Convert this image into a clean black line art coloring page.
 
-REQUIREMENTS:
-- Pure black lines on white background
-- Clean, simple line art suitable for children
-- Bold outlines that are easy to trace
-- Large fillable white areas for coloring
-- No shading, gradients, or fills
-- No text or letters
-- Child-friendly design
-- Preserve the exact structure and composition of the original image
+CRITICAL REQUIREMENTS:
+- Create clean black outlines of the EXACT image shown
+- Preserve the main subject, facial features, and key details
+- Use thick black lines on white background
+- No shading, no fills, no solid black areas
+- Make it look like a real coloring book page
+- Keep the same composition and proportions as the original
+- Focus on outlines and contours, not abstract shapes
 
-OUTPUT FORMAT:
-Return ONLY valid SVG code, no explanations or markdown fences. The SVG should:
-- Start with <svg> tag
-- Have proper viewBox dimensions
-- Use black stroke lines with no fill
-- Be suitable for printing and coloring
-
-Convert the provided image into clean black SVG line art for coloring books—no shading, no fills.`;
+Convert the provided image into clean black line art for coloring books—no shading, no fills.`;
 
   try {
+    console.log('🎨 Converting image directly to line art...');
     const result = await model.generateContent([
       prompt,
       {
@@ -84,22 +75,33 @@ Convert the provided image into clean black SVG line art for coloring books—no
     ]);
 
     const response = await result.response;
-    const svgContent = response.text();
+    const content = response.text();
     
-    console.log('📝 Raw Gemini response:', svgContent.substring(0, 200) + '...');
+    console.log('📝 AI response:', content.substring(0, 200) + '...');
     
-    // Clean and validate SVG content
-    const cleanedSVG = cleanAndValidateSVG(svgContent);
-    console.log('✅ SVG cleaned and validated');
+    // Check if we got an image response
+    const imageData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData;
     
-    // Convert to data URI
-    const svgDataUri = `data:image/svg+xml;base64,${Buffer.from(cleanedSVG).toString('base64')}`;
-    
-    console.log('✅ SVG conversion completed');
-    return svgDataUri;
+    if (imageData) {
+      console.log('✅ AI returned image data');
+      return `data:${imageData.mimeType};base64,${imageData.data}`;
+    } else {
+      console.log('❌ No image data in response, trying to extract SVG...');
+      
+      // Try to extract SVG from text response
+      const svgMatch = content.match(/<svg[^>]*>[\s\S]*<\/svg>/i);
+      if (svgMatch) {
+        const svgContent = svgMatch[0];
+        console.log('✅ Found SVG in response');
+        return `data:image/svg+xml;base64,${Buffer.from(svgContent).toString('base64')}`;
+      } else {
+        console.log('❌ No valid content found in response');
+        throw new Error('AI did not return valid image or SVG content');
+      }
+    }
     
   } catch (error) {
-    console.error('❌ SVG conversion failed:', error);
+    console.error('❌ Direct AI conversion failed:', error);
     throw error;
   }
 }
