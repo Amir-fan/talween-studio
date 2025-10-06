@@ -73,16 +73,17 @@ async function createDetailedLineArtPrompt(imageDataUri: string, apiKey: string)
   const mimeMatch = meta?.match(/^data:(.*?);base64$/);
   const mimeType = mimeMatch?.[1] || 'image/jpeg';
 
-  const prompt = `Analyze this image and create a detailed prompt for generating a black and white line art coloring page. 
+  const prompt = `Analyze this image and create a detailed description for generating a black and white line art coloring page.
 
 CRITICAL REQUIREMENTS:
-- Describe the EXACT subject, composition, and key details
-- Focus on outlines, contours, and structural elements
-- Identify facial features, clothing, objects, and background elements
-- Note the pose, positioning, and proportions
-- Describe any distinctive features or characteristics
+- Describe the main subject in detail (person, animal, object, scene)
+- Identify key structural elements: outlines, shapes, forms
+- Note facial features, clothing, objects, background elements
+- Describe pose, positioning, proportions, and composition
+- Mention any distinctive features, accessories, or characteristics
+- Focus on what would make a good coloring page outline
 
-The prompt should be detailed enough for an AI image generator to create an accurate line art version that preserves the original structure and details.`;
+Create a clear, detailed description that an AI image generator can use to recreate this as clean line art.`;
 
   const result = await model.generateContent([
     prompt,
@@ -111,17 +112,16 @@ async function generateLineArtWithImagen(detailedPrompt: string, apiKey: string)
   try {
     const imagenEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-preview-06-06:predict?key=${apiKey}`;
     
-    const prompt = `Create a black and white line art coloring page based on this detailed analysis: "${detailedPrompt}"
+    const prompt = `Create a black and white line art coloring page: ${detailedPrompt}
 
-STRICT REQUIREMENTS:
-- Pure black lines on white background
-- Clean, bold outlines that are easy to trace
-- Preserve the EXACT structure and details from the analysis
-- No shading, gradients, or fills
-- No text or letters
-- Child-friendly coloring book style
-- Large fillable white areas for coloring
-- Maintain original proportions and composition`;
+REQUIREMENTS:
+- Black lines on white background only
+- Clean, simple outlines suitable for children
+- No shading, colors, or fills
+- No text or words
+- Coloring book style
+- Easy to trace lines
+- Large white areas for coloring`;
 
     const payload = {
       instances: [{ prompt }],
@@ -149,14 +149,40 @@ STRICT REQUIREMENTS:
     }
     
     const result = await response.json();
-    console.log('📥 Imagen response received');
+    console.log('📥 Imagen full response:', JSON.stringify(result, null, 2));
     
-    const generatedImage = result.predictions?.[0]?.bytesBase64Encoded;
+    // Check for image data in different possible locations
+    const generatedImage = result.predictions?.[0]?.bytesBase64Encoded || 
+                          result.predictions?.[0]?.image?.bytesBase64Encoded ||
+                          result.predictions?.[0]?.data ||
+                          result.image ||
+                          result.data;
+    
+    console.log('🔍 Looking for image data in:', {
+      'result.predictions?.[0]?.bytesBase64Encoded': result.predictions?.[0]?.bytesBase64Encoded ? 'FOUND' : 'NOT FOUND',
+      'result.predictions?.[0]?.image?.bytesBase64Encoded': result.predictions?.[0]?.image?.bytesBase64Encoded ? 'FOUND' : 'NOT FOUND',
+      'result.predictions?.[0]?.data': result.predictions?.[0]?.data ? 'FOUND' : 'NOT FOUND',
+      'result.image': result.image ? 'FOUND' : 'NOT FOUND',
+      'result.data': result.data ? 'FOUND' : 'NOT FOUND'
+    });
     
     if (generatedImage) {
       console.log('✅ AI line art generation successful');
-      return `data:image/png;base64,${generatedImage}`;
+      // Ensure it's properly formatted
+      if (generatedImage.startsWith('data:')) {
+        return generatedImage;
+      } else {
+        return `data:image/png;base64,${generatedImage}`;
+      }
     }
+    
+    console.log('❌ No image data found in any expected location');
+    console.log('📊 Response structure analysis:', {
+      hasPredictions: !!result.predictions,
+      predictionsLength: result.predictions?.length || 0,
+      firstPredictionKeys: result.predictions?.[0] ? Object.keys(result.predictions[0]) : [],
+      topLevelKeys: Object.keys(result)
+    });
     
     throw new Error('No image data returned from Imagen');
     
