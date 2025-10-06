@@ -92,10 +92,10 @@ export const googleSheetsUserDb = {
 
   async findByEmail(email: string): Promise<AuthResult> {
     try {
-      console.log('🔍 Finding user by email in Google Sheets (server-side)...');
+      console.log('🔍 [GS] findByEmail:', email);
       
       if (!GOOGLE_APPS_SCRIPT_URL || !GOOGLE_SHEETS_API_KEY) {
-        console.error('❌ Missing Google Sheets environment variables');
+        console.error('❌ [GS] Missing Google Sheets environment variables');
         return { success: false, error: 'Google Sheets configuration not found' };
       }
       
@@ -116,7 +116,7 @@ export const googleSheetsUserDb = {
       }
 
       const result = await response.json();
-      console.log('📊 Google Sheets find response:', result);
+      console.log('📊 [GS] findByEmail response:', { success: result.success, userId: result.user?.id, credits: result.user?.credits });
 
       if (result.success && result.user) {
         const user: User = {
@@ -139,17 +139,17 @@ export const googleSheetsUserDb = {
         return { success: false, error: 'User not found' };
       }
     } catch (error) {
-      console.error('❌ Google Sheets find error:', error);
-      return { success: false, error: error.message };
+      console.error('❌ [GS] findByEmail error:', error);
+      return { success: false, error: (error as Error).message };
     }
   },
 
   async findById(id: string): Promise<AuthResult> {
     try {
-      console.log('🔍 Finding user by ID in Google Sheets (server-side)...');
+      console.log('🔍 [GS] findById:', id);
       
       if (!GOOGLE_APPS_SCRIPT_URL || !GOOGLE_SHEETS_API_KEY) {
-        console.error('❌ Missing Google Sheets environment variables');
+        console.error('❌ [GS] Missing Google Sheets environment variables');
         return { success: false, error: 'Google Sheets configuration not found' };
       }
       
@@ -170,7 +170,7 @@ export const googleSheetsUserDb = {
       }
 
       const result = await response.json();
-      console.log('📊 Google Sheets find by ID response:', result);
+      console.log('📊 [GS] findById response:', { success: result.success, userId: result.user?.id, credits: result.user?.credits });
 
       if (result.success && result.user) {
         const user: User = {
@@ -193,17 +193,17 @@ export const googleSheetsUserDb = {
         return { success: false, error: 'User not found' };
       }
     } catch (error) {
-      console.error('❌ Google Sheets find by ID error:', error);
-      return { success: false, error: error.message };
+      console.error('❌ [GS] findById error:', error);
+      return { success: false, error: (error as Error).message };
     }
   },
 
   async updateCredits(userId: string, credits: number): Promise<AuthResult> {
     try {
-      console.log('🔄 Updating credits in Google Sheets (server-side)...');
+      console.log('🔄 [GS] updateCredits:', { userId, credits });
       
       if (!GOOGLE_APPS_SCRIPT_URL || !GOOGLE_SHEETS_API_KEY) {
-        console.error('❌ Missing Google Sheets environment variables');
+        console.error('❌ [GS] Missing Google Sheets environment variables');
         return { success: false, error: 'Google Sheets configuration not found' };
       }
       
@@ -225,7 +225,7 @@ export const googleSheetsUserDb = {
       }
 
       const result = await response.json();
-      console.log('📊 Google Sheets update credits response:', result);
+      console.log('📊 [GS] updateCredits response:', result);
 
       if (result.success) {
         return { success: true };
@@ -233,13 +233,14 @@ export const googleSheetsUserDb = {
         return { success: false, error: result.error || 'Failed to update credits' };
       }
     } catch (error) {
-      console.error('❌ Google Sheets update credits error:', error);
-      return { success: false, error: error.message };
+      console.error('❌ [GS] updateCredits error:', error);
+      return { success: false, error: (error as Error).message };
     }
   },
 
   async addCredits(userId: string, amount: number): Promise<{ success: boolean; error?: string }> {
     try {
+      console.log('➕ [GS] addCredits:', { userId, amount });
       if (!GOOGLE_APPS_SCRIPT_URL || !GOOGLE_SHEETS_API_KEY) {
         return { success: false, error: 'Google Sheets configuration not found' };
       }
@@ -257,14 +258,17 @@ export const googleSheetsUserDb = {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const result = await response.json();
+      console.log('📊 [GS] addCredits response:', result);
       return { success: !!result.success, error: result.error };
     } catch (error) {
+      console.error('❌ [GS] addCredits error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to add credits' };
     }
   },
 
   async deductCredits(userId: string, amount: number): Promise<{ success: boolean; error?: string }> {
     try {
+      console.log('➖ [GS] deductCredits:', { userId, amount });
       if (!GOOGLE_APPS_SCRIPT_URL || !GOOGLE_SHEETS_API_KEY) {
         return { success: false, error: 'Google Sheets configuration not found' };
       }
@@ -282,8 +286,10 @@ export const googleSheetsUserDb = {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const result = await response.json();
+      console.log('📊 [GS] deductCredits response:', result);
       return { success: !!result.success, error: result.error };
     } catch (error) {
+      console.error('❌ [GS] deductCredits error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to deduct credits' };
     }
   },

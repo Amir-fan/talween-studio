@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     let invoiceId = searchParams.get('invoiceId');
     const orderId = searchParams.get('orderId');
 
-    console.log('MyFatoorah callback received:', { paymentId, invoiceId, orderId });
+    console.log('💳 [CALLBACK:GET] Received payment callback', { paymentId, invoiceId, orderId });
 
     if (!invoiceId && !orderId) {
       return NextResponse.json(
@@ -36,77 +36,99 @@ export async function GET(request: NextRequest) {
       : await checkPaymentStatus(paymentId || (invoiceId as string), paymentId ? 'PaymentId' : 'InvoiceId');
     
     if (!statusResult.success) {
-      console.error('Payment status check failed:', statusResult.error);
+      console.error('💳 [CALLBACK:GET] Payment status check failed:', statusResult.error);
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?error=${encodeURIComponent(statusResult.error || 'Payment verification failed')}`);
     }
 
     // Find the order
     const order = orderDb.findById(orderId!);
     if (!order) {
-      console.error('Order not found:', orderId);
+      console.error('💳 [CALLBACK:GET] Order not found:', orderId);
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?error=${encodeURIComponent('Order not found')}`);
     }
+    console.log('💳 [CALLBACK:GET] Found order:', { id: order.id, user_id: order.user_id, amount: order.total_amount, credits_purchased: (order as any).credits_purchased, status: order.status });
 
     // Update order status based on payment result
     if (statusResult.status === 'Paid') {
       orderDb.updateStatus(orderId!, 'paid', paymentId || invoiceId);
-      
+      console.log('💳 [CALLBACK:GET] Marked order as paid, will add credits');
+
       // Add credits to user in local DB (if exists) and Google Sheets (always)
       const amountToAdd = order.credits_purchased || (order as any).credits || 0;
-      const localUser = userDb.findById(order.user_id);
-      if (localUser) {
-        userDb.updateCredits(localUser.id, amountToAdd);
+      console.log('💳 [CALLBACK:GET] Calculated amountToAdd:', amountToAdd);
+      const localUserBefore = userDb.findById(order.user_id);
+      if (localUserBefore) {
+        console.log('💳 [CALLBACK:GET] Local user BEFORE credit add:', { id: localUserBefore.id, email: localUserBefore.email, credits: localUserBefore.credits });
+        userDb.updateCredits(localUserBefore.id, amountToAdd);
         if (order.subscription_tier && order.subscription_tier !== 'FREE') {
-          userDb.updateUser(localUser.id, { subscription_tier: order.subscription_tier });
+          userDb.updateUser(localUserBefore.id, { subscription_tier: order.subscription_tier });
         }
+        const localUserAfter = userDb.findById(order.user_id);
+        console.log('💳 [CALLBACK:GET] Local user AFTER credit add:', { id: localUserAfter?.id, credits: localUserAfter?.credits });
       }
 
       // Always update Google Sheets using the order's user_id, with robust email fallback
       try {
         let sheetsUpdated = false;
+        console.log('📊 [CALLBACK:GET] Attempt Sheets addCredits by ID:', { userId: order.user_id, amountToAdd });
         const byId = await googleSheetsUserDb.addCredits(order.user_id, amountToAdd);
+        console.log('📊 [CALLBACK:GET] Sheets addCredits by ID result:', byId);
         sheetsUpdated = !!byId.success;
 
         if (!sheetsUpdated) {
           // Try to resolve Sheets user by local email if available
           try {
+            const localUser = userDb.findById(order.user_id);
             if (localUser?.email) {
+              console.log('📊 [CALLBACK:GET] Attempt Sheets findByEmail:', localUser.email);
               const lookup = await googleSheetsUserDb.findByEmail(localUser.email);
+              console.log('📊 [CALLBACK:GET] Sheets findByEmail result:', { success: lookup.success, userId: lookup.user?.id, credits: lookup.user?.credits });
               if (lookup.success && lookup.user?.id) {
                 const targetId = lookup.user.id as string;
+                console.log('📊 [CALLBACK:GET] Attempt Sheets addCredits by found ID:', { targetId, amountToAdd });
                 const addByEmail = await googleSheetsUserDb.addCredits(targetId, amountToAdd);
+                console.log('📊 [CALLBACK:GET] Sheets addCredits by found ID result:', addByEmail);
                 sheetsUpdated = !!addByEmail.success;
                 if (!sheetsUpdated) {
                   const current = Number(lookup.user.credits || 0);
+                  console.log('📊 [CALLBACK:GET] Attempt Sheets updateCredits (explicit set):', { targetId, current, newTotal: current + amountToAdd });
                   const setRes = await googleSheetsUserDb.updateCredits(targetId, current + amountToAdd);
+                  console.log('📊 [CALLBACK:GET] Sheets updateCredits result:', setRes);
                   sheetsUpdated = !!setRes.success;
                 }
               }
             }
           } catch (inner) {
-            console.error('Sheets email-based update failed:', inner);
+            console.error('📊 [CALLBACK:GET] Sheets email-based update failed:', inner);
           }
         }
 
         if (!sheetsUpdated) {
           // Final fallback: try to read current by id and set
           try {
+            console.log('📊 [CALLBACK:GET] Final fallback findById:', order.user_id);
             const sheetUser = await googleSheetsUserDb.findById(order.user_id);
             const current = sheetUser.success && sheetUser.user ? Number((sheetUser.user as any).credits || 0) : 0;
-            await googleSheetsUserDb.updateCredits(order.user_id, current + amountToAdd);
+            console.log('📊 [CALLBACK:GET] Final fallback current credits:', current);
+            const setRes = await googleSheetsUserDb.updateCredits(order.user_id, current + amountToAdd);
+            console.log('📊 [CALLBACK:GET] Final fallback updateCredits result:', setRes);
           } catch {}
         }
       } catch (e) {
-        console.error('Google Sheets addCredits failed (outer):', e);
+        console.error('📊 [CALLBACK:GET] Sheets addCredits failed (outer):', e);
         try {
           // Attempt email-based update in catch as well
+          const localUser = userDb.findById(order.user_id);
           if (localUser?.email) {
+            console.log('📊 [CALLBACK:GET] Catch fallback findByEmail:', localUser.email);
             const lookup = await googleSheetsUserDb.findByEmail(localUser.email);
             if (lookup.success && lookup.user?.id) {
               const targetId = lookup.user.id as string;
+              console.log('📊 [CALLBACK:GET] Catch fallback addCredits by targetId:', targetId);
               const addByEmail = await googleSheetsUserDb.addCredits(targetId, amountToAdd);
               if (!addByEmail.success) {
                 const current = Number(lookup.user.credits || 0);
+                console.log('📊 [CALLBACK:GET] Catch fallback updateCredits explicit set:', { current, newTotal: current + amountToAdd });
                 await googleSheetsUserDb.updateCredits(targetId, current + amountToAdd);
               }
             }
@@ -114,19 +136,19 @@ export async function GET(request: NextRequest) {
         } catch {}
       }
 
-      console.log(`Payment successful for order ${orderId}, added ${order.credits_purchased || 0} credits`);
+      console.log(`✅ [CALLBACK:GET] Payment successful for order ${orderId}, added ${order.credits_purchased || 0} credits`);
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/success?orderId=${orderId}&amount=${order.total_amount}&credits=${order.credits_purchased || 0}`);
     } else if (statusResult.status === 'Failed') {
       orderDb.updateStatus(orderId!, 'failed');
-      console.log(`Payment failed for order ${orderId}`);
+      console.log(`❌ [CALLBACK:GET] Payment failed for order ${orderId}`);
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?orderId=${orderId}&error=${encodeURIComponent('Payment failed')}`);
     } else {
       // Pending or other status
-      console.log(`Payment pending for order ${orderId}, status: ${statusResult.status}`);
+      console.log(`⏳ [CALLBACK:GET] Payment pending for order ${orderId}, status: ${statusResult.status}`);
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/pending?orderId=${orderId}`);
     }
   } catch (error) {
-    console.error('Payment callback error:', error);
+    console.error('💥 [CALLBACK:GET] Payment callback error:', error);
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?error=${encodeURIComponent('Payment verification error')}`);
   }
 }
