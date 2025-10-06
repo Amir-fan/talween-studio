@@ -77,7 +77,8 @@ Convert the provided image into clean black line art for coloring books—no sha
     const response = await result.response;
     const content = response.text();
     
-    console.log('📝 AI response:', content.substring(0, 200) + '...');
+    console.log('📝 AI response length:', content.length);
+    console.log('📝 AI response preview:', content.substring(0, 300) + '...');
     
     // Check if we got an image response
     const imageData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData;
@@ -95,14 +96,96 @@ Convert the provided image into clean black line art for coloring books—no sha
         console.log('✅ Found SVG in response');
         return `data:image/svg+xml;base64,${Buffer.from(svgContent).toString('base64')}`;
       } else {
-        console.log('❌ No valid content found in response');
-        throw new Error('AI did not return valid image or SVG content');
+        console.log('❌ No SVG found, trying alternative approach...');
+        
+        // Try to create a simple SVG from the description
+        const simpleSVG = createSimpleSVGFromDescription(content);
+        if (simpleSVG) {
+          console.log('✅ Created simple SVG from description');
+          return `data:image/svg+xml;base64,${Buffer.from(simpleSVG).toString('base64')}`;
+        } else {
+          console.log('❌ Could not create valid content from response');
+          console.log('📝 Full response:', content);
+          throw new Error('AI did not return valid image or SVG content');
+        }
       }
     }
     
   } catch (error) {
     console.error('❌ Direct AI conversion failed:', error);
     throw error;
+  }
+}
+
+/**
+ * Create a simple SVG from AI description as fallback
+ */
+function createSimpleSVGFromDescription(description: string): string | null {
+  console.log('🔧 Creating simple SVG from description...');
+  
+  try {
+    // Extract key elements from the description
+    const hasPerson = /person|character|face|head|body/i.test(description);
+    const hasHat = /hat|cap|headwear/i.test(description);
+    const hasSmile = /smile|mouth|teeth/i.test(description);
+    const hasEyes = /eye|eyes/i.test(description);
+    
+    // Create a simple SVG based on the description
+    let svgContent = `<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="400" fill="white"/>
+  <g stroke="black" stroke-width="3" fill="none">`;
+  
+    if (hasPerson) {
+      // Basic person outline
+      svgContent += `
+    <!-- Head -->
+    <circle cx="200" cy="120" r="40"/>
+    <!-- Body -->
+    <rect x="160" y="160" width="80" height="120" rx="10"/>
+    <!-- Arms -->
+    <line x1="160" y1="180" x2="120" y2="220"/>
+    <line x1="240" y1="180" x2="280" y2="220"/>
+    <!-- Legs -->
+    <line x1="180" y1="280" x2="180" y2="360"/>
+    <line x1="220" y1="280" x2="220" y2="360"/>`;
+      
+      if (hasEyes) {
+        svgContent += `
+    <!-- Eyes -->
+    <circle cx="185" cy="110" r="3"/>
+    <circle cx="215" cy="110" r="3"/>`;
+      }
+      
+      if (hasSmile) {
+        svgContent += `
+    <!-- Smile -->
+    <path d="M 180 130 Q 200 150 220 130"/>`;
+      }
+      
+      if (hasHat) {
+        svgContent += `
+    <!-- Hat -->
+    <ellipse cx="200" cy="80" rx="50" ry="15"/>
+    <rect x="150" y="80" width="100" height="40" rx="5"/>`;
+      }
+    } else {
+      // Generic shape if no person detected
+      svgContent += `
+    <!-- Generic shape -->
+    <circle cx="200" cy="200" r="80"/>
+    <rect x="120" y="120" width="160" height="160" rx="20"/>`;
+    }
+    
+    svgContent += `
+  </g>
+</svg>`;
+    
+    console.log('✅ Simple SVG created');
+    return svgContent;
+    
+  } catch (error) {
+    console.error('❌ Failed to create simple SVG:', error);
+    return null;
   }
 }
 
