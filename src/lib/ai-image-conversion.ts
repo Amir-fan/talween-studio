@@ -7,6 +7,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getBestWorkingImageModel, AvailableModel } from './model-discovery';
 import { convertWithAIGuidance } from './image-processing';
 import { convertImageToLineArtServer, convertWithAlternativeProcessing } from './server-image-processing';
+import { forceLineArtConversion, simpleLineArtFallback } from './direct-image-converter';
 
 export interface ImageConversionOptions {
   preserveStructure?: boolean;
@@ -315,8 +316,10 @@ export async function convertImageWithMultipleApproaches(
     throw new Error('AI API key required for image conversion');
   }
 
-  // Try different approaches in order of preference
+  // Try different approaches in order of preference - FORCE conversion approaches first
   const approaches = [
+    { name: 'FORCE Line Art Conversion', fn: () => forceLineArtConversion(imageDataUri) },
+    { name: 'Simple Line Art Fallback', fn: () => simpleLineArtFallback(imageDataUri) },
     { name: 'Server-Side Image Processing', fn: () => convertWithServerProcessing(imageDataUri) },
     { name: 'Imagen Image Generation', fn: () => convertWithImagen(imageDataUri, apiKey) },
     { name: 'AI-Guided Canvas Processing', fn: () => convertWithAIGuidance(imageDataUri, apiKey) },
