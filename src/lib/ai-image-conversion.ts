@@ -10,6 +10,11 @@ import { convertImageToLineArtServer, convertWithAlternativeProcessing } from '.
 import { forceLineArtConversion, simpleLineArtFallback } from './direct-image-converter';
 import { convertToColoringPage, convertToColoringPageAlternative } from './coloring-page-converter';
 import { convertToColoringPageWithAI, convertWithAlternativeAI } from './ai-coloring-converter';
+import { 
+  convertImageToColoringPageWorking, 
+  convertImageToColoringPageAlternative as convertImageToColoringPageAlt,
+  convertImageToColoringPageSimple 
+} from './working-ai-converter';
 
 export interface ImageConversionOptions {
   preserveStructure?: boolean;
@@ -318,8 +323,11 @@ export async function convertImageWithMultipleApproaches(
     throw new Error('AI API key required for image conversion');
   }
 
-  // Try different approaches in order of preference - AI-BASED APPROACHES FIRST
+  // Try different approaches in order of preference - WORKING AI APPROACHES FIRST
   const approaches = [
+    { name: 'WORKING AI: Gemini + Imagen', fn: () => convertImageToColoringPageWorking(imageDataUri) },
+    { name: 'WORKING AI: Alternative Gemini', fn: () => convertImageToColoringPageAlt(imageDataUri) },
+    { name: 'WORKING AI: Simple Gemini', fn: () => convertImageToColoringPageSimple(imageDataUri) },
     { name: 'AI Coloring Page Analysis & Generation', fn: () => convertToColoringPageWithAI(imageDataUri) },
     { name: 'Alternative AI Approach', fn: () => convertWithAlternativeAI(imageDataUri) },
     { name: 'PROPER Coloring Page Conversion', fn: () => convertToColoringPage(imageDataUri) },
