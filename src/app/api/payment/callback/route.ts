@@ -61,21 +61,56 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Always update Google Sheets using the order's user_id
+      // Always update Google Sheets using the order's user_id, with robust email fallback
       try {
-        const result = await googleSheetsUserDb.addCredits(order.user_id, amountToAdd);
-        if (!result.success) {
-          // Fallback: fetch latest credits then set explicit amount
-          const sheetUser = await googleSheetsUserDb.findById(order.user_id);
-          const current = sheetUser.success && sheetUser.user ? Number((sheetUser.user as any).credits || 0) : 0;
-          await googleSheetsUserDb.updateCredits(order.user_id, current + amountToAdd);
+        let sheetsUpdated = false;
+        const byId = await googleSheetsUserDb.addCredits(order.user_id, amountToAdd);
+        sheetsUpdated = !!byId.success;
+
+        if (!sheetsUpdated) {
+          // Try to resolve Sheets user by local email if available
+          try {
+            if (localUser?.email) {
+              const lookup = await googleSheetsUserDb.findByEmail(localUser.email);
+              if (lookup.success && lookup.user?.id) {
+                const targetId = lookup.user.id as string;
+                const addByEmail = await googleSheetsUserDb.addCredits(targetId, amountToAdd);
+                sheetsUpdated = !!addByEmail.success;
+                if (!sheetsUpdated) {
+                  const current = Number(lookup.user.credits || 0);
+                  const setRes = await googleSheetsUserDb.updateCredits(targetId, current + amountToAdd);
+                  sheetsUpdated = !!setRes.success;
+                }
+              }
+            }
+          } catch (inner) {
+            console.error('Sheets email-based update failed:', inner);
+          }
+        }
+
+        if (!sheetsUpdated) {
+          // Final fallback: try to read current by id and set
+          try {
+            const sheetUser = await googleSheetsUserDb.findById(order.user_id);
+            const current = sheetUser.success && sheetUser.user ? Number((sheetUser.user as any).credits || 0) : 0;
+            await googleSheetsUserDb.updateCredits(order.user_id, current + amountToAdd);
+          } catch {}
         }
       } catch (e) {
-        console.error('Google Sheets addCredits failed:', e);
+        console.error('Google Sheets addCredits failed (outer):', e);
         try {
-          const sheetUser = await googleSheetsUserDb.findById(order.user_id);
-          const current = sheetUser.success && sheetUser.user ? Number((sheetUser.user as any).credits || 0) : 0;
-          await googleSheetsUserDb.updateCredits(order.user_id, current + amountToAdd);
+          // Attempt email-based update in catch as well
+          if (localUser?.email) {
+            const lookup = await googleSheetsUserDb.findByEmail(localUser.email);
+            if (lookup.success && lookup.user?.id) {
+              const targetId = lookup.user.id as string;
+              const addByEmail = await googleSheetsUserDb.addCredits(targetId, amountToAdd);
+              if (!addByEmail.success) {
+                const current = Number(lookup.user.credits || 0);
+                await googleSheetsUserDb.updateCredits(targetId, current + amountToAdd);
+              }
+            }
+          }
         } catch {}
       }
 
@@ -134,38 +169,25 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        // Update Google Sheets
+        // Update Google Sheets using server wrapper with email fallback
         try {
-          await fetch(`${process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'addCredits',
-              userId: user.id,
-              amount: order.credits_purchased || 0,
-              apiKey: process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY
-            })
-          });
-
-          // Send thank you email
-          await fetch(`${process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              recipientEmail: user.email,
-              emailType: 'paymentSuccess',
-              templateData: {
-                name: user.display_name || 'مستخدم',
-                orderNumber: order.id,
-                totalAmount: order.total_amount || order.amount,
-                credits: order.credits_purchased || order.credits,
-                appUrl: process.env.NEXT_PUBLIC_APP_URL
-              },
-              userId: user.id
-            })
-          });
+          let sheetsUpdated = false;
+          const byId = await googleSheetsUserDb.addCredits(user.id, order.credits_purchased || 0);
+          sheetsUpdated = !!byId.success;
+          if (!sheetsUpdated) {
+            const lookup = await googleSheetsUserDb.findByEmail(user.email);
+            if (lookup.success && lookup.user?.id) {
+              const targetId = lookup.user.id as string;
+              const addByEmail = await googleSheetsUserDb.addCredits(targetId, order.credits_purchased || 0);
+              sheetsUpdated = !!addByEmail.success;
+              if (!sheetsUpdated) {
+                const current = Number(lookup.user.credits || 0);
+                await googleSheetsUserDb.updateCredits(targetId, current + (order.credits_purchased || 0));
+              }
+            }
+          }
         } catch (error) {
-          console.error('Error updating Google Sheets or sending email:', error);
+          console.error('Error updating Google Sheets (POST callback):', error);
         }
       }
 
