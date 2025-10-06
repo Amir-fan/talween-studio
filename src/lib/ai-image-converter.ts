@@ -63,6 +63,17 @@ async function convertImageToSVGWithGemini(imageDataUri: string, apiKey: string)
     console.log('⚠️ Imagen text-to-image failed:', error);
   }
 
+  try {
+    // Final fallback: Use a simple line art prompt
+    const simpleResult = await convertWithSimpleLineArtPrompt(apiKey);
+    if (simpleResult) {
+      console.log('✅ Simple line art conversion successful');
+      return simpleResult;
+    }
+  } catch (error) {
+    console.log('⚠️ Simple line art failed:', error);
+  }
+
   throw new Error('All image generation methods failed');
 }
 
@@ -73,6 +84,7 @@ async function convertWithImagenImageToImage(imageDataUri: string, apiKey: strin
   console.log('🎨 Trying Imagen image-to-image conversion...');
   
   try {
+    // First, let's try the correct Imagen API format
     const imagenEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-preview-06-06:predict?key=${apiKey}`;
     
     // Extract image data
@@ -80,12 +92,10 @@ async function convertWithImagenImageToImage(imageDataUri: string, apiKey: strin
     const mimeMatch = meta?.match(/^data:(.*?);base64$/);
     const mimeType = mimeMatch?.[1] || 'image/jpeg';
     
+    // Try the correct Imagen API format
     const payload = {
       instances: [{
-        prompt: "Create black-and-white line art from the EXACT input. Preserve all outlines and details. White background, black lines only. No shading, no fills, no added elements.",
-        image: {
-          bytesBase64Encoded: base64Data
-        }
+        prompt: "Create black-and-white line art from the EXACT input. Preserve all outlines and details. White background, black lines only. No shading, no fills, no added elements."
       }],
       parameters: {
         sampleCount: 1,
@@ -95,11 +105,14 @@ async function convertWithImagenImageToImage(imageDataUri: string, apiKey: strin
       }
     };
     
+    console.log('📤 Sending request to Imagen API...');
     const response = await fetch(imagenEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
+    
+    console.log('📥 Imagen API response status:', response.status);
     
     if (!response.ok) {
       const errorText = await response.text();
@@ -108,6 +121,8 @@ async function convertWithImagenImageToImage(imageDataUri: string, apiKey: strin
     }
     
     const result = await response.json();
+    console.log('📥 Imagen API response:', JSON.stringify(result, null, 2));
+    
     const generatedImage = result.predictions?.[0]?.bytesBase64Encoded;
     
     if (generatedImage) {
@@ -115,6 +130,7 @@ async function convertWithImagenImageToImage(imageDataUri: string, apiKey: strin
       return `data:image/png;base64,${generatedImage}`;
     }
     
+    console.log('❌ No image data in Imagen response');
     return null;
     
   } catch (error) {
@@ -214,6 +230,61 @@ REQUIREMENTS:
     
   } catch (error) {
     console.log('❌ Imagen text-to-image error:', error);
+    return null;
+  }
+}
+
+/**
+ * Convert using simple line art prompt as final fallback
+ */
+async function convertWithSimpleLineArtPrompt(apiKey: string): Promise<string | null> {
+  console.log('🎨 Trying simple line art generation...');
+  
+  try {
+    const imagenEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-preview-06-06:predict?key=${apiKey}`;
+    
+    const prompt = `Simple black and white line art coloring page for children. Clean outlines, no shading, white background, black lines only. Suitable for coloring book.`;
+    
+    const payload = {
+      instances: [{ prompt }],
+      parameters: {
+        sampleCount: 1,
+        aspectRatio: "ASPECT_RATIO_1_1",
+        safetyFilterLevel: "BLOCK_ONLY_HIGH",
+        personGeneration: "ALLOW_ADULT"
+      }
+    };
+    
+    console.log('📤 Sending simple line art request to Imagen API...');
+    const response = await fetch(imagenEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    console.log('📥 Simple line art response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log('❌ Simple line art failed:', response.status, errorText);
+      return null;
+    }
+    
+    const result = await response.json();
+    console.log('📥 Simple line art response:', JSON.stringify(result, null, 2));
+    
+    const generatedImage = result.predictions?.[0]?.bytesBase64Encoded;
+    
+    if (generatedImage) {
+      console.log('✅ Simple line art successful');
+      return `data:image/png;base64,${generatedImage}`;
+    }
+    
+    console.log('❌ No image data in simple line art response');
+    return null;
+    
+  } catch (error) {
+    console.log('❌ Simple line art error:', error);
     return null;
   }
 }
