@@ -30,66 +30,72 @@ export async function convertImageToColoringPage(imageDataUri: string): Promise<
 }
 
 /**
- * Convert image to line art using Gemini direct image generation
+ * Convert image to line art using server-side image processing
  */
 async function convertImageToSVGWithGemini(imageDataUri: string, apiKey: string): Promise<string> {
-  console.log('🎨 Converting image to line art using Gemini direct image generation...');
+  console.log('🎨 Converting image to line art using server-side processing...');
   
   // Extract image data
   const [meta, base64Data] = imageDataUri.split(',');
   const mimeMatch = meta?.match(/^data:(.*?);base64$/);
   const mimeType = mimeMatch?.[1] || 'image/jpeg';
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ 
-    model: "gemini-2.0-flash-exp",
-    generationConfig: {
-      temperature: 0.0,
-      maxOutputTokens: 2000,
-    }
-  });
-
-  const prompt = `Look at this image and create a detailed description for generating a black and white line art coloring page.
-
-CRITICAL REQUIREMENTS:
-- Describe the EXACT subject, pose, and composition
-- Focus on outlines, contours, and structural elements
-- Identify facial features, clothing, objects, and background
-- Note the positioning, proportions, and key details
-- Describe what a child would see and want to color
-
-Create a detailed description that will help generate an accurate line art version.`;
-
   try {
-    console.log('🎨 Analyzing image with Gemini...');
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType: mimeType
-        }
-      }
-    ]);
-
-    const response = await result.response;
-    const analysis = response.text();
-    
-    console.log('📝 Analysis:', analysis.substring(0, 300) + '...');
-    
-    // Now use the analysis to create a proper line art image
-    const lineArtImage = await generateLineArtFromDescription(analysis, apiKey);
+    // Use server-side image processing to create line art
+    const lineArtImage = await processImageToLineArt(imageDataUri);
     
     if (lineArtImage) {
       console.log('✅ Line art generated successfully');
       return lineArtImage;
     } else {
-      throw new Error('Failed to generate line art from description');
+      throw new Error('Failed to generate line art');
     }
     
   } catch (error) {
-    console.error('❌ Gemini analysis failed:', error);
+    console.error('❌ Image processing failed:', error);
     throw error;
+  }
+}
+
+/**
+ * Process image to line art using server-side image processing
+ */
+async function processImageToLineArt(imageDataUri: string): Promise<string | null> {
+  console.log('🔧 Processing image to line art...');
+  
+  try {
+    // Import Sharp dynamically
+    const sharp = (await import('sharp')).default;
+    
+    // Extract base64 data
+    const [meta, base64Data] = imageDataUri.split(',');
+    const mimeMatch = meta?.match(/^data:(.*?);base64$/);
+    const mimeType = mimeMatch?.[1] || 'image/jpeg';
+    
+    // Convert base64 to buffer
+    const imageBuffer = Buffer.from(base64Data, 'base64');
+    
+    console.log('📸 Processing image with Sharp...');
+    
+    // Process the image to create line art
+    const processedImage = await sharp(imageBuffer)
+      .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
+      .greyscale()
+      .normalize()
+      .linear(1.2, 0) // Increase contrast
+      .threshold(128) // Convert to black and white
+      .png()
+      .toBuffer();
+    
+    console.log('✅ Image processed successfully');
+    
+    // Convert back to data URI
+    const processedBase64 = processedImage.toString('base64');
+    return `data:image/png;base64,${processedBase64}`;
+    
+  } catch (error) {
+    console.error('❌ Image processing failed:', error);
+    return null;
   }
 }
 
