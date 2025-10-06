@@ -8,6 +8,7 @@ import { getBestWorkingImageModel, AvailableModel } from './model-discovery';
 import { convertWithAIGuidance } from './image-processing';
 import { convertImageToLineArtServer, convertWithAlternativeProcessing } from './server-image-processing';
 import { forceLineArtConversion, simpleLineArtFallback } from './direct-image-converter';
+import { convertToColoringPage, convertToColoringPageAlternative } from './coloring-page-converter';
 
 export interface ImageConversionOptions {
   preserveStructure?: boolean;
@@ -316,8 +317,10 @@ export async function convertImageWithMultipleApproaches(
     throw new Error('AI API key required for image conversion');
   }
 
-  // Try different approaches in order of preference - FORCE conversion approaches first
+  // Try different approaches in order of preference - PROPER COLORING PAGE STYLE FIRST
   const approaches = [
+    { name: 'PROPER Coloring Page Conversion', fn: () => convertToColoringPage(imageDataUri) },
+    { name: 'Alternative Coloring Page Style', fn: () => convertToColoringPageAlternative(imageDataUri) },
     { name: 'FORCE Line Art Conversion', fn: () => forceLineArtConversion(imageDataUri) },
     { name: 'Simple Line Art Fallback', fn: () => simpleLineArtFallback(imageDataUri) },
     { name: 'Server-Side Image Processing', fn: () => convertWithServerProcessing(imageDataUri) },
