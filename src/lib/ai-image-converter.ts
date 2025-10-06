@@ -1,15 +1,15 @@
 /**
- * SINGLE AI Image Converter - No fallbacks, no filters, just AI
- * This is the ONLY file for image-to-coloring conversion
+ * REAL AI Image Converter - Uses actual AI image generation
+ * No filters, no fallbacks, just real AI
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 /**
- * Convert image to coloring page using ONLY Gemini - direct image-to-SVG conversion
+ * Convert image to coloring page using REAL AI image generation
  */
 export async function convertImageToColoringPage(imageDataUri: string): Promise<string> {
-  console.log('🤖 AI ONLY: Converting image to coloring page using Gemini direct conversion...');
+  console.log('🤖 REAL AI: Converting image to coloring page using actual AI image generation...');
   
   const apiKey = process.env.IMAGE_TO_LINE_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (!apiKey) {
@@ -17,11 +17,11 @@ export async function convertImageToColoringPage(imageDataUri: string): Promise<
   }
 
   try {
-    // Use Gemini to convert image directly to SVG line art
-    const svgResult = await convertImageToSVGWithGemini(imageDataUri, apiKey);
-    console.log('🎨 AI Generated SVG Line Art');
+    // Use real AI to generate coloring page
+    const coloringPageImage = await generateColoringPageWithAI(imageDataUri, apiKey);
+    console.log('🎨 AI Generated Real Coloring Page');
     
-    return svgResult;
+    return coloringPageImage;
     
   } catch (error) {
     console.error('❌ AI conversion failed:', error);
@@ -30,95 +30,38 @@ export async function convertImageToColoringPage(imageDataUri: string): Promise<
 }
 
 /**
- * Convert image to line art using server-side image processing
+ * Generate coloring page using real AI image generation
  */
-async function convertImageToSVGWithGemini(imageDataUri: string, apiKey: string): Promise<string> {
-  console.log('🎨 Converting image to line art using server-side processing...');
+async function generateColoringPageWithAI(imageDataUri: string, apiKey: string): Promise<string> {
+  console.log('🎨 Generating coloring page with REAL AI...');
   
-  // Extract image data
-  const [meta, base64Data] = imageDataUri.split(',');
-  const mimeMatch = meta?.match(/^data:(.*?);base64$/);
-  const mimeType = mimeMatch?.[1] || 'image/jpeg';
-
   try {
-    // Use server-side image processing to create line art
-    const lineArtImage = await processImageToLineArt(imageDataUri);
+    // Step 1: Use Gemini to analyze the image
+    const analysis = await analyzeImageForColoringPage(imageDataUri, apiKey);
+    console.log('📝 Image analysis completed');
     
-    if (lineArtImage) {
-      console.log('✅ Line art generated successfully');
-      return lineArtImage;
+    // Step 2: Use AI to generate actual coloring page image
+    const coloringPageImage = await generateImageWithAI(analysis, apiKey);
+    
+    if (coloringPageImage) {
+      console.log('✅ AI coloring page generation successful');
+      return coloringPageImage;
     } else {
-      throw new Error('Failed to generate line art');
+      throw new Error('AI failed to generate coloring page');
     }
     
   } catch (error) {
-    console.error('❌ Image processing failed:', error);
+    console.error('❌ AI coloring page generation failed:', error);
     throw error;
   }
 }
 
 /**
- * Process image to line art using AI-powered conversion
+ * Analyze image for coloring page generation
  */
-async function processImageToLineArt(imageDataUri: string): Promise<string | null> {
-  console.log('🤖 Processing image to line art using AI...');
+async function analyzeImageForColoringPage(imageDataUri: string, apiKey: string): Promise<string> {
+  console.log('🔍 Analyzing image for coloring page generation...');
   
-  try {
-    // Use AI to convert image to line art
-    const lineArtImage = await convertImageWithAI(imageDataUri);
-    
-    if (lineArtImage) {
-      console.log('✅ AI line art conversion successful');
-      return lineArtImage;
-    } else {
-      console.log('⚠️ AI conversion failed, trying alternative...');
-      // Fallback to improved image processing
-      return await processImageWithAdvancedFilters(imageDataUri);
-    }
-    
-  } catch (error) {
-    console.error('❌ AI processing failed:', error);
-    return null;
-  }
-}
-
-/**
- * Convert image to line art using AI
- */
-async function convertImageWithAI(imageDataUri: string): Promise<string | null> {
-  console.log('🎨 Converting image with AI...');
-  
-  try {
-    // Use Gemini to analyze the image and create a detailed prompt
-    const analysis = await analyzeImageForLineArt(imageDataUri);
-    
-    // Use the analysis to generate line art with a different AI approach
-    const lineArtImage = await generateLineArtWithStableDiffusion(analysis);
-    
-    if (lineArtImage) {
-      console.log('✅ AI line art generation successful');
-      return lineArtImage;
-    } else {
-      console.log('⚠️ AI generation failed, trying alternative...');
-      return await processImageWithAdvancedFilters(imageDataUri);
-    }
-    
-  } catch (error) {
-    console.error('❌ AI conversion failed:', error);
-    return null;
-  }
-}
-
-/**
- * Analyze image for line art generation
- */
-async function analyzeImageForLineArt(imageDataUri: string): Promise<string> {
-  console.log('🔍 Analyzing image for line art generation...');
-  
-  const apiKey = process.env.IMAGE_TO_LINE_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-  if (!apiKey) {
-    throw new Error('No API key found');
-  }
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ 
     model: "gemini-2.0-flash-exp",
@@ -142,7 +85,7 @@ CRITICAL REQUIREMENTS:
 - Note the positioning, proportions, and key details
 - Describe what a child would see and want to color
 
-Create a detailed description that will help generate an accurate line art version.`;
+Create a detailed description that will help generate an accurate coloring book page.`;
 
   const result = await model.generateContent([
     prompt,
@@ -159,242 +102,87 @@ Create a detailed description that will help generate an accurate line art versi
 }
 
 /**
- * Generate line art using Stable Diffusion or similar AI
+ * Generate actual coloring page image using AI
  */
-async function generateLineArtWithStableDiffusion(description: string): Promise<string | null> {
-  console.log('🎨 Generating line art with AI...');
+async function generateImageWithAI(description: string, apiKey: string): Promise<string | null> {
+  console.log('🎨 Generating actual coloring page image with AI...');
   
   try {
-    // For now, we'll use a simple approach
-    // In a real implementation, you would call a proper AI image generation service
-    // like Stable Diffusion, DALL-E, or similar
+    // Use a real AI image generation service
+    // Let's try using Hugging Face API for actual image generation
     
-    // Create a prompt for line art generation
-    const prompt = `Create a black and white line art coloring page: ${description}
-
-REQUIREMENTS:
-- Pure black lines on white background
-- Clean, simple outlines suitable for children
-- No shading, gradients, or fills
-- Bold, easy-to-trace lines
-- Preserve the exact subject and pose described
-- Make it look like a real coloring book page
-- Large white areas for coloring`;
-
-    console.log('📝 Generated prompt:', prompt.substring(0, 200) + '...');
+    const coloringPageImage = await generateWithHuggingFace(description, apiKey);
     
-    // For now, return null to use the fallback
-    // In a real implementation, you would call an AI image generation API here
-    return null;
+    if (coloringPageImage) {
+      console.log('✅ Hugging Face AI generation successful');
+      return coloringPageImage;
+    } else {
+      console.log('⚠️ Hugging Face failed, trying other AI...');
+      return await generateWithOtherAI(description, apiKey);
+    }
     
   } catch (error) {
-    console.error('❌ AI line art generation failed:', error);
+    console.error('❌ AI image generation failed:', error);
     return null;
   }
 }
 
 /**
- * Process image with advanced filters for better line art
+ * Generate coloring page using Hugging Face AI
  */
-async function processImageWithAdvancedFilters(imageDataUri: string): Promise<string | null> {
-  console.log('🔧 Processing image with advanced filters...');
+async function generateWithHuggingFace(description: string, apiKey: string): Promise<string | null> {
+  console.log('🎨 Generating with Hugging Face AI...');
   
   try {
-    // Import Sharp dynamically
-    const sharp = (await import('sharp')).default;
-    
-    // Extract base64 data
-    const [meta, base64Data] = imageDataUri.split(',');
-    const mimeMatch = meta?.match(/^data:(.*?);base64$/);
-    const mimeType = mimeMatch?.[1] || 'image/jpeg';
-    
-    // Convert base64 to buffer
-    const imageBuffer = Buffer.from(base64Data, 'base64');
-    
-    console.log('📸 Processing image with advanced Sharp filters...');
-    
-    // Advanced processing for better line art
-    const processedImage = await sharp(imageBuffer)
-      .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
-      .greyscale()
-      .normalize()
-      .linear(1.5, 0) // Higher contrast
-      .convolve({
-        width: 3,
-        height: 3,
-        kernel: [-1, -1, -1, -1, 8, -1, -1, -1, -1] // Edge detection
+    // Use Hugging Face API for text-to-image generation
+    const response = await fetch('https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        inputs: `black and white line art coloring page: ${description}, clean outlines, no shading, suitable for children, coloring book style`,
+        parameters: {
+          num_inference_steps: 20,
+          guidance_scale: 7.5,
+          width: 512,
+          height: 512
+        }
       })
-      .threshold(100) // Lower threshold for better outlines
-      .png()
-      .toBuffer();
+    });
     
-    console.log('✅ Advanced processing completed');
-    
-    // Convert back to data URI
-    const processedBase64 = processedImage.toString('base64');
-    return `data:image/png;base64,${processedBase64}`;
-    
-  } catch (error) {
-    console.error('❌ Advanced processing failed:', error);
-    return null;
-  }
-}
-
-/**
- * Generate line art from description using Gemini
- */
-async function generateLineArtFromDescription(description: string, apiKey: string): Promise<string | null> {
-  console.log('🎨 Generating line art from description...');
-  
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ 
-    model: "gemini-2.0-flash-exp",
-    generationConfig: {
-      temperature: 0.0,
-      maxOutputTokens: 2000,
-    }
-  });
-
-  const prompt = `Based on this description: "${description}"
-
-Create a black and white line art coloring page that matches the description exactly.
-
-REQUIREMENTS:
-- Pure black lines on white background
-- Clean, simple outlines suitable for children
-- No shading, gradients, or fills
-- Bold, easy-to-trace lines
-- Preserve the exact subject and pose described
-- Make it look like a real coloring book page
-- Large white areas for coloring
-
-Generate the line art now.`;
-
-  try {
-    const result = await model.generateContent([prompt]);
-    const response = await result.response;
-    const content = response.text();
-    
-    console.log('📝 Line art response:', content.substring(0, 300) + '...');
-    
-    // Check if we got an image response
-    const imageData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData;
-    
-    if (imageData) {
-      console.log('✅ Got image data from Gemini');
-      return `data:${imageData.mimeType};base64,${imageData.data}`;
+    if (response.ok) {
+      const imageBlob = await response.blob();
+      const arrayBuffer = await imageBlob.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString('base64');
+      console.log('✅ Hugging Face generation successful');
+      return `data:image/png;base64,${base64}`;
     } else {
-      console.log('❌ No image data in response, trying alternative approach...');
-      
-      // Try to create a simple line art using text-to-image
-      return await createSimpleLineArtImage(description, apiKey);
+      console.log('❌ Hugging Face API failed:', response.status);
+      return null;
     }
     
   } catch (error) {
-    console.error('❌ Line art generation failed:', error);
+    console.error('❌ Hugging Face generation failed:', error);
     return null;
   }
 }
 
 /**
- * Create simple line art image as fallback
+ * Generate coloring page using other AI service
  */
-async function createSimpleLineArtImage(description: string, apiKey: string): Promise<string | null> {
-  console.log('🔧 Creating simple line art image...');
+async function generateWithOtherAI(description: string, apiKey: string): Promise<string | null> {
+  console.log('🎨 Generating with other AI service...');
   
   try {
-    // Create a simple SVG based on the description
-    const svgContent = createFallbackSVG(description);
-    if (svgContent) {
-      return `data:image/svg+xml;base64,${Buffer.from(svgContent).toString('base64')}`;
-    }
+    // Try using a different AI service
+    // For now, return null to indicate failure
+    console.log('⚠️ No other AI service configured');
     return null;
+    
   } catch (error) {
-    console.error('❌ Simple line art creation failed:', error);
+    console.error('❌ Other AI generation failed:', error);
     return null;
   }
 }
-
-/**
- * Create a simple fallback SVG when Gemini doesn't return proper SVG
- */
-function createFallbackSVG(content: string): string | null {
-  console.log('🔧 Creating fallback SVG from Gemini response...');
-  
-  try {
-    // Extract key elements from the description
-    const hasPerson = /person|character|face|head|body|man|woman|child/i.test(content);
-    const hasAnimal = /animal|cat|dog|bird|fish|horse/i.test(content);
-    const hasObject = /object|car|house|tree|flower|ball/i.test(content);
-    
-    // Create a simple SVG based on the content
-    let svgContent = `<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
-  <rect width="400" height="400" fill="white"/>
-  <g stroke="black" stroke-width="3" fill="none">`;
-  
-    if (hasPerson) {
-      // Basic person outline
-      svgContent += `
-    <!-- Head -->
-    <circle cx="200" cy="120" r="40"/>
-    <!-- Body -->
-    <rect x="160" y="160" width="80" height="120" rx="10"/>
-    <!-- Arms -->
-    <line x1="160" y1="180" x2="120" y2="220"/>
-    <line x1="240" y1="180" x2="280" y2="220"/>
-    <!-- Legs -->
-    <line x1="180" y1="280" x2="180" y2="360"/>
-    <line x1="220" y1="280" x2="220" y2="360"/>
-    <!-- Eyes -->
-    <circle cx="185" cy="110" r="3"/>
-    <circle cx="215" cy="110" r="3"/>
-    <!-- Smile -->
-    <path d="M 180 130 Q 200 150 220 130"/>`;
-    } else if (hasAnimal) {
-      // Basic animal outline
-      svgContent += `
-    <!-- Animal body -->
-    <ellipse cx="200" cy="200" rx="80" ry="60"/>
-    <!-- Head -->
-    <circle cx="200" cy="120" r="50"/>
-    <!-- Ears -->
-    <ellipse cx="170" cy="80" rx="15" ry="25"/>
-    <ellipse cx="230" cy="80" rx="15" ry="25"/>
-    <!-- Eyes -->
-    <circle cx="185" cy="110" r="5"/>
-    <circle cx="215" cy="110" r="5"/>
-    <!-- Nose -->
-    <ellipse cx="200" cy="130" rx="8" ry="5"/>
-    <!-- Tail -->
-    <path d="M 280 200 Q 320 180 340 200"/>`;
-    } else if (hasObject) {
-      // Basic object outline
-      svgContent += `
-    <!-- Object -->
-    <rect x="120" y="120" width="160" height="160" rx="20"/>
-    <!-- Details -->
-    <circle cx="200" cy="200" r="40"/>
-    <rect x="150" y="150" width="100" height="100" rx="10"/>`;
-    } else {
-      // Generic shape
-      svgContent += `
-    <!-- Generic shape -->
-    <circle cx="200" cy="200" r="80"/>
-    <rect x="120" y="120" width="160" height="160" rx="20"/>
-    <polygon points="200,80 240,160 160,160"/>`;
-    }
-    
-    svgContent += `
-  </g>
-</svg>`;
-    
-    console.log('✅ Fallback SVG created');
-    return svgContent;
-    
-  } catch (error) {
-    console.error('❌ Failed to create fallback SVG:', error);
-    return null;
-  }
-}
-
-// Note: Simplified to use only Gemini for direct SVG generation
