@@ -8,42 +8,74 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No API key found' }, { status: 500 });
     }
 
-    const imagenEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-preview-06-06:predict?key=${apiKey}`;
-    
-    const prompt = `Simple black and white line art coloring page for children. Clean outlines, no shading, white background, black lines only.`;
-    
-    const payload = {
-      instances: [{ prompt }],
-      parameters: {
-        sampleCount: 1,
-        safetyFilterLevel: "BLOCK_ONLY_HIGH",
-        personGeneration: "ALLOW_ADULT"
+    // Try different Imagen models
+    const models = [
+      'imagen-4.0-generate-preview-06-06',
+      'imagen-3.0-generate-001',
+      'imagen-3.0-generate-002',
+      'imagen-2.0-generate-001'
+    ];
+
+    const results = [];
+
+    for (const model of models) {
+      try {
+        const imagenEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`;
+        
+        const prompt = `Simple black and white line art coloring page for children. Clean outlines, no shading, white background, black lines only.`;
+        
+        const payload = {
+          instances: [{ prompt }],
+          parameters: {
+            sampleCount: 1,
+            safetyFilterLevel: "BLOCK_ONLY_HIGH",
+            personGeneration: "ALLOW_ADULT"
+          }
+        };
+        
+        console.log(`🧪 Testing ${model}...`);
+        
+        const response = await fetch(imagenEndpoint, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        const result = await response.json();
+        
+        results.push({
+          model,
+          status: response.status,
+          success: response.ok,
+          hasImageData: !!(result.predictions?.[0]?.bytesBase64Encoded),
+          error: result.error?.message || null,
+          responseKeys: Object.keys(result)
+        });
+        
+        console.log(`📥 ${model} result:`, {
+          status: response.status,
+          success: response.ok,
+          hasImageData: !!(result.predictions?.[0]?.bytesBase64Encoded)
+        });
+        
+      } catch (error) {
+        results.push({
+          model,
+          status: 'ERROR',
+          success: false,
+          hasImageData: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
-    };
-    
-    console.log('🧪 Testing Imagen API with simple prompt...');
-    console.log('📤 Payload:', JSON.stringify(payload, null, 2));
-    
-    const response = await fetch(imagenEndpoint, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-    
-    console.log('📥 Response status:', response.status);
-    console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
-    
-    const result = await response.json();
-    console.log('📥 Full response:', JSON.stringify(result, null, 2));
+    }
     
     return NextResponse.json({
-      status: response.status,
-      success: response.ok,
-      response: result,
-      hasImageData: !!(result.predictions?.[0]?.bytesBase64Encoded),
-      imageDataLocation: result.predictions?.[0]?.bytesBase64Encoded ? 'predictions[0].bytesBase64Encoded' : 'NOT FOUND'
+      success: true,
+      results,
+      workingModels: results.filter(r => r.success && r.hasImageData),
+      apiKey: apiKey.substring(0, 10) + '...'
     });
     
   } catch (error) {
