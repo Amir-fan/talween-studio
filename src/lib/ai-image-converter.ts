@@ -134,18 +134,20 @@ async function generateWithHuggingFace(description: string, apiKey: string): Pro
   console.log('🎨 Generating with Hugging Face AI...');
   
   try {
-    // Use Hugging Face API for text-to-image generation
-    const response = await fetch('https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5', {
+    // Use a different approach - try to use a free AI service
+    // Let's try using a different model that's better for line art
+    
+    const response = await fetch('https://api-inference.huggingface.co/models/lllyasviel/sd-controlnet-scribble', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        inputs: `black and white line art coloring page: ${description}, clean outlines, no shading, suitable for children, coloring book style`,
+        inputs: `coloring book page, black and white line art, ${description}, clean outlines, no shading, children's coloring book style, simple line drawing`,
         parameters: {
-          num_inference_steps: 20,
-          guidance_scale: 7.5,
+          num_inference_steps: 25,
+          guidance_scale: 8.0,
           width: 512,
           height: 512
         }
@@ -159,7 +161,8 @@ async function generateWithHuggingFace(description: string, apiKey: string): Pro
       console.log('✅ Hugging Face generation successful');
       return `data:image/png;base64,${base64}`;
     } else {
-      console.log('❌ Hugging Face API failed:', response.status);
+      const errorText = await response.text();
+      console.log('❌ Hugging Face API failed:', response.status, errorText);
       return null;
     }
     
@@ -176,13 +179,120 @@ async function generateWithOtherAI(description: string, apiKey: string): Promise
   console.log('🎨 Generating with other AI service...');
   
   try {
-    // Try using a different AI service
-    // For now, return null to indicate failure
-    console.log('⚠️ No other AI service configured');
-    return null;
+    // Try using a free AI service that doesn't require authentication
+    const response = await fetch('https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        inputs: `coloring book page, black and white line art, ${description}, clean outlines, no shading, children's coloring book style, simple line drawing, black lines on white background`,
+        parameters: {
+          num_inference_steps: 20,
+          guidance_scale: 7.5,
+          width: 512,
+          height: 512
+        }
+      })
+    });
+    
+    if (response.ok) {
+      const imageBlob = await response.blob();
+      const arrayBuffer = await imageBlob.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString('base64');
+      console.log('✅ Free AI generation successful');
+      return `data:image/png;base64,${base64}`;
+    } else {
+      const errorText = await response.text();
+      console.log('❌ Free AI API failed:', response.status, errorText);
+      
+      // If all AI services fail, create a simple SVG based on description
+      return await createSimpleColoringPage(description);
+    }
     
   } catch (error) {
     console.error('❌ Other AI generation failed:', error);
+    return await createSimpleColoringPage(description);
+  }
+}
+
+/**
+ * Create a simple coloring page as fallback
+ */
+async function createSimpleColoringPage(description: string): Promise<string | null> {
+  console.log('🔧 Creating simple coloring page as fallback...');
+  
+  try {
+    // Extract key elements from the description
+    const hasPerson = /person|child|boy|girl|man|woman|face|head|body/i.test(description);
+    const hasSmile = /smile|smiling|happy|laugh/i.test(description);
+    const hasHair = /hair|curly|short|long/i.test(description);
+    const hasClothes = /shirt|clothes|clothing|t-shirt/i.test(description);
+    
+    // Create a simple SVG coloring page
+    let svgContent = `<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="400" fill="white"/>
+  <g stroke="black" stroke-width="3" fill="none">`;
+  
+    if (hasPerson) {
+      // Basic person outline
+      svgContent += `
+    <!-- Head -->
+    <circle cx="200" cy="120" r="50"/>
+    <!-- Body -->
+    <rect x="150" y="170" width="100" height="140" rx="15"/>
+    <!-- Arms -->
+    <line x1="150" y1="200" x2="100" y2="250"/>
+    <line x1="250" y1="200" x2="300" y2="250"/>
+    <!-- Legs -->
+    <line x1="180" y1="310" x2="180" y2="380"/>
+    <line x1="220" y1="310" x2="220" y2="380"/>`;
+      
+      if (hasHair) {
+        svgContent += `
+    <!-- Hair -->
+    <path d="M 150 70 Q 200 50 250 70 Q 250 100 200 100 Q 150 100 150 70"/>`;
+      }
+      
+      if (hasSmile) {
+        svgContent += `
+    <!-- Eyes -->
+    <circle cx="180" cy="100" r="5"/>
+    <circle cx="220" cy="100" r="5"/>
+    <!-- Smile -->
+    <path d="M 170 130 Q 200 150 230 130"/>`;
+      } else {
+        svgContent += `
+    <!-- Eyes -->
+    <circle cx="180" cy="100" r="5"/>
+    <circle cx="220" cy="100" r="5"/>
+    <!-- Mouth -->
+    <line x1="180" y1="130" x2="220" y2="130"/>`;
+      }
+      
+      if (hasClothes) {
+        svgContent += `
+    <!-- Shirt details -->
+    <line x1="170" y1="200" x2="230" y2="200"/>
+    <circle cx="200" cy="220" r="3"/>`;
+      }
+    } else {
+      // Generic shape
+      svgContent += `
+    <!-- Generic shape -->
+    <circle cx="200" cy="200" r="80"/>
+    <rect x="120" y="120" width="160" height="160" rx="20"/>`;
+    }
+    
+    svgContent += `
+  </g>
+</svg>`;
+    
+    console.log('✅ Simple coloring page created');
+    return `data:image/svg+xml;base64,${Buffer.from(svgContent).toString('base64')}`;
+    
+  } catch (error) {
+    console.error('❌ Failed to create simple coloring page:', error);
     return null;
   }
 }
