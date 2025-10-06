@@ -6,6 +6,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getBestWorkingImageModel, AvailableModel } from './model-discovery';
 import { convertWithAIGuidance } from './image-processing';
+import { convertImageToLineArtServer, convertWithAlternativeProcessing } from './server-image-processing';
 
 export interface ImageConversionOptions {
   preserveStructure?: boolean;
@@ -187,6 +188,37 @@ The result should be the original image converted to line art, not a new artisti
 }
 
 /**
+ * Convert image using server-side image processing (Sharp)
+ */
+async function convertWithServerProcessing(imageDataUri: string): Promise<string> {
+  console.log('🎨 Converting image using server-side processing...');
+  
+  try {
+    // Extract base64 data and convert to buffer
+    const base64Data = imageDataUri.split(',')[1];
+    const imageBuffer = Buffer.from(base64Data, 'base64');
+    
+    // Convert to line art using Sharp
+    const processedBuffer = await convertImageToLineArtServer(imageBuffer, {
+      edgeThreshold: 100,
+      lineThickness: 2,
+      backgroundRemoval: true,
+      smoothing: true
+    });
+    
+    // Convert back to data URI
+    const resultDataUri = `data:image/png;base64,${processedBuffer.toString('base64')}`;
+    
+    console.log('✅ Server-side processing completed');
+    return resultDataUri;
+    
+  } catch (error) {
+    console.error('❌ Server-side processing failed:', error);
+    throw error;
+  }
+}
+
+/**
  * Convert image using Imagen for actual image generation
  */
 async function convertWithImagen(imageDataUri: string, apiKey: string): Promise<string> {
@@ -285,6 +317,7 @@ export async function convertImageWithMultipleApproaches(
 
   // Try different approaches in order of preference
   const approaches = [
+    { name: 'Server-Side Image Processing', fn: () => convertWithServerProcessing(imageDataUri) },
     { name: 'Imagen Image Generation', fn: () => convertWithImagen(imageDataUri, apiKey) },
     { name: 'AI-Guided Canvas Processing', fn: () => convertWithAIGuidance(imageDataUri, apiKey) },
     { name: 'AI Structural Conversion', fn: () => convertImageToLineArtAI(imageDataUri, options) },
