@@ -127,7 +127,6 @@ STRICT REQUIREMENTS:
       instances: [{ prompt }],
       parameters: {
         sampleCount: 1,
-        aspectRatio: "ASPECT_RATIO_1_1",
         safetyFilterLevel: "BLOCK_ONLY_HIGH",
         personGeneration: "ALLOW_ADULT"
       }
@@ -145,6 +144,7 @@ STRICT REQUIREMENTS:
     if (!response.ok) {
       const errorText = await response.text();
       console.log('❌ Imagen generation failed:', response.status, errorText);
+      console.log('📤 Payload sent:', JSON.stringify(payload, null, 2));
       throw new Error(`Imagen API failed: ${response.status} - ${errorText}`);
     }
     
