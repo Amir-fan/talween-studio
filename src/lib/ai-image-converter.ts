@@ -30,17 +30,111 @@ export async function convertImageToColoringPage(imageDataUri: string): Promise<
 }
 
 /**
- * Convert image to line art using direct image-to-image AI conversion
+ * Convert image to line art using real image-to-image generation
  */
 async function convertImageToSVGWithGemini(imageDataUri: string, apiKey: string): Promise<string> {
-  console.log('🎨 Converting image to line art using direct AI conversion...');
+  console.log('🎨 Converting image to line art using REAL image-to-image generation...');
+  
+  // Extract image data
+  const [meta, base64Data] = imageDataUri.split(',');
+  const mimeMatch = meta?.match(/^data:(.*?);base64$/);
+  const mimeType = mimeMatch?.[1] || 'image/jpeg';
+
+  try {
+    // Try Imagen with image input first
+    const imagenResult = await convertWithImagenImageToImage(imageDataUri, apiKey);
+    if (imagenResult) {
+      console.log('✅ Imagen image-to-image conversion successful');
+      return imagenResult;
+    }
+  } catch (error) {
+    console.log('⚠️ Imagen image-to-image failed, trying alternative...', error);
+  }
+
+  try {
+    // Fallback: Use Gemini to analyze and then Imagen to generate
+    const geminiAnalysis = await analyzeImageForGeneration(imageDataUri, apiKey);
+    const imagenTextResult = await convertWithImagenTextToImage(geminiAnalysis, apiKey);
+    if (imagenTextResult) {
+      console.log('✅ Imagen text-to-image conversion successful');
+      return imagenTextResult;
+    }
+  } catch (error) {
+    console.log('⚠️ Imagen text-to-image failed:', error);
+  }
+
+  throw new Error('All image generation methods failed');
+}
+
+/**
+ * Convert using Imagen with image input (if supported)
+ */
+async function convertWithImagenImageToImage(imageDataUri: string, apiKey: string): Promise<string | null> {
+  console.log('🎨 Trying Imagen image-to-image conversion...');
+  
+  try {
+    const imagenEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-preview-06-06:predict?key=${apiKey}`;
+    
+    // Extract image data
+    const [meta, base64Data] = imageDataUri.split(',');
+    const mimeMatch = meta?.match(/^data:(.*?);base64$/);
+    const mimeType = mimeMatch?.[1] || 'image/jpeg';
+    
+    const payload = {
+      instances: [{
+        prompt: "Create black-and-white line art from the EXACT input. Preserve all outlines and details. White background, black lines only. No shading, no fills, no added elements.",
+        image: {
+          bytesBase64Encoded: base64Data
+        }
+      }],
+      parameters: {
+        sampleCount: 1,
+        aspectRatio: "ASPECT_RATIO_1_1",
+        safetyFilterLevel: "BLOCK_ONLY_HIGH",
+        personGeneration: "ALLOW_ADULT"
+      }
+    };
+    
+    const response = await fetch(imagenEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log('❌ Imagen image-to-image failed:', response.status, errorText);
+      return null;
+    }
+    
+    const result = await response.json();
+    const generatedImage = result.predictions?.[0]?.bytesBase64Encoded;
+    
+    if (generatedImage) {
+      console.log('✅ Imagen image-to-image successful');
+      return `data:image/png;base64,${generatedImage}`;
+    }
+    
+    return null;
+    
+  } catch (error) {
+    console.log('❌ Imagen image-to-image error:', error);
+    return null;
+  }
+}
+
+/**
+ * Analyze image with Gemini for generation
+ */
+async function analyzeImageForGeneration(imageDataUri: string, apiKey: string): Promise<string> {
+  console.log('🔍 Analyzing image for generation...');
   
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ 
     model: "gemini-2.0-flash-exp",
     generationConfig: {
-      temperature: 0.0,
-      maxOutputTokens: 2000,
+      temperature: 0.1,
+      maxOutputTokens: 1000,
     }
   });
 
@@ -49,189 +143,79 @@ async function convertImageToSVGWithGemini(imageDataUri: string, apiKey: string)
   const mimeMatch = meta?.match(/^data:(.*?);base64$/);
   const mimeType = mimeMatch?.[1] || 'image/jpeg';
 
-  const prompt = `Convert this image into a clean black line art coloring page.
+  const prompt = `Analyze this image in detail for creating a line art coloring page. Describe the main subject, key features, composition, and important details that should be preserved in a clean line art version.`;
 
-CRITICAL REQUIREMENTS:
-- Create clean black outlines of the EXACT image shown
-- Preserve the main subject, facial features, and key details
-- Use thick black lines on white background
-- No shading, no fills, no solid black areas
-- Make it look like a real coloring book page
-- Keep the same composition and proportions as the original
-- Focus on outlines and contours, not abstract shapes
-
-Convert the provided image into clean black line art for coloring books—no shading, no fills.`;
-
-  try {
-    console.log('🎨 Converting image directly to line art...');
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType: mimeType
-        }
-      }
-    ]);
-
-    const response = await result.response;
-    const content = response.text();
-    
-    console.log('📝 AI response length:', content.length);
-    console.log('📝 AI response preview:', content.substring(0, 300) + '...');
-    
-    // Check if we got an image response
-    const imageData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData;
-    
-    if (imageData) {
-      console.log('✅ AI returned image data');
-      return `data:${imageData.mimeType};base64,${imageData.data}`;
-    } else {
-      console.log('❌ No image data in response, trying to extract SVG...');
-      
-      // Try to extract SVG from text response
-      const svgMatch = content.match(/<svg[^>]*>[\s\S]*<\/svg>/i);
-      if (svgMatch) {
-        const svgContent = svgMatch[0];
-        console.log('✅ Found SVG in response');
-        return `data:image/svg+xml;base64,${Buffer.from(svgContent).toString('base64')}`;
-      } else {
-        console.log('❌ No SVG found, trying alternative approach...');
-        
-        // Try to create a simple SVG from the description
-        const simpleSVG = createSimpleSVGFromDescription(content);
-        if (simpleSVG) {
-          console.log('✅ Created simple SVG from description');
-          return `data:image/svg+xml;base64,${Buffer.from(simpleSVG).toString('base64')}`;
-        } else {
-          console.log('❌ Could not create valid content from response');
-          console.log('📝 Full response:', content);
-          throw new Error('AI did not return valid image or SVG content');
-        }
+  const result = await model.generateContent([
+    prompt,
+    {
+      inlineData: {
+        data: base64Data,
+        mimeType: mimeType
       }
     }
-    
-  } catch (error) {
-    console.error('❌ Direct AI conversion failed:', error);
-    throw error;
-  }
+  ]);
+
+  const response = await result.response;
+  return response.text();
 }
 
 /**
- * Create a simple SVG from AI description as fallback
+ * Convert using Imagen with text description
  */
-function createSimpleSVGFromDescription(description: string): string | null {
-  console.log('🔧 Creating simple SVG from description...');
+async function convertWithImagenTextToImage(description: string, apiKey: string): Promise<string | null> {
+  console.log('🎨 Converting with Imagen text-to-image...');
   
   try {
-    // Extract key elements from the description
-    const hasPerson = /person|character|face|head|body/i.test(description);
-    const hasHat = /hat|cap|headwear/i.test(description);
-    const hasSmile = /smile|mouth|teeth/i.test(description);
-    const hasEyes = /eye|eyes/i.test(description);
+    const imagenEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-preview-06-06:predict?key=${apiKey}`;
     
-    // Create a simple SVG based on the description
-    let svgContent = `<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
-  <rect width="400" height="400" fill="white"/>
-  <g stroke="black" stroke-width="3" fill="none">`;
-  
-    if (hasPerson) {
-      // Basic person outline
-      svgContent += `
-    <!-- Head -->
-    <circle cx="200" cy="120" r="40"/>
-    <!-- Body -->
-    <rect x="160" y="160" width="80" height="120" rx="10"/>
-    <!-- Arms -->
-    <line x1="160" y1="180" x2="120" y2="220"/>
-    <line x1="240" y1="180" x2="280" y2="220"/>
-    <!-- Legs -->
-    <line x1="180" y1="280" x2="180" y2="360"/>
-    <line x1="220" y1="280" x2="220" y2="360"/>`;
-      
-      if (hasEyes) {
-        svgContent += `
-    <!-- Eyes -->
-    <circle cx="185" cy="110" r="3"/>
-    <circle cx="215" cy="110" r="3"/>`;
+    const prompt = `Create a black and white line art coloring page based on this description: "${description}"
+
+REQUIREMENTS:
+- Pure black lines on white background
+- Clean, simple line art suitable for children
+- Bold outlines that are easy to trace
+- Large fillable white areas for coloring
+- No shading, gradients, or fills
+- No text or letters
+- Child-friendly design
+- Preserve the main subject and key details from the description`;
+
+    const payload = {
+      instances: [{ prompt }],
+      parameters: {
+        sampleCount: 1,
+        aspectRatio: "ASPECT_RATIO_1_1",
+        safetyFilterLevel: "BLOCK_ONLY_HIGH",
+        personGeneration: "ALLOW_ADULT"
       }
-      
-      if (hasSmile) {
-        svgContent += `
-    <!-- Smile -->
-    <path d="M 180 130 Q 200 150 220 130"/>`;
-      }
-      
-      if (hasHat) {
-        svgContent += `
-    <!-- Hat -->
-    <ellipse cx="200" cy="80" rx="50" ry="15"/>
-    <rect x="150" y="80" width="100" height="40" rx="5"/>`;
-      }
-    } else {
-      // Generic shape if no person detected
-      svgContent += `
-    <!-- Generic shape -->
-    <circle cx="200" cy="200" r="80"/>
-    <rect x="120" y="120" width="160" height="160" rx="20"/>`;
+    };
+    
+    const response = await fetch(imagenEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log('❌ Imagen text-to-image failed:', response.status, errorText);
+      return null;
     }
     
-    svgContent += `
-  </g>
-</svg>`;
+    const result = await response.json();
+    const generatedImage = result.predictions?.[0]?.bytesBase64Encoded;
     
-    console.log('✅ Simple SVG created');
-    return svgContent;
+    if (generatedImage) {
+      console.log('✅ Imagen text-to-image successful');
+      return `data:image/png;base64,${generatedImage}`;
+    }
+    
+    return null;
     
   } catch (error) {
-    console.error('❌ Failed to create simple SVG:', error);
+    console.log('❌ Imagen text-to-image error:', error);
     return null;
   }
 }
 
-/**
- * Clean and validate SVG content from Gemini response
- */
-function cleanAndValidateSVG(svgContent: string): string {
-  console.log('🧹 Cleaning SVG content...');
-  
-  // Remove markdown fences if present
-  let cleaned = svgContent
-    .replace(/```svg\s*/gi, '')
-    .replace(/```\s*$/g, '')
-    .replace(/```\s*$/gm, '')
-    .trim();
-  
-  // Ensure it starts with <svg
-  if (!cleaned.toLowerCase().includes('<svg')) {
-    console.log('⚠️ No SVG tag found, extracting from content...');
-    
-    // Try to extract SVG from the content
-    const svgMatch = cleaned.match(/<svg[^>]*>[\s\S]*<\/svg>/i);
-    if (svgMatch) {
-      cleaned = svgMatch[0];
-    } else {
-      console.log('❌ No valid SVG found in response');
-      throw new Error('Gemini did not return valid SVG content');
-    }
-  }
-  
-  // Basic SVG validation
-  if (!cleaned.includes('<svg') || !cleaned.includes('</svg>')) {
-    console.log('❌ Invalid SVG structure');
-    throw new Error('Invalid SVG structure returned by Gemini');
-  }
-  
-  // Ensure proper viewBox if missing
-  if (!cleaned.includes('viewBox')) {
-    cleaned = cleaned.replace('<svg', '<svg viewBox="0 0 400 400"');
-  }
-  
-  // Ensure proper stroke settings
-  if (!cleaned.includes('stroke=')) {
-    cleaned = cleaned.replace('<svg', '<svg stroke="black" stroke-width="2" fill="none"');
-  }
-  
-  console.log('✅ SVG cleaned successfully');
-  return cleaned;
-}
+// Note: Removed fallback SVG functions since we're using real image generation
