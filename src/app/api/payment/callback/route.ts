@@ -29,8 +29,8 @@ export async function GET(request: NextRequest) {
       } catch {}
     }
 
-    // If mock mode or a MOCK-* PaymentId is provided, short-circuit as Paid
-    const isMock = process.env.PAYMENT_USE_MOCK === 'true' || (paymentId?.startsWith('MOCK-') ?? false);
+    // If a MOCK-* PaymentId is provided, short-circuit as Paid
+    const isMock = (paymentId?.startsWith('MOCK-') ?? false);
     const statusResult = isMock
       ? { success: true, status: 'Paid', transactionId: paymentId || 'MOCK-TXN' }
       : await checkPaymentStatus(paymentId || (invoiceId as string), paymentId ? 'PaymentId' : 'InvoiceId');
