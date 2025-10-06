@@ -110,6 +110,7 @@ async function generateLineArtWithImagen(detailedPrompt: string, apiKey: string)
   console.log('🎨 Generating line art with Imagen AI...');
   
   try {
+    // Try the correct Imagen API endpoint
     const imagenEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-preview-06-06:predict?key=${apiKey}`;
     
     const prompt = `Create a black and white line art coloring page: ${detailedPrompt}
@@ -133,13 +134,19 @@ REQUIREMENTS:
     };
     
     console.log('📤 Sending AI-generated prompt to Imagen...');
+    console.log('📤 Prompt:', prompt.substring(0, 200) + '...');
+    
     const response = await fetch(imagenEndpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
       body: JSON.stringify(payload)
     });
     
     console.log('📥 Imagen response status:', response.status);
+    console.log('📥 Imagen response headers:', Object.fromEntries(response.headers.entries()));
     
     if (!response.ok) {
       const errorText = await response.text();
@@ -156,14 +163,18 @@ REQUIREMENTS:
                           result.predictions?.[0]?.image?.bytesBase64Encoded ||
                           result.predictions?.[0]?.data ||
                           result.image ||
-                          result.data;
+                          result.data ||
+                          result.predictions?.[0]?.generatedImage ||
+                          result.predictions?.[0]?.imageData;
     
     console.log('🔍 Looking for image data in:', {
       'result.predictions?.[0]?.bytesBase64Encoded': result.predictions?.[0]?.bytesBase64Encoded ? 'FOUND' : 'NOT FOUND',
       'result.predictions?.[0]?.image?.bytesBase64Encoded': result.predictions?.[0]?.image?.bytesBase64Encoded ? 'FOUND' : 'NOT FOUND',
       'result.predictions?.[0]?.data': result.predictions?.[0]?.data ? 'FOUND' : 'NOT FOUND',
       'result.image': result.image ? 'FOUND' : 'NOT FOUND',
-      'result.data': result.data ? 'FOUND' : 'NOT FOUND'
+      'result.data': result.data ? 'FOUND' : 'NOT FOUND',
+      'result.predictions?.[0]?.generatedImage': result.predictions?.[0]?.generatedImage ? 'FOUND' : 'NOT FOUND',
+      'result.predictions?.[0]?.imageData': result.predictions?.[0]?.imageData ? 'FOUND' : 'NOT FOUND'
     });
     
     if (generatedImage) {
@@ -183,6 +194,11 @@ REQUIREMENTS:
       firstPredictionKeys: result.predictions?.[0] ? Object.keys(result.predictions[0]) : [],
       topLevelKeys: Object.keys(result)
     });
+    
+    // If we have predictions but no image data, let's see what we do have
+    if (result.predictions && result.predictions.length > 0) {
+      console.log('🔍 First prediction content:', JSON.stringify(result.predictions[0], null, 2));
+    }
     
     throw new Error('No image data returned from Imagen');
     
