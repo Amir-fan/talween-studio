@@ -5,6 +5,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getBestWorkingImageModel, AvailableModel } from './model-discovery';
+import { convertWithAIGuidance } from './image-processing';
 
 export interface ImageConversionOptions {
   preserveStructure?: boolean;
@@ -186,35 +187,124 @@ The result should be the original image converted to line art, not a new artisti
 }
 
 /**
+ * Convert image using Imagen for actual image generation
+ */
+async function convertWithImagen(imageDataUri: string, apiKey: string): Promise<string> {
+  console.log('🎨 Converting image using Imagen...');
+  
+  try {
+    // First analyze the image with Gemini to get a description
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+    
+    // Extract image data
+    const [meta, base64Data] = imageDataUri.split(',');
+    const mimeMatch = meta?.match(/^data:(.*?);base64$/);
+    const mimeType = mimeMatch?.[1] || 'image/jpeg';
+    
+    // Get image description
+    const result = await model.generateContent([
+      "Describe this image in detail, focusing on the main subject, composition, and key visual elements that should be preserved in a line art version.",
+      {
+        inlineData: {
+          data: base64Data,
+          mimeType: mimeType
+        }
+      }
+    ]);
+    
+    const response = await result.response;
+    const imageDescription = response.text();
+    console.log('📝 Image description:', imageDescription);
+    
+    // Use Imagen to generate line art
+    const imagenEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-preview-06-06:predict?key=${apiKey}`;
+    
+    const imagenPayload = {
+      instances: [
+        {
+          prompt: `Create a black and white line art coloring page based on this description: "${imageDescription}". 
+          
+Requirements:
+- Pure black lines on white background
+- Simple, clean line art suitable for coloring
+- Preserve the main subject and composition from the description
+- No shading, just bold outlines
+- Child-friendly coloring page style
+- Remove any text or letters`
+        }
+      ],
+      parameters: {
+        sampleCount: 1,
+        aspectRatio: "ASPECT_RATIO_1_1",
+        safetyFilterLevel: "BLOCK_ONLY_HIGH",
+        personGeneration: "ALLOW_ADULT"
+      }
+    };
+    
+    const imagenResponse = await fetch(imagenEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(imagenPayload)
+    });
+    
+    if (!imagenResponse.ok) {
+      const errorText = await imagenResponse.text();
+      throw new Error(`Imagen API failed: ${imagenResponse.status} ${errorText}`);
+    }
+    
+    const imagenResult = await imagenResponse.json();
+    const generatedImage = imagenResult.predictions?.[0]?.bytesBase64Encoded;
+    
+    if (!generatedImage) {
+      throw new Error('Imagen did not return an image');
+    }
+    
+    console.log('✅ Imagen generation successful');
+    return `data:image/png;base64,${generatedImage}`;
+    
+  } catch (error) {
+    console.error('❌ Imagen conversion failed:', error);
+    throw error;
+  }
+}
+
+/**
  * Enhanced conversion with multiple AI approaches for better structural preservation
  */
 export async function convertImageWithMultipleApproaches(
   imageDataUri: string,
   options: ImageConversionOptions = {}
 ): Promise<string> {
-  console.log('🎨 Starting multi-approach AI conversion...');
+  console.log('🎨 Starting multi-approach image conversion...');
+  
+  const apiKey = process.env.IMAGE_TO_LINE_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!apiKey) {
+    throw new Error('AI API key required for image conversion');
+  }
 
+  // Try different approaches in order of preference
   const approaches = [
-    () => convertImageToLineArtAI(imageDataUri, options),
-    () => convertWithStructuralFocus(imageDataUri),
-    () => convertWithEdgePreservation(imageDataUri)
+    { name: 'Imagen Image Generation', fn: () => convertWithImagen(imageDataUri, apiKey) },
+    { name: 'AI-Guided Canvas Processing', fn: () => convertWithAIGuidance(imageDataUri, apiKey) },
+    { name: 'AI Structural Conversion', fn: () => convertImageToLineArtAI(imageDataUri, options) },
+    { name: 'Structural Focus', fn: () => convertWithStructuralFocus(imageDataUri) },
+    { name: 'Edge Preservation', fn: () => convertWithEdgePreservation(imageDataUri) }
   ];
 
-  for (let i = 0; i < approaches.length; i++) {
+  for (const approach of approaches) {
     try {
-      console.log(`🔄 Trying approach ${i + 1}/${approaches.length}...`);
-      const result = await approaches[i]();
-      console.log(`✅ Approach ${i + 1} succeeded`);
+      console.log(`🔄 Trying ${approach.name}...`);
+      const result = await approach.fn();
+      console.log(`✅ ${approach.name} succeeded`);
       return result;
     } catch (error) {
-      console.log(`❌ Approach ${i + 1} failed:`, error);
-      if (i === approaches.length - 1) {
-        throw error; // Re-throw the last error if all approaches fail
-      }
+      console.log(`❌ ${approach.name} failed:`, error);
+      // Continue to next approach
     }
   }
 
-  throw new Error('All conversion approaches failed');
+  throw new Error('All conversion approaches failed. Please try with a different image or check your API configuration.');
 }
 
 /**
