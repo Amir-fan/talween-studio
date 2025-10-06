@@ -9,6 +9,7 @@ import { convertWithAIGuidance } from './image-processing';
 import { convertImageToLineArtServer, convertWithAlternativeProcessing } from './server-image-processing';
 import { forceLineArtConversion, simpleLineArtFallback } from './direct-image-converter';
 import { convertToColoringPage, convertToColoringPageAlternative } from './coloring-page-converter';
+import { convertToColoringPageWithAI, convertWithAlternativeAI } from './ai-coloring-converter';
 
 export interface ImageConversionOptions {
   preserveStructure?: boolean;
@@ -317,8 +318,10 @@ export async function convertImageWithMultipleApproaches(
     throw new Error('AI API key required for image conversion');
   }
 
-  // Try different approaches in order of preference - PROPER COLORING PAGE STYLE FIRST
+  // Try different approaches in order of preference - AI-BASED APPROACHES FIRST
   const approaches = [
+    { name: 'AI Coloring Page Analysis & Generation', fn: () => convertToColoringPageWithAI(imageDataUri) },
+    { name: 'Alternative AI Approach', fn: () => convertWithAlternativeAI(imageDataUri) },
     { name: 'PROPER Coloring Page Conversion', fn: () => convertToColoringPage(imageDataUri) },
     { name: 'Alternative Coloring Page Style', fn: () => convertToColoringPageAlternative(imageDataUri) },
     { name: 'FORCE Line Art Conversion', fn: () => forceLineArtConversion(imageDataUri) },
