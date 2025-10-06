@@ -30,127 +30,41 @@ export async function convertImageToColoringPage(imageDataUri: string): Promise<
 }
 
 /**
- * Convert image to line art using real image-to-image generation
+ * Convert image to line art using REAL AI image-to-image generation
  */
 async function convertImageToSVGWithGemini(imageDataUri: string, apiKey: string): Promise<string> {
-  console.log('🎨 Converting image to line art using REAL image-to-image generation...');
+  console.log('🎨 Converting image to line art using REAL AI image-to-image generation...');
   
   // Extract image data
   const [meta, base64Data] = imageDataUri.split(',');
   const mimeMatch = meta?.match(/^data:(.*?);base64$/);
   const mimeType = mimeMatch?.[1] || 'image/jpeg';
 
-  try {
-    // Try Imagen with image input first
-    const imagenResult = await convertWithImagenImageToImage(imageDataUri, apiKey);
-    if (imagenResult) {
-      console.log('✅ Imagen image-to-image conversion successful');
-      return imagenResult;
-    }
-  } catch (error) {
-    console.log('⚠️ Imagen image-to-image failed, trying alternative...', error);
-  }
-
-  try {
-    // Fallback: Use Gemini to analyze and then Imagen to generate
-    const geminiAnalysis = await analyzeImageForGeneration(imageDataUri, apiKey);
-    const imagenTextResult = await convertWithImagenTextToImage(geminiAnalysis, apiKey);
-    if (imagenTextResult) {
-      console.log('✅ Imagen text-to-image conversion successful');
-      return imagenTextResult;
-    }
-  } catch (error) {
-    console.log('⚠️ Imagen text-to-image failed:', error);
-  }
-
-  try {
-    // Final fallback: Use a simple line art prompt
-    const simpleResult = await convertWithSimpleLineArtPrompt(apiKey);
-    if (simpleResult) {
-      console.log('✅ Simple line art conversion successful');
-      return simpleResult;
-    }
-  } catch (error) {
-    console.log('⚠️ Simple line art failed:', error);
-  }
-
-  throw new Error('All image generation methods failed');
-}
-
-/**
- * Convert using Imagen with image input (if supported)
- */
-async function convertWithImagenImageToImage(imageDataUri: string, apiKey: string): Promise<string | null> {
-  console.log('🎨 Trying Imagen image-to-image conversion...');
+  // Use Gemini to analyze the image and create a detailed prompt for Imagen
+  const detailedPrompt = await createDetailedLineArtPrompt(imageDataUri, apiKey);
   
-  try {
-    // First, let's try the correct Imagen API format
-    const imagenEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-preview-06-06:predict?key=${apiKey}`;
-    
-    // Extract image data
-    const [meta, base64Data] = imageDataUri.split(',');
-    const mimeMatch = meta?.match(/^data:(.*?);base64$/);
-    const mimeType = mimeMatch?.[1] || 'image/jpeg';
-    
-    // Try the correct Imagen API format
-    const payload = {
-      instances: [{
-        prompt: "Create black-and-white line art from the EXACT input. Preserve all outlines and details. White background, black lines only. No shading, no fills, no added elements."
-      }],
-      parameters: {
-        sampleCount: 1,
-        aspectRatio: "ASPECT_RATIO_1_1",
-        safetyFilterLevel: "BLOCK_ONLY_HIGH",
-        personGeneration: "ALLOW_ADULT"
-      }
-    };
-    
-    console.log('📤 Sending request to Imagen API...');
-    const response = await fetch(imagenEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    
-    console.log('📥 Imagen API response status:', response.status);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log('❌ Imagen image-to-image failed:', response.status, errorText);
-      return null;
-    }
-    
-    const result = await response.json();
-    console.log('📥 Imagen API response:', JSON.stringify(result, null, 2));
-    
-    const generatedImage = result.predictions?.[0]?.bytesBase64Encoded;
-    
-    if (generatedImage) {
-      console.log('✅ Imagen image-to-image successful');
-      return `data:image/png;base64,${generatedImage}`;
-    }
-    
-    console.log('❌ No image data in Imagen response');
-    return null;
-    
-  } catch (error) {
-    console.log('❌ Imagen image-to-image error:', error);
-    return null;
+  // Use Imagen to generate the actual line art
+  const lineArtImage = await generateLineArtWithImagen(detailedPrompt, apiKey);
+  
+  if (!lineArtImage) {
+    throw new Error('AI image generation failed');
   }
+  
+  return lineArtImage;
 }
 
 /**
- * Analyze image with Gemini for generation
+ * Create detailed line art prompt using Gemini AI analysis
  */
-async function analyzeImageForGeneration(imageDataUri: string, apiKey: string): Promise<string> {
-  console.log('🔍 Analyzing image for generation...');
+async function createDetailedLineArtPrompt(imageDataUri: string, apiKey: string): Promise<string> {
+  console.log('🔍 Creating detailed line art prompt with AI analysis...');
   
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ 
     model: "gemini-2.0-flash-exp",
     generationConfig: {
       temperature: 0.1,
-      maxOutputTokens: 1000,
+      maxOutputTokens: 2000,
     }
   });
 
@@ -159,7 +73,16 @@ async function analyzeImageForGeneration(imageDataUri: string, apiKey: string): 
   const mimeMatch = meta?.match(/^data:(.*?);base64$/);
   const mimeType = mimeMatch?.[1] || 'image/jpeg';
 
-  const prompt = `Analyze this image in detail for creating a line art coloring page. Describe the main subject, key features, composition, and important details that should be preserved in a clean line art version.`;
+  const prompt = `Analyze this image and create a detailed prompt for generating a black and white line art coloring page. 
+
+CRITICAL REQUIREMENTS:
+- Describe the EXACT subject, composition, and key details
+- Focus on outlines, contours, and structural elements
+- Identify facial features, clothing, objects, and background elements
+- Note the pose, positioning, and proportions
+- Describe any distinctive features or characteristics
+
+The prompt should be detailed enough for an AI image generator to create an accurate line art version that preserves the original structure and details.`;
 
   const result = await model.generateContent([
     prompt,
@@ -172,29 +95,33 @@ async function analyzeImageForGeneration(imageDataUri: string, apiKey: string): 
   ]);
 
   const response = await result.response;
-  return response.text();
+  const analysis = response.text();
+  
+  console.log('📝 AI Analysis:', analysis.substring(0, 200) + '...');
+  
+  return analysis;
 }
 
 /**
- * Convert using Imagen with text description
+ * Generate line art using Imagen with detailed AI prompt
  */
-async function convertWithImagenTextToImage(description: string, apiKey: string): Promise<string | null> {
-  console.log('🎨 Converting with Imagen text-to-image...');
+async function generateLineArtWithImagen(detailedPrompt: string, apiKey: string): Promise<string | null> {
+  console.log('🎨 Generating line art with Imagen AI...');
   
   try {
     const imagenEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-preview-06-06:predict?key=${apiKey}`;
     
-    const prompt = `Create a black and white line art coloring page based on this description: "${description}"
+    const prompt = `Create a black and white line art coloring page based on this detailed analysis: "${detailedPrompt}"
 
-REQUIREMENTS:
+STRICT REQUIREMENTS:
 - Pure black lines on white background
-- Clean, simple line art suitable for children
-- Bold outlines that are easy to trace
-- Large fillable white areas for coloring
+- Clean, bold outlines that are easy to trace
+- Preserve the EXACT structure and details from the analysis
 - No shading, gradients, or fills
 - No text or letters
-- Child-friendly design
-- Preserve the main subject and key details from the description`;
+- Child-friendly coloring book style
+- Large fillable white areas for coloring
+- Maintain original proportions and composition`;
 
     const payload = {
       instances: [{ prompt }],
@@ -206,86 +133,36 @@ REQUIREMENTS:
       }
     };
     
+    console.log('📤 Sending AI-generated prompt to Imagen...');
     const response = await fetch(imagenEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log('❌ Imagen text-to-image failed:', response.status, errorText);
-      return null;
-    }
-    
-    const result = await response.json();
-    const generatedImage = result.predictions?.[0]?.bytesBase64Encoded;
-    
-    if (generatedImage) {
-      console.log('✅ Imagen text-to-image successful');
-      return `data:image/png;base64,${generatedImage}`;
-    }
-    
-    return null;
-    
-  } catch (error) {
-    console.log('❌ Imagen text-to-image error:', error);
-    return null;
-  }
-}
-
-/**
- * Convert using simple line art prompt as final fallback
- */
-async function convertWithSimpleLineArtPrompt(apiKey: string): Promise<string | null> {
-  console.log('🎨 Trying simple line art generation...');
-  
-  try {
-    const imagenEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-preview-06-06:predict?key=${apiKey}`;
-    
-    const prompt = `Simple black and white line art coloring page for children. Clean outlines, no shading, white background, black lines only. Suitable for coloring book.`;
-    
-    const payload = {
-      instances: [{ prompt }],
-      parameters: {
-        sampleCount: 1,
-        aspectRatio: "ASPECT_RATIO_1_1",
-        safetyFilterLevel: "BLOCK_ONLY_HIGH",
-        personGeneration: "ALLOW_ADULT"
-      }
-    };
-    
-    console.log('📤 Sending simple line art request to Imagen API...');
-    const response = await fetch(imagenEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    
-    console.log('📥 Simple line art response status:', response.status);
+    console.log('📥 Imagen response status:', response.status);
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.log('❌ Simple line art failed:', response.status, errorText);
-      return null;
+      console.log('❌ Imagen generation failed:', response.status, errorText);
+      throw new Error(`Imagen API failed: ${response.status} - ${errorText}`);
     }
     
     const result = await response.json();
-    console.log('📥 Simple line art response:', JSON.stringify(result, null, 2));
+    console.log('📥 Imagen response received');
     
     const generatedImage = result.predictions?.[0]?.bytesBase64Encoded;
     
     if (generatedImage) {
-      console.log('✅ Simple line art successful');
+      console.log('✅ AI line art generation successful');
       return `data:image/png;base64,${generatedImage}`;
     }
     
-    console.log('❌ No image data in simple line art response');
-    return null;
+    throw new Error('No image data returned from Imagen');
     
   } catch (error) {
-    console.log('❌ Simple line art error:', error);
-    return null;
+    console.error('❌ AI line art generation failed:', error);
+    throw error;
   }
 }
 
