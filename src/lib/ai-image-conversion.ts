@@ -4,6 +4,7 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getBestWorkingImageModel, AvailableModel } from './model-discovery';
 
 export interface ImageConversionOptions {
   preserveStructure?: boolean;
@@ -27,6 +28,14 @@ export async function convertImageToLineArtAI(
     throw new Error('AI API key required for image conversion');
   }
 
+  // Find the best working model dynamically
+  const bestModel = await getBestWorkingImageModel(apiKey);
+  if (!bestModel) {
+    throw new Error('No working image models found. Please check your API key and model availability.');
+  }
+
+  console.log(`🎯 Using model: ${bestModel.name} (${bestModel.apiVersion})`);
+  
   const genAI = new GoogleGenerativeAI(apiKey);
   
   // Extract image data
@@ -35,9 +44,9 @@ export async function convertImageToLineArtAI(
   const mimeType = mimeMatch?.[1] || 'image/jpeg';
 
   try {
-    // Use Gemini 2.0 Flash with vision capabilities for direct image-to-image conversion
+    // Use the discovered working model
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.0-flash-exp",
+      model: bestModel.name.replace('models/', ''), // Remove models/ prefix if present
       generationConfig: {
         temperature: 0.1, // Low temperature for consistent conversion
         topK: 1,
@@ -99,6 +108,12 @@ This should look like the original image traced as a coloring page - not a new i
 async function convertWithAlternativeApproach(imageDataUri: string, apiKey: string): Promise<string> {
   console.log('🔄 Trying alternative AI conversion approach...');
   
+  // Find an alternative working model
+  const bestModel = await getBestWorkingImageModel(apiKey);
+  if (!bestModel) {
+    throw new Error('No working image models found for alternative approach');
+  }
+
   const genAI = new GoogleGenerativeAI(apiKey);
   
   // Extract image data
@@ -107,9 +122,9 @@ async function convertWithAlternativeApproach(imageDataUri: string, apiKey: stri
   const mimeType = mimeMatch?.[1] || 'image/jpeg';
 
   try {
-    // Try with Gemini 1.5 Pro for better image understanding
+    // Use the discovered working model
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-pro",
+      model: bestModel.name.replace('models/', ''),
       generationConfig: {
         temperature: 0.0, // Very low temperature for precise conversion
         topK: 1,
@@ -203,13 +218,16 @@ async function convertWithStructuralFocus(imageDataUri: string): Promise<string>
   const apiKey = process.env.IMAGE_TO_LINE_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (!apiKey) throw new Error('API key required');
 
+  const bestModel = await getBestWorkingImageModel(apiKey);
+  if (!bestModel) throw new Error('No working models found');
+
   const genAI = new GoogleGenerativeAI(apiKey);
   const [meta, base64Data] = imageDataUri.split(',');
   const mimeMatch = meta?.match(/^data:(.*?);base64$/);
   const mimeType = mimeMatch?.[1] || 'image/jpeg';
 
   const model = genAI.getGenerativeModel({ 
-    model: "gemini-2.0-flash-exp",
+    model: bestModel.name.replace('models/', ''),
     generationConfig: { temperature: 0.0 }
   });
 
@@ -244,13 +262,16 @@ async function convertWithEdgePreservation(imageDataUri: string): Promise<string
   const apiKey = process.env.IMAGE_TO_LINE_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (!apiKey) throw new Error('API key required');
 
+  const bestModel = await getBestWorkingImageModel(apiKey);
+  if (!bestModel) throw new Error('No working models found');
+
   const genAI = new GoogleGenerativeAI(apiKey);
   const [meta, base64Data] = imageDataUri.split(',');
   const mimeMatch = meta?.match(/^data:(.*?);base64$/);
   const mimeType = mimeMatch?.[1] || 'image/jpeg';
 
   const model = genAI.getGenerativeModel({ 
-    model: "gemini-1.5-pro",
+    model: bestModel.name.replace('models/', ''),
     generationConfig: { temperature: 0.0 }
   });
 
