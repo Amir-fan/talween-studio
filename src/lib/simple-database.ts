@@ -91,15 +91,37 @@ function loadDatabase() {
     if (fs.existsSync(dbPath)) {
       const data = fs.readFileSync(dbPath, 'utf8');
       const loadedDb = JSON.parse(data);
+      
+      // Validate and fix database structure
+      const validateAndFix = (obj: any, defaultValue: any) => {
+        if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+          return obj;
+        } else {
+          console.warn('Database structure issue detected, fixing...');
+          return defaultValue;
+        }
+      };
+      
       // Ensure all required properties exist and are objects (not arrays)
       db = {
-        users: (loadedDb.users && typeof loadedDb.users === 'object' && !Array.isArray(loadedDb.users)) ? loadedDb.users : {},
-        orders: (loadedDb.orders && typeof loadedDb.orders === 'object' && !Array.isArray(loadedDb.orders)) ? loadedDb.orders : {},
-        emailLogs: (loadedDb.emailLogs && typeof loadedDb.emailLogs === 'object' && !Array.isArray(loadedDb.emailLogs)) ? loadedDb.emailLogs : {},
-        userContent: (loadedDb.userContent && typeof loadedDb.userContent === 'object' && !Array.isArray(loadedDb.userContent)) ? loadedDb.userContent : {},
-        adminUsers: (loadedDb.adminUsers && typeof loadedDb.adminUsers === 'object' && !Array.isArray(loadedDb.adminUsers)) ? loadedDb.adminUsers : {},
-        discounts: (loadedDb.discounts && typeof loadedDb.discounts === 'object' && !Array.isArray(loadedDb.discounts)) ? loadedDb.discounts : {}
+        users: validateAndFix(loadedDb.users, {}),
+        orders: validateAndFix(loadedDb.orders, {}),
+        emailLogs: validateAndFix(loadedDb.emailLogs, {}),
+        userContent: validateAndFix(loadedDb.userContent, {}),
+        adminUsers: validateAndFix(loadedDb.adminUsers, {}),
+        discounts: validateAndFix(loadedDb.discounts, {})
       };
+      
+      // If any structure was fixed, save the corrected database
+      const needsSaving = Object.values(db).some((value, index) => {
+        const originalValue = Object.values(loadedDb)[index];
+        return originalValue && Array.isArray(originalValue);
+      });
+      
+      if (needsSaving) {
+        console.log('Database structure corrected, saving...');
+        saveDatabase();
+      }
     }
   } catch (error) {
     console.error('Error loading database:', error);

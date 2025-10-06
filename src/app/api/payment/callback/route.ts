@@ -41,9 +41,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Find the order
+    console.log('💳 [CALLBACK:GET] Looking for order:', orderId);
     const order = orderDb.findById(orderId!);
     if (!order) {
       console.error('💳 [CALLBACK:GET] Order not found:', orderId);
+      console.error('💳 [CALLBACK:GET] Available orders:', Object.keys(orderDb.getAllOrders().reduce((acc, o) => ({ ...acc, [o.id]: o }), {})));
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?error=${encodeURIComponent('Order not found')}`);
     }
     console.log('💳 [CALLBACK:GET] Found order:', { id: order.id, user_id: order.user_id, amount: order.total_amount, credits_purchased: (order as any).credits_purchased, status: order.status });

@@ -1,6 +1,8 @@
 {
-  "users": [],
-  "orders": [],
-  "emailLogs": [],
-  "userContent": []
+  "users": {},
+  "orders": {},
+  "emailLogs": {},
+  "userContent": {},
+  "adminUsers": {},
+  "discounts": {}
 }
