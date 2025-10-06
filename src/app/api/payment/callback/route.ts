@@ -63,9 +63,20 @@ export async function GET(request: NextRequest) {
 
       // Always update Google Sheets using the order's user_id
       try {
-        await googleSheetsUserDb.addCredits(order.user_id, amountToAdd);
+        const result = await googleSheetsUserDb.addCredits(order.user_id, amountToAdd);
+        if (!result.success) {
+          // Fallback: fetch latest credits then set explicit amount
+          const sheetUser = await googleSheetsUserDb.findById(order.user_id);
+          const current = sheetUser.success && sheetUser.user ? Number((sheetUser.user as any).credits || 0) : 0;
+          await googleSheetsUserDb.updateCredits(order.user_id, current + amountToAdd);
+        }
       } catch (e) {
         console.error('Google Sheets addCredits failed:', e);
+        try {
+          const sheetUser = await googleSheetsUserDb.findById(order.user_id);
+          const current = sheetUser.success && sheetUser.user ? Number((sheetUser.user as any).credits || 0) : 0;
+          await googleSheetsUserDb.updateCredits(order.user_id, current + amountToAdd);
+        } catch {}
       }
 
       console.log(`Payment successful for order ${orderId}, added ${order.credits_purchased || 0} credits`);

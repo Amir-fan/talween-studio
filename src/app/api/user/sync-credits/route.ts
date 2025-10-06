@@ -13,8 +13,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prefer Google Sheets as the source of truth; fallback to local DB
+    // Prefer Google Sheets as the source of truth; try by ID, then by email
     let sheetsUser = await googleSheetsUserDb.findById(userId);
+    if (!(sheetsUser.success && sheetsUser.user)) {
+      const local = userDb.findById(userId);
+      if (local?.email) {
+        const byEmail = await googleSheetsUserDb.findByEmail(local.email);
+        if (byEmail.success && byEmail.user) {
+          sheetsUser = byEmail as any;
+        }
+      }
+    }
     if (sheetsUser.success && sheetsUser.user) {
       const u = sheetsUser.user as any;
       return NextResponse.json({
