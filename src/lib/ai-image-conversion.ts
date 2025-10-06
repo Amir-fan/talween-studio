@@ -44,9 +44,12 @@ export async function convertImageToLineArtAI(
   const mimeType = mimeMatch?.[1] || 'image/jpeg';
 
   try {
-    // Use the discovered working model
+    // Use the discovered working model - clean the model name
+    const cleanModelName = bestModel.name.replace('models/', '');
+    console.log(`🎯 Using clean model name: ${cleanModelName}`);
+    
     const model = genAI.getGenerativeModel({ 
-      model: bestModel.name.replace('models/', ''), // Remove models/ prefix if present
+      model: cleanModelName,
       generationConfig: {
         temperature: 0.1, // Low temperature for consistent conversion
         topK: 1,
@@ -122,9 +125,12 @@ async function convertWithAlternativeApproach(imageDataUri: string, apiKey: stri
   const mimeType = mimeMatch?.[1] || 'image/jpeg';
 
   try {
-    // Use the discovered working model
+    // Use the discovered working model - clean the model name
+    const cleanModelName = bestModel.name.replace('models/', '');
+    console.log(`🎯 Alternative approach using: ${cleanModelName}`);
+    
     const model = genAI.getGenerativeModel({ 
-      model: bestModel.name.replace('models/', ''),
+      model: cleanModelName,
       generationConfig: {
         temperature: 0.0, // Very low temperature for precise conversion
         topK: 1,
@@ -226,8 +232,11 @@ async function convertWithStructuralFocus(imageDataUri: string): Promise<string>
   const mimeMatch = meta?.match(/^data:(.*?);base64$/);
   const mimeType = mimeMatch?.[1] || 'image/jpeg';
 
+  const cleanModelName = bestModel.name.replace('models/', '');
+  console.log(`🎯 Structural focus using: ${cleanModelName}`);
+  
   const model = genAI.getGenerativeModel({ 
-    model: bestModel.name.replace('models/', ''),
+    model: cleanModelName,
     generationConfig: { temperature: 0.0 }
   });
 
@@ -270,8 +279,11 @@ async function convertWithEdgePreservation(imageDataUri: string): Promise<string
   const mimeMatch = meta?.match(/^data:(.*?);base64$/);
   const mimeType = mimeMatch?.[1] || 'image/jpeg';
 
+  const cleanModelName = bestModel.name.replace('models/', '');
+  console.log(`🎯 Edge preservation using: ${cleanModelName}`);
+  
   const model = genAI.getGenerativeModel({ 
-    model: bestModel.name.replace('models/', ''),
+    model: cleanModelName,
     generationConfig: { temperature: 0.0 }
   });
 
