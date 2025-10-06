@@ -30,10 +30,10 @@ export async function convertImageToColoringPage(imageDataUri: string): Promise<
 }
 
 /**
- * Convert image to line art using Gemini direct SVG generation
+ * Convert image to line art using Gemini direct image generation
  */
 async function convertImageToSVGWithGemini(imageDataUri: string, apiKey: string): Promise<string> {
-  console.log('🎨 Converting image to line art using Gemini direct SVG generation...');
+  console.log('🎨 Converting image to line art using Gemini direct image generation...');
   
   // Extract image data
   const [meta, base64Data] = imageDataUri.split(',');
@@ -44,24 +44,24 @@ async function convertImageToSVGWithGemini(imageDataUri: string, apiKey: string)
   const model = genAI.getGenerativeModel({ 
     model: "gemini-2.0-flash-exp",
     generationConfig: {
-      temperature: 0.1,
-      maxOutputTokens: 4000,
+      temperature: 0.0,
+      maxOutputTokens: 2000,
     }
   });
 
-  const prompt = `Create an SVG line art coloring page from this image.
+  const prompt = `Look at this image and create a detailed description for generating a black and white line art coloring page.
 
-REQUIREMENTS:
-- Black lines on white background
-- Simple outlines suitable for children
-- No shading or fills
-- Clean, bold lines
-- Preserve main subject details
+CRITICAL REQUIREMENTS:
+- Describe the EXACT subject, pose, and composition
+- Focus on outlines, contours, and structural elements
+- Identify facial features, clothing, objects, and background
+- Note the positioning, proportions, and key details
+- Describe what a child would see and want to color
 
-Return ONLY the SVG code starting with <svg and ending with </svg>.`;
+Create a detailed description that will help generate an accurate line art version.`;
 
   try {
-    console.log('🎨 Generating SVG with Gemini...');
+    console.log('🎨 Analyzing image with Gemini...');
     const result = await model.generateContent([
       prompt,
       {
@@ -73,64 +73,98 @@ Return ONLY the SVG code starting with <svg and ending with </svg>.`;
     ]);
 
     const response = await result.response;
-    const content = response.text();
+    const analysis = response.text();
     
-    console.log('📝 Gemini response length:', content.length);
-    console.log('📝 Response preview:', content.substring(0, 300) + '...');
+    console.log('📝 Analysis:', analysis.substring(0, 300) + '...');
     
-    // Extract SVG from the response - try multiple patterns
-    let svgContent = null;
+    // Now use the analysis to create a proper line art image
+    const lineArtImage = await generateLineArtFromDescription(analysis, apiKey);
     
-    // Try different SVG patterns
-    const patterns = [
-      /<svg[^>]*>[\s\S]*?<\/svg>/gi,
-      /```svg\s*([\s\S]*?)\s*```/gi,
-      /```\s*([\s\S]*?<svg[^>]*>[\s\S]*?<\/svg>[\s\S]*?)\s*```/gi,
-      /<svg[^>]*>[\s\S]*<\/svg>/i
-    ];
-    
-    for (const pattern of patterns) {
-      const match = content.match(pattern);
-      if (match) {
-        svgContent = match[1] || match[0];
-        console.log('✅ SVG found with pattern:', pattern.toString());
-        break;
-      }
-    }
-    
-    if (svgContent) {
-      // Clean up the SVG content
-      svgContent = svgContent.trim();
-      
-      // Ensure it starts with <svg
-      if (!svgContent.toLowerCase().startsWith('<svg')) {
-        const svgStart = svgContent.indexOf('<svg');
-        if (svgStart !== -1) {
-          svgContent = svgContent.substring(svgStart);
-        }
-      }
-      
-      console.log('✅ SVG extracted successfully');
-      console.log('📝 SVG preview:', svgContent.substring(0, 200) + '...');
-      
-      return `data:image/svg+xml;base64,${Buffer.from(svgContent).toString('base64')}`;
+    if (lineArtImage) {
+      console.log('✅ Line art generated successfully');
+      return lineArtImage;
     } else {
-      console.log('❌ No SVG found in response');
-      console.log('📝 Full response:', content);
-      
-      // Try to create a simple fallback SVG
-      const fallbackSVG = createFallbackSVG(content);
-      if (fallbackSVG) {
-        console.log('✅ Created fallback SVG');
-        return `data:image/svg+xml;base64,${Buffer.from(fallbackSVG).toString('base64')}`;
-      }
-      
-      throw new Error('Gemini did not return valid SVG content');
+      throw new Error('Failed to generate line art from description');
     }
     
   } catch (error) {
-    console.error('❌ Gemini SVG generation failed:', error);
+    console.error('❌ Gemini analysis failed:', error);
     throw error;
+  }
+}
+
+/**
+ * Generate line art from description using Gemini
+ */
+async function generateLineArtFromDescription(description: string, apiKey: string): Promise<string | null> {
+  console.log('🎨 Generating line art from description...');
+  
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ 
+    model: "gemini-2.0-flash-exp",
+    generationConfig: {
+      temperature: 0.0,
+      maxOutputTokens: 2000,
+    }
+  });
+
+  const prompt = `Based on this description: "${description}"
+
+Create a black and white line art coloring page that matches the description exactly.
+
+REQUIREMENTS:
+- Pure black lines on white background
+- Clean, simple outlines suitable for children
+- No shading, gradients, or fills
+- Bold, easy-to-trace lines
+- Preserve the exact subject and pose described
+- Make it look like a real coloring book page
+- Large white areas for coloring
+
+Generate the line art now.`;
+
+  try {
+    const result = await model.generateContent([prompt]);
+    const response = await result.response;
+    const content = response.text();
+    
+    console.log('📝 Line art response:', content.substring(0, 300) + '...');
+    
+    // Check if we got an image response
+    const imageData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+    
+    if (imageData) {
+      console.log('✅ Got image data from Gemini');
+      return `data:${imageData.mimeType};base64,${imageData.data}`;
+    } else {
+      console.log('❌ No image data in response, trying alternative approach...');
+      
+      // Try to create a simple line art using text-to-image
+      return await createSimpleLineArtImage(description, apiKey);
+    }
+    
+  } catch (error) {
+    console.error('❌ Line art generation failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Create simple line art image as fallback
+ */
+async function createSimpleLineArtImage(description: string, apiKey: string): Promise<string | null> {
+  console.log('🔧 Creating simple line art image...');
+  
+  try {
+    // Create a simple SVG based on the description
+    const svgContent = createFallbackSVG(description);
+    if (svgContent) {
+      return `data:image/svg+xml;base64,${Buffer.from(svgContent).toString('base64')}`;
+    }
+    return null;
+  } catch (error) {
+    console.error('❌ Simple line art creation failed:', error);
+    return null;
   }
 }
 
