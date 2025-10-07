@@ -62,17 +62,20 @@ export async function POST(request: NextRequest) {
     let googleSheetsSuccess = false;
 
     try {
-      const response = await fetch(`${config.googleAppsScriptUrl}`, {
+      // Use the existing addCredits action for Google Sheets
+      const GOOGLE_APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbz9yA6fJAIHHiroyqX2AUNlZ5C1QqUXh8VKCrGkX3ykIPRcpaHYbpX5wF39M6-y4XQ/exec';
+      const GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
+      
+      const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: 'verifyPayment',
-          orderId: orderId,
-          status: status,
-          transactionId: transactionId,
-          apiKey: config.googleSheetsApiKey
+          action: 'addCredits',
+          apiKey: GOOGLE_SHEETS_API_KEY,
+          userId: order.user_id,
+          amount: order.credits_purchased || 0
         })
       });
 
@@ -80,6 +83,8 @@ export async function POST(request: NextRequest) {
         const result = await response.json();
         googleSheetsSuccess = result.success;
         console.log('📊 Google Sheets updated:', result);
+      } else {
+        console.log('📊 Google Sheets HTTP error:', response.status);
       }
     } catch (error) {
       console.log('📊 Google Sheets error (continuing):', error);
