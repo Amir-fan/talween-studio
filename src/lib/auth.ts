@@ -205,7 +205,6 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
         console.log('  - Google Sheets fallback failed:', error);
       }
     }
-    }
     
     // Layer 3: If still not found, check backup files
     if (!user) {
