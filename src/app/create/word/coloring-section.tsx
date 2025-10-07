@@ -105,8 +105,15 @@ export function ColoringSection() {
       const result = await generateImageAction(finalValues);
       if (result.success && result.data) {
         setImageDataUri(result.data.coloringPageDataUri);
-        // Sync latest credits from server after successful deduction
-        try { await refreshUserData(); } catch {}
+        
+        // INSTANTLY sync latest credits from Google Sheets after successful deduction
+        console.log('🔄 INSTANTLY refreshing credits after text-to-image generation...');
+        try { 
+          await refreshUserData(); 
+          console.log('✅ Credits refreshed instantly');
+        } catch (e) {
+          console.error('❌ Failed to refresh credits:', e);
+        }
       } else {
         if (result.error === 'NotEnoughCredits') {
             setShowCreditsPopup(true);

@@ -321,9 +321,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshUserData = async () => {
-    // Refresh user data from localStorage
+    // Refresh user data from Google Sheets - this is the INSTANT version
     const storedUser = localStorage.getItem('talween_user');
-    const storedUserData = localStorage.getItem('talween_user_data');
     
     if (storedUser) {
       try {
@@ -343,91 +342,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(adminUser);
           setUserData(adminUser);
           setIsAdmin(true);
-        } else {
-          // Handle regular user - sync with server for latest credits
-          const canonicalId = userData.id || userData.uid;
-          if (!canonicalId) {
-            return;
-          }
-          try {
-            // Try to sync with server first
-            const response = await fetch('/api/user/sync-credits', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: canonicalId })
-            });
-            
-            if (response.ok) {
-              const serverData = await response.json();
-              if (serverData.success) {
-                console.log('✅ Synced credits from server:', serverData.user.credits);
-                
-                // Update localStorage with server data
-                const updatedUserData = {
-                  uid: canonicalId,
-                  email: serverData.user.email,
-                  displayName: serverData.user.displayName,
-                  credits: serverData.user.credits,
-                  status: serverData.user.status,
-                  emailVerified: serverData.user.emailVerified,
-                  subscriptionTier: serverData.user.subscriptionTier
-                };
-                localStorage.setItem('talween_user_data', JSON.stringify(updatedUserData));
-                
-                const regularUser = {
-                  id: serverData.user.id, // Use server's user ID (matches database)
-                  email: serverData.user.email,
-                  displayName: serverData.user.displayName,
-                  credits: serverData.user.credits,
-                  status: serverData.user.status,
-                  emailVerified: serverData.user.emailVerified,
-                  subscriptionTier: serverData.user.subscriptionTier
-                };
-                setUser(regularUser);
-                setUserData(regularUser);
-                setIsAdmin(false);
-                return;
-              }
-            }
-          } catch (error) {
-            console.error('Error syncing with server:', error);
-          }
-
-          // Ensure dashboard consistency even when only local changed
-          try {
-            if (storedUserData) {
-              const cached = JSON.parse(storedUserData);
-              const delta = (userData.credits ?? 0) - (cached.credits ?? 0);
-              if (delta < 0) {
-                await fetch('/api/user/deduct-credits', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ userId: canonicalId, amount: Math.abs(delta) })
-                });
-              }
-            }
-          } catch {}
-          
-          // Use credits from the main user data (which should be updated)
-          let credits = userData.credits || 50;
-          
-          console.log('🔍 REFRESH USER DATA:');
-          console.log('  - userData.credits:', userData.credits);
-          console.log('  - Final credits:', credits);
-          
-          const regularUser = {
-            id: canonicalId, // Prefer canonical ID
-            email: userData.email,
-            displayName: userData.displayName,
-            credits: credits,
-            status: userData.status || 'active',
-            emailVerified: userData.emailVerified || false,
-            subscriptionTier: userData.subscriptionTier || 'FREE'
-          };
-          setUser(regularUser);
-          setUserData(regularUser);
-          setIsAdmin(false);
+          return;
         }
+        
+        // Handle regular user - ALWAYS sync with Google Sheets for instant updates
+        const canonicalId = userData.id || userData.uid;
+        if (!canonicalId) {
+          return;
+        }
+        
+        console.log('🔄 INSTANT CREDIT REFRESH - Fetching from Google Sheets...');
+        
+        try {
+          // Fetch fresh credits from Google Sheets
+          const response = await fetch('/api/user/sync-credits', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: canonicalId })
+          });
+          
+          if (response.ok) {
+            const serverData = await response.json();
+            if (serverData.success && serverData.user) {
+              console.log('✅ INSTANT UPDATE - Fresh credits from Google Sheets:', serverData.user.credits);
+              
+              // IMMEDIATELY update UI state
+              const regularUser = {
+                id: serverData.user.id,
+                email: serverData.user.email,
+                displayName: serverData.user.displayName,
+                credits: serverData.user.credits, // LIVE from Google Sheets
+                status: serverData.user.status,
+                emailVerified: serverData.user.emailVerified,
+                subscriptionTier: serverData.user.subscriptionTier
+              };
+              
+              // Update localStorage with fresh data
+              localStorage.setItem('talween_user', JSON.stringify({ ...regularUser, uid: regularUser.id }));
+              localStorage.setItem('talween_user_data', JSON.stringify(regularUser));
+              
+              // Update state IMMEDIATELY
+              setUser(regularUser);
+              setUserData(regularUser);
+              setIsAdmin(false);
+              
+              console.log('✅ UI updated instantly with new credits:', regularUser.credits);
+              return;
+            }
+          }
+          
+          console.error('⚠️ Google Sheets sync failed, cannot update credits');
+        } catch (error) {
+          console.error('❌ Error syncing with Google Sheets:', error);
+        }
+        
       } catch (error) {
         console.error('Error refreshing user data:', error);
       }

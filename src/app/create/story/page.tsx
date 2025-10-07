@@ -476,6 +476,17 @@ function CreateStoryPage() {
       const result = await generateStoryAction(input);
 
       if (result.success && result.data) {
+        // INSTANTLY sync latest credits from Google Sheets after successful generation
+        console.log('🔄 INSTANTLY refreshing credits after story generation...');
+        try { 
+          await refreshUserData(); 
+          console.log('✅ Credits refreshed instantly');
+        } catch (e) {
+          console.error('❌ Failed to refresh credits:', e);
+        }
+      }
+
+      if (result.success && result.data) {
           setStory(result.data);
       } else {
            if (result.error === 'NotEnoughCredits') {

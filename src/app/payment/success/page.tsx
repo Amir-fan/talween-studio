@@ -45,34 +45,39 @@ function PaymentSuccessContent() {
 
       if (response.ok) {
         console.log('✅ Payment processed successfully');
+        
+        // INSTANTLY refresh credits from Google Sheets before showing UI
+        console.log('🔄 INSTANTLY syncing credits from Google Sheets...');
+        await refreshUserData();
+        
         setPaymentData({
           orderId,
           amount: amount ? parseFloat(amount) : 0,
           credits: credits ? parseInt(credits) : 0
         });
         
-        // Sync user data to get updated credits
-        console.log('🔄 Syncing user data after payment success...');
-        refreshUserData();
+        console.log('✅ Credits updated instantly on success page');
       } else {
         console.error('❌ Payment processing failed');
-        // Still show success page but with limited data
+        // Still try to refresh credits
+        await refreshUserData();
+        
         setPaymentData({
           orderId,
           amount: amount ? parseFloat(amount) : 0,
           credits: credits ? parseInt(credits) : 0
         });
-        refreshUserData();
       }
     } catch (error) {
       console.error('❌ Payment completion error:', error);
-      // Still show success page
+      // Still try to refresh credits
+      await refreshUserData();
+      
       setPaymentData({
         orderId,
         amount: amount ? parseFloat(amount) : 0,
         credits: credits ? parseInt(credits) : 0
       });
-      refreshUserData();
     }
   };
 
