@@ -142,8 +142,8 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
           console.log('  - user found in Google Sheets');
           user = googleSheetsResult.user;
         }
-      } catch (error) {
-        console.log('  - Google Sheets lookup failed:', error.message);
+      } catch (error: any) {
+        console.log('  - Google Sheets lookup failed:', error?.message || error);
       }
       
       // Layer 2: Fallback to local database in production
@@ -190,19 +190,20 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
             // Create user in local database from Google Sheets data
             const migrationResult = userDb.create(
               googleSheetsUser['البريد الإلكتروني'] || googleSheetsUser.email,
-            googleSheetsUser['كلمة المرور'] || googleSheetsUser.password || 'temp123',
-            googleSheetsUser['الاسم'] || googleSheetsUser.displayName || 'User'
-          );
-          
-          if (migrationResult.success) {
-            user = userDb.findByEmail(email);
-            console.log('  - user migrated to local DB:', user?.id);
-          } else {
-            console.log('  - migration failed:', migrationResult.error);
+              googleSheetsUser['كلمة المرور'] || googleSheetsUser.password || 'temp123',
+              googleSheetsUser['الاسم'] || googleSheetsUser.displayName || 'User'
+            );
+            
+            if (migrationResult.success) {
+              user = userDb.findByEmail(email);
+              console.log('  - user migrated to local DB:', user?.id);
+            } else {
+              console.log('  - migration failed:', migrationResult.error);
+            }
           }
+        } catch (error: any) {
+          console.log('  - Google Sheets fallback failed:', error);
         }
-      } catch (error) {
-        console.log('  - Google Sheets fallback failed:', error);
       }
     }
     
@@ -214,7 +215,7 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
         if (user) {
           console.log('  - user restored from backup:', user.id);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.log('  - backup restoration failed:', error);
       }
     }
@@ -229,7 +230,7 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
     try {
       passwordMatch = await bcrypt.compare(password, user.password);
       console.log('  - password match:', passwordMatch);
-    } catch (bcryptError) {
+    } catch (bcryptError: any) {
       console.log('  - bcrypt error, trying fallback verification:', bcryptError);
       // Fallback for old plain text passwords (migration)
       passwordMatch = password === user.password;
@@ -246,7 +247,7 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
     try {
       userDb.updateUser(user.id, { last_login: Math.floor(Date.now() / 1000) });
       console.log('  - last login updated');
-    } catch (updateError) {
+    } catch (updateError: any) {
       console.log('  - last login update failed (non-critical):', updateError);
     }
 
