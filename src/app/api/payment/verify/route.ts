@@ -90,10 +90,10 @@ export async function POST(request: NextRequest) {
       console.log('📊 Google Sheets error (continuing):', error);
     }
 
-    // Return success if either update succeeded
-    if (!localSuccess && !googleSheetsSuccess) {
+    // Return success if local update succeeded (Google Sheets is optional)
+    if (!localSuccess) {
       return NextResponse.json(
-        { error: 'Failed to update payment status in both databases' },
+        { error: 'Failed to update payment status in local database' },
         { status: 500 }
       );
     }
