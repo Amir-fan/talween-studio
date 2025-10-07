@@ -3,6 +3,8 @@ import jwt from 'jsonwebtoken';
 import { userDb } from './simple-database';
 import { googleSheetsUserDb } from './google-sheets-server';
 import { sendEmail } from './email-service-apps-script';
+import fs from 'fs';
+import path from 'path';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -280,9 +282,6 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
 // Helper function to restore user from backup files
 async function restoreUserFromBackup(email: string): Promise<any> {
   try {
-    const fs = require('fs');
-    const path = require('path');
-    
     const backupPath = path.join(process.cwd(), 'database-backup.json');
     const emergencyPath = path.join(process.cwd(), 'database-emergency.json');
     
