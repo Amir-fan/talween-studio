@@ -3,8 +3,6 @@ import jwt from 'jsonwebtoken';
 import { userDb } from './simple-database';
 import { googleSheetsUserDb } from './google-sheets-server';
 import { sendEmail } from './email-service-apps-script';
-import fs from 'fs';
-import path from 'path';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -282,33 +280,40 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
 // Helper function to restore user from backup files
 async function restoreUserFromBackup(email: string): Promise<any> {
   try {
-    const backupPath = path.join(process.cwd(), 'database-backup.json');
-    const emergencyPath = path.join(process.cwd(), 'database-emergency.json');
-    
-    // Try backup file first
-    if (fs.existsSync(backupPath)) {
-      const backupData = fs.readFileSync(backupPath, 'utf8');
-      const backupDb = JSON.parse(backupData);
+    // Only try filesystem operations in Node.js environment (not Edge runtime)
+    if (typeof window === 'undefined' && typeof process !== 'undefined' && process.versions?.node) {
+      // Dynamically import fs and path only when needed and available
+      const fs = await import('fs');
+      const path = await import('path');
       
-      if (backupDb.users && typeof backupDb.users === 'object') {
-        const user = Object.values(backupDb.users).find((u: any) => u.email === email);
-        if (user) {
-          console.log('  - user found in backup file');
-          return user;
+      const backupPath = path.join(process.cwd(), 'database-backup.json');
+      const emergencyPath = path.join(process.cwd(), 'database-emergency.json');
+      
+      // Try backup file first
+      if (fs.existsSync(backupPath)) {
+        const backupData = fs.readFileSync(backupPath, 'utf8');
+        const backupDb = JSON.parse(backupData);
+        
+        if (backupDb.users && typeof backupDb.users === 'object') {
+          const user = Object.values(backupDb.users).find((u: any) => u.email === email);
+          if (user) {
+            console.log('  - user found in backup file');
+            return user;
+          }
         }
       }
-    }
-    
-    // Try emergency backup
-    if (fs.existsSync(emergencyPath)) {
-      const emergencyData = fs.readFileSync(emergencyPath, 'utf8');
-      const emergencyDb = JSON.parse(emergencyData);
       
-      if (emergencyDb.users && typeof emergencyDb.users === 'object') {
-        const user = Object.values(emergencyDb.users).find((u: any) => u.email === email);
-        if (user) {
-          console.log('  - user found in emergency backup');
-          return user;
+      // Try emergency backup
+      if (fs.existsSync(emergencyPath)) {
+        const emergencyData = fs.readFileSync(emergencyPath, 'utf8');
+        const emergencyDb = JSON.parse(emergencyData);
+        
+        if (emergencyDb.users && typeof emergencyDb.users === 'object') {
+          const user = Object.values(emergencyDb.users).find((u: any) => u.email === email);
+          if (user) {
+            console.log('  - user found in emergency backup');
+            return user;
+          }
         }
       }
     }
