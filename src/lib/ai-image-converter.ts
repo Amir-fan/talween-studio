@@ -57,17 +57,17 @@ async function generateColoringPageWithAI(imageDataUri: string, apiKey: string):
 }
 
 /**
- * Analyze image for coloring page generation
+ * Analyze image for coloring page generation with EXTREME detail
  */
 async function analyzeImageForColoringPage(imageDataUri: string, apiKey: string): Promise<string> {
-  console.log('🔍 Analyzing image for coloring page generation...');
+  console.log('🔍 Analyzing image with EXTREME DETAIL for coloring page generation...');
   
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ 
     model: "gemini-2.0-flash-exp",
     generationConfig: {
-      temperature: 0.1,
-      maxOutputTokens: 1000,
+      temperature: 0.2,
+      maxOutputTokens: 2000, // Increased for more detail
     }
   });
 
@@ -76,16 +76,63 @@ async function analyzeImageForColoringPage(imageDataUri: string, apiKey: string)
   const mimeMatch = meta?.match(/^data:(.*?);base64$/);
   const mimeType = mimeMatch?.[1] || 'image/jpeg';
 
-  const prompt = `Analyze this image and create a detailed description for generating a black and white line art coloring page.
+  const prompt = `You are a professional coloring book artist. Analyze this image in EXTREME DETAIL and create a comprehensive description for generating a perfect black and white line art coloring page that preserves the EXACT likeness and all details.
 
-CRITICAL REQUIREMENTS:
-- Describe the EXACT subject, pose, and composition
-- Focus on outlines, contours, and structural elements
-- Identify facial features, clothing, objects, and background
-- Note the positioning, proportions, and key details
-- Describe what a child would see and want to color
+DESCRIBE IN EXTREME DETAIL:
 
-Create a detailed description that will help generate an accurate coloring book page.`;
+1. SUBJECT IDENTIFICATION:
+   - What is the main subject? (person, animal, object, etc.)
+   - If it's a person: age, gender, ethnicity, physical features
+   - Exact facial expression and emotion
+
+2. FACIAL FEATURES (if applicable):
+   - Eye shape, size, position (wide set, close, almond, round, etc.)
+   - Eyebrow shape and thickness
+   - Nose shape (small, large, button, pointed, etc.)
+   - Mouth shape and expression (smiling, neutral, open, closed, etc.)
+   - Ear visibility and shape
+   - Face shape (round, oval, square, heart-shaped, etc.)
+   - Any facial hair (beard, mustache, etc.)
+
+3. HAIR DETAILS:
+   - Hair style (straight, curly, wavy, braided, ponytail, etc.)
+   - Hair length (short, medium, long, shoulder-length, etc.)
+   - Hair texture and volume
+   - Bangs or fringe presence
+   - Hair accessories (clips, bands, etc.)
+
+4. BODY POSITION & POSE:
+   - Exact body position (standing, sitting, lying, etc.)
+   - Arm positions (crossed, at sides, raised, etc.)
+   - Leg positions (crossed, straight, bent, etc.)
+   - Body orientation (facing forward, side profile, 3/4 view, etc.)
+   - Overall posture
+
+5. CLOTHING DETAILS:
+   - Type of clothing (t-shirt, dress, jacket, pants, etc.)
+   - Clothing fit (tight, loose, oversized, etc.)
+   - Collar type, sleeve length
+   - Patterns or designs on clothing (stripes, polka dots, logos, etc.)
+   - Visible buttons, zippers, pockets
+   - Shoes or footwear
+
+6. BACKGROUND & CONTEXT:
+   - Setting (indoors, outdoors, plain background, etc.)
+   - Objects in background
+   - Ground or floor details
+   - Any props being held or nearby
+
+7. PROPORTIONS & SCALE:
+   - Relative size of body parts
+   - Overall composition within frame
+   - Where subject is positioned
+
+8. UNIQUE CHARACTERISTICS:
+   - Any distinguishing features
+   - Accessories (glasses, jewelry, hats, etc.)
+   - Special details that make this image unique
+
+CREATE A DESCRIPTION that will allow an AI to generate a coloring book page that looks EXACTLY like this image, just in black and white line art form. Be extremely specific about EVERY detail you see.`;
 
   const result = await model.generateContent([
     prompt,
@@ -98,7 +145,9 @@ Create a detailed description that will help generate an accurate coloring book 
   ]);
 
   const response = await result.response;
-  return response.text();
+  const analysis = response.text();
+  console.log('📝 DETAILED ANALYSIS COMPLETED:', analysis.substring(0, 500) + '...');
+  return analysis;
 }
 
 /**
@@ -128,28 +177,46 @@ async function generateImageWithAI(description: string, apiKey: string): Promise
 }
 
 /**
- * Generate coloring page using Hugging Face AI
+ * Generate coloring page using Hugging Face AI with detailed prompt
  */
 async function generateWithHuggingFace(description: string, apiKey: string): Promise<string | null> {
-  console.log('🎨 Generating with Hugging Face AI...');
+  console.log('🎨 Generating with Hugging Face AI using DETAILED description...');
   
   try {
-    // Use a different approach - try to use a free AI service
-    // Let's try using a different model that's better for line art
+    const HUGGING_FACE_KEY = process.env.HUGGING_FACE_API_KEY || apiKey;
     
-    const response = await fetch('https://api-inference.huggingface.co/models/lllyasviel/sd-controlnet-scribble', {
+    // Create a highly detailed prompt for the AI
+    const detailedPrompt = `Professional coloring book illustration, black and white line art, clean bold outlines, no shading, no color, white background, children's coloring page style.
+
+SUBJECT DETAILS:
+${description}
+
+STYLE REQUIREMENTS:
+- Black outlines only, thick clean lines (2-3px width)
+- White background, no textures
+- Simple, child-friendly line art
+- All areas clearly defined for coloring
+- No gradients, no shadows, no shading
+- Professional coloring book quality
+- Clear separation between different parts
+- Suitable for ages 3-12`;
+
+    console.log('📝 Using enhanced prompt (first 300 chars):', detailedPrompt.substring(0, 300) + '...');
+    
+    const response = await fetch('https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${HUGGING_FACE_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        inputs: `coloring book page, black and white line art, ${description}, clean outlines, no shading, children's coloring book style, simple line drawing`,
+        inputs: detailedPrompt,
         parameters: {
-          num_inference_steps: 25,
-          guidance_scale: 8.0,
-          width: 512,
-          height: 512
+          num_inference_steps: 30,
+          guidance_scale: 9.0,
+          width: 768,
+          height: 768,
+          negative_prompt: "color, colored, shading, shadow, gradient, photograph, realistic, 3d, blurry, messy lines, thin lines, complex details, photorealistic"
         }
       })
     });
@@ -158,7 +225,7 @@ async function generateWithHuggingFace(description: string, apiKey: string): Pro
       const imageBlob = await response.blob();
       const arrayBuffer = await imageBlob.arrayBuffer();
       const base64 = Buffer.from(arrayBuffer).toString('base64');
-      console.log('✅ Hugging Face generation successful');
+      console.log('✅ Hugging Face generation successful with detailed prompt');
       return `data:image/png;base64,${base64}`;
     } else {
       const errorText = await response.text();
@@ -173,25 +240,38 @@ async function generateWithHuggingFace(description: string, apiKey: string): Pro
 }
 
 /**
- * Generate coloring page using other AI service
+ * Generate coloring page using fallback AI service with detailed prompt
  */
 async function generateWithOtherAI(description: string, apiKey: string): Promise<string | null> {
-  console.log('🎨 Generating with other AI service...');
+  console.log('🎨 Generating with fallback AI service using DETAILED description...');
   
   try {
-    // Try using a free AI service that doesn't require authentication
+    // Create an enhanced prompt similar to the primary method
+    const enhancedPrompt = `Coloring book page, line art drawing, black and white illustration, bold outlines, simple clean lines, white background, no shading, children's coloring book style.
+
+DETAILS TO INCLUDE:
+${description}
+
+MUST HAVE:
+- Black outlines only
+- White background
+- No colors, no shading
+- Clear areas for coloring
+- Simple child-friendly style`;
+
     const response = await fetch('https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        inputs: `coloring book page, black and white line art, ${description}, clean outlines, no shading, children's coloring book style, simple line drawing, black lines on white background`,
+        inputs: enhancedPrompt,
         parameters: {
-          num_inference_steps: 20,
-          guidance_scale: 7.5,
+          num_inference_steps: 25,
+          guidance_scale: 8.5,
           width: 512,
-          height: 512
+          height: 512,
+          negative_prompt: "color, photograph, realistic, shading, complex, gradient"
         }
       })
     });
@@ -200,99 +280,18 @@ async function generateWithOtherAI(description: string, apiKey: string): Promise
       const imageBlob = await response.blob();
       const arrayBuffer = await imageBlob.arrayBuffer();
       const base64 = Buffer.from(arrayBuffer).toString('base64');
-      console.log('✅ Free AI generation successful');
+      console.log('✅ Fallback AI generation successful with enhanced prompt');
       return `data:image/png;base64,${base64}`;
     } else {
       const errorText = await response.text();
-      console.log('❌ Free AI API failed:', response.status, errorText);
+      console.log('❌ Fallback AI API failed:', response.status, errorText);
       
-      // If all AI services fail, create a simple SVG based on description
-      return await createSimpleColoringPage(description);
+      // If all AI services fail, throw error instead of creating stick figure
+      throw new Error('All AI services failed to generate coloring page');
     }
     
   } catch (error) {
-    console.error('❌ Other AI generation failed:', error);
-    return await createSimpleColoringPage(description);
-  }
-}
-
-/**
- * Create a simple coloring page as fallback
- */
-async function createSimpleColoringPage(description: string): Promise<string | null> {
-  console.log('🔧 Creating simple coloring page as fallback...');
-  
-  try {
-    // Extract key elements from the description
-    const hasPerson = /person|child|boy|girl|man|woman|face|head|body/i.test(description);
-    const hasSmile = /smile|smiling|happy|laugh/i.test(description);
-    const hasHair = /hair|curly|short|long/i.test(description);
-    const hasClothes = /shirt|clothes|clothing|t-shirt/i.test(description);
-    
-    // Create a simple SVG coloring page
-    let svgContent = `<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
-  <rect width="400" height="400" fill="white"/>
-  <g stroke="black" stroke-width="3" fill="none">`;
-  
-    if (hasPerson) {
-      // Basic person outline
-      svgContent += `
-    <!-- Head -->
-    <circle cx="200" cy="120" r="50"/>
-    <!-- Body -->
-    <rect x="150" y="170" width="100" height="140" rx="15"/>
-    <!-- Arms -->
-    <line x1="150" y1="200" x2="100" y2="250"/>
-    <line x1="250" y1="200" x2="300" y2="250"/>
-    <!-- Legs -->
-    <line x1="180" y1="310" x2="180" y2="380"/>
-    <line x1="220" y1="310" x2="220" y2="380"/>`;
-      
-      if (hasHair) {
-        svgContent += `
-    <!-- Hair -->
-    <path d="M 150 70 Q 200 50 250 70 Q 250 100 200 100 Q 150 100 150 70"/>`;
-      }
-      
-      if (hasSmile) {
-        svgContent += `
-    <!-- Eyes -->
-    <circle cx="180" cy="100" r="5"/>
-    <circle cx="220" cy="100" r="5"/>
-    <!-- Smile -->
-    <path d="M 170 130 Q 200 150 230 130"/>`;
-      } else {
-        svgContent += `
-    <!-- Eyes -->
-    <circle cx="180" cy="100" r="5"/>
-    <circle cx="220" cy="100" r="5"/>
-    <!-- Mouth -->
-    <line x1="180" y1="130" x2="220" y2="130"/>`;
-      }
-      
-      if (hasClothes) {
-        svgContent += `
-    <!-- Shirt details -->
-    <line x1="170" y1="200" x2="230" y2="200"/>
-    <circle cx="200" cy="220" r="3"/>`;
-      }
-    } else {
-      // Generic shape
-      svgContent += `
-    <!-- Generic shape -->
-    <circle cx="200" cy="200" r="80"/>
-    <rect x="120" y="120" width="160" height="160" rx="20"/>`;
-    }
-    
-    svgContent += `
-  </g>
-</svg>`;
-    
-    console.log('✅ Simple coloring page created');
-    return `data:image/svg+xml;base64,${Buffer.from(svgContent).toString('base64')}`;
-    
-  } catch (error) {
-    console.error('❌ Failed to create simple coloring page:', error);
-    return null;
+    console.error('❌ Fallback AI generation failed:', error);
+    throw error;
   }
 }
