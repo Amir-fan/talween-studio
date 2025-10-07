@@ -28,6 +28,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Apply discount if provided (must be done before creating order)
+    let finalAmount = amount;
+    let appliedDiscount: { code?: string; percentOff?: number } | null = null;
+    try {
+      if (discountCode) {
+        const resp = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/discounts/validate`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: discountCode, amount })
+        });
+        const data = await resp.json();
+        if (data.success) {
+          finalAmount = data.finalAmount;
+          appliedDiscount = { code: discountCode, percentOff: data.percentOff };
+        }
+      }
+    } catch {}
+
     // Create a local order record first and use its ID everywhere to keep references consistent
     let orderId: string | null = providedOrderId || null;
     try {
@@ -55,23 +71,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    // Create payment session with simplified user data
-    // Apply discount if provided
-    let finalAmount = amount;
-    let appliedDiscount: { code?: string; percentOff?: number } | null = null;
-    try {
-      if (discountCode) {
-        const resp = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/discounts/validate`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: discountCode, amount })
-        });
-        const data = await resp.json();
-        if (data.success) {
-          finalAmount = data.finalAmount;
-          appliedDiscount = { code: discountCode, percentOff: data.percentOff };
-        }
-      }
-    } catch {}
 
     // Pull real user info for invoice fields
     const user = userDb.findById(userId);
