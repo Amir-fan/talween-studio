@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { userDb, contentDb, orderDb } from '@/lib/simple-database';
+import { googleSheetsUserDb } from '@/lib/google-sheets-server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,9 +14,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user data
-    const user = userDb.findById(userId);
+    // Get user data - try local first, then Google Sheets
+    let user = userDb.findById(userId);
+    
+    // If not found locally, try Google Sheets
     if (!user) {
+      console.log('[STATS API] User not found locally, trying Google Sheets...');
+      try {
+        const googleSheetsResult = await googleSheetsUserDb.findById(userId);
+        if (googleSheetsResult.success && googleSheetsResult.user) {
+          console.log('[STATS API] User found in Google Sheets');
+          user = googleSheetsResult.user;
+        }
+      } catch (error: any) {
+        console.error('[STATS API] Google Sheets lookup failed:', error);
+      }
+    }
+    
+    if (!user) {
+      console.error('[STATS API] User not found in any database:', userId);
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -82,7 +99,7 @@ export async function GET(request: NextRequest) {
       userContent,
       favorites
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching user stats:', error);
     return NextResponse.json(
       { error: 'Failed to fetch user statistics' },
