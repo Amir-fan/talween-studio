@@ -63,6 +63,19 @@
       "created_at": 1759853553,
       "updated_at": 1759853599,
       "payment_intent_id": "MOCK-182839781"
+    },
+    "8b1e736c-a311-4298-814d-9aaa120f1eb1": {
+      "id": "8b1e736c-a311-4298-814d-9aaa120f1eb1",
+      "user_id": "test-user-123",
+      "order_number": "TAL-1759862980841",
+      "total_amount": 1,
+      "subscription_tier": "TEST",
+      "credits_purchased": 22,
+      "status": "paid",
+      "currency": "USD",
+      "created_at": 1759862980,
+      "updated_at": 1759862990,
+      "payment_intent_id": "MOCK-182855788"
     }
   },
   "emailLogs": {

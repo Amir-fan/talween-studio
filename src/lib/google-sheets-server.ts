@@ -268,7 +268,13 @@ export const googleSheetsUserDb = {
 
   async deductCredits(userId: string, amount: number): Promise<{ success: boolean; error?: string }> {
     try {
-      console.log('➖ [GS] deductCredits:', { userId, amount });
+      // CRITICAL VALIDATION: Ensure amount is positive (we're deducting, not adding)
+      if (amount <= 0) {
+        console.error('❌ [GS] CRITICAL ERROR: Deduction amount must be positive!', { userId, amount });
+        return { success: false, error: 'Invalid deduction amount' };
+      }
+      
+      console.log('➖ [GS] deductCredits:', { userId, amount, scriptUrl: GOOGLE_APPS_SCRIPT_URL });
       if (!GOOGLE_APPS_SCRIPT_URL || !GOOGLE_SHEETS_API_KEY) {
         return { success: false, error: 'Google Sheets configuration not found' };
       }
@@ -279,14 +285,16 @@ export const googleSheetsUserDb = {
           action: 'deductCredits',
           apiKey: GOOGLE_SHEETS_API_KEY,
           userId: userId,
-          amount: amount
+          amount: Math.abs(amount) // Ensure it's always positive for deduction
         })
       });
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [GS] HTTP error:', { status: response.status, body: errorText });
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const result = await response.json();
-      console.log('📊 [GS] deductCredits response:', result);
+      console.log('📊 [GS] deductCredits response:', { success: result.success, error: result.error, newCredits: result.newCredits });
       return { success: !!result.success, error: result.error };
     } catch (error) {
       console.error('❌ [GS] deductCredits error:', error);

@@ -21,24 +21,36 @@ export async function generateImageAction(
     
     // Skip server-side credit check for admin users (client already handled credits)
     if (values.userId && values.userId !== 'admin') {
-        console.log('🔍 Calling checkAndDeductCreditsForFeature...');
+        console.log('🔍 [TEXT-TO-IMAGE] Starting credit deduction...');
+        console.log('  - userId:', values.userId);
+        console.log('  - userEmail:', values.userEmail);
+        console.log('  - feature: TEXT_TO_COLORING');
+        console.log('  - cost: 35 credits');
+        console.log('  - timestamp:', new Date().toISOString());
+        
         const creditCheck = await checkAndDeductCreditsForFeature(
           values.userId, 
           'TEXT_TO_COLORING',
           `تحويل فكرة نصية إلى صفحة تلوين: ${values.description}`,
           values.userEmail
         );
-        console.log('  - creditCheck result:', creditCheck);
+        
+        console.log('📊 [TEXT-TO-IMAGE] Credit deduction result:', {
+          success: creditCheck.success,
+          error: creditCheck.error,
+          cost: creditCheck.cost,
+          timestamp: new Date().toISOString()
+        });
         
         if (!creditCheck.success) {
-            console.log('❌ Credit check failed:', creditCheck.error);
+            console.log('❌ [TEXT-TO-IMAGE] Credit check failed:', creditCheck.error);
             const err = (creditCheck.error || '').toLowerCase();
             if (err.includes('insufficient') || err.includes('not enough') || err.includes('notenoughcredits')) {
               throw new Error('NotEnoughCredits');
             }
             throw new Error(creditCheck.error || 'Failed to process credits.');
         }
-        console.log('✅ Credit check passed');
+        console.log('✅ [TEXT-TO-IMAGE] Credits deducted successfully');
     }
 
     console.log('🔍 Starting AI generation flow...');
