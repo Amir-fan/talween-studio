@@ -40,53 +40,110 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    setLoading(true);
-    // Check for stored user in localStorage
-    const storedUser = localStorage.getItem('talween_user');
-    if (storedUser) {
-      try {
-        const userData = JSON.parse(storedUser);
-        
-        // Handle admin user
-        if (userData.uid === 'admin') {
-          const adminUser = {
-            id: 'admin',
-            email: 'admin@talween.com',
-            displayName: 'مستخدم عادي',
-            credits: 9999,
-            status: 'premium',
-            emailVerified: true,
-            subscriptionTier: 'CREATIVE_TEACHER'
-          };
-          setUser(adminUser);
-          setUserData(adminUser);
-          setIsAdmin(true);
-        } 
-        // Handle regular user - use id or uid
-        else if (userData.id || userData.uid) {
-          const regularUser = {
-            id: userData.id || userData.uid, // Use id if available, otherwise uid
-            email: userData.email,
-            displayName: userData.displayName,
-            credits: userData.credits || 50,
-            status: userData.status || 'active',
-            emailVerified: userData.emailVerified || false,
-            subscriptionTier: userData.subscriptionTier || 'FREE'
-          };
-          console.log('🔍 RESTORING USER FROM LOCALSTORAGE:');
-          console.log('  - userData:', userData);
-          console.log('  - regularUser:', regularUser);
-          setUser(regularUser);
-          setUserData(regularUser);
-          setIsAdmin(false);
+    const initializeUser = async () => {
+      setLoading(true);
+      // Check for stored user in localStorage
+      const storedUser = localStorage.getItem('talween_user');
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          
+          // Handle admin user
+          if (userData.uid === 'admin') {
+            const adminUser = {
+              id: 'admin',
+              email: 'admin@talween.com',
+              displayName: 'مستخدم عادي',
+              credits: 9999,
+              status: 'premium',
+              emailVerified: true,
+              subscriptionTier: 'CREATIVE_TEACHER'
+            };
+            setUser(adminUser);
+            setUserData(adminUser);
+            setIsAdmin(true);
+            setLoading(false);
+          } 
+          // Handle regular user - ALWAYS fetch fresh credits from server
+          else if (userData.id || userData.uid) {
+            const canonicalId = userData.id || userData.uid;
+            console.log('🔍 INITIALIZING USER - Fetching fresh credits from Google Sheets:', canonicalId);
+            
+            try {
+              // Fetch fresh credits from server (Google Sheets)
+              const response = await fetch('/api/user/sync-credits', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: canonicalId })
+              });
+              
+              if (response.ok) {
+                const serverData = await response.json();
+                if (serverData.success && serverData.user) {
+                  console.log('✅ Fresh credits from Google Sheets:', serverData.user.credits);
+                  
+                  const regularUser = {
+                    id: serverData.user.id,
+                    email: serverData.user.email,
+                    displayName: serverData.user.displayName,
+                    credits: serverData.user.credits, // ALWAYS use Google Sheets credits
+                    status: serverData.user.status,
+                    emailVerified: serverData.user.emailVerified,
+                    subscriptionTier: serverData.user.subscriptionTier
+                  };
+                  
+                  // Update localStorage with fresh data
+                  localStorage.setItem('talween_user_data', JSON.stringify(regularUser));
+                  
+                  setUser(regularUser);
+                  setUserData(regularUser);
+                  setIsAdmin(false);
+                  setLoading(false);
+                  return;
+                }
+              }
+              
+              // Fallback to localStorage if server sync fails
+              console.log('⚠️ Server sync failed, using localStorage as fallback');
+              const regularUser = {
+                id: canonicalId,
+                email: userData.email,
+                displayName: userData.displayName,
+                credits: userData.credits || 50,
+                status: userData.status || 'active',
+                emailVerified: userData.emailVerified || false,
+                subscriptionTier: userData.subscriptionTier || 'FREE'
+              };
+              setUser(regularUser);
+              setUserData(regularUser);
+              setIsAdmin(false);
+            } catch (error) {
+              console.error('❌ Error fetching fresh credits:', error);
+              // Fallback to localStorage
+              const regularUser = {
+                id: canonicalId,
+                email: userData.email,
+                displayName: userData.displayName,
+                credits: userData.credits || 50,
+                status: userData.status || 'active',
+                emailVerified: userData.emailVerified || false,
+                subscriptionTier: userData.subscriptionTier || 'FREE'
+              };
+              setUser(regularUser);
+              setUserData(regularUser);
+              setIsAdmin(false);
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing stored user:', error);
+          // Clear invalid data
+          localStorage.removeItem('talween_user');
         }
-      } catch (error) {
-        console.error('Error parsing stored user:', error);
-        // Clear invalid data
-        localStorage.removeItem('talween_user');
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+
+    initializeUser();
   }, []);
 
   const logout = () => {
