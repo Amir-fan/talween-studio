@@ -19,21 +19,62 @@ function PaymentSuccessContent() {
     const amount = searchParams.get('amount');
     const credits = searchParams.get('credits');
     
-    if (orderId && amount && credits) {
-      setPaymentData({
-        orderId,
-        amount: parseFloat(amount),
-        credits: parseInt(credits)
-      });
-      
-      // Sync user data to get updated credits
-      console.log('🔄 Syncing user data after payment success...');
-      refreshUserData();
+    if (orderId) {
+      // Process payment completion and add credits
+      processPaymentCompletion(orderId, amount, credits);
     } else {
       // Redirect to packages if no payment data
       router.push('/packages');
     }
   }, [searchParams, router]);
+
+  const processPaymentCompletion = async (orderId: string, amount: string | null, credits: string | null) => {
+    try {
+      console.log('🔄 Processing payment completion...', { orderId, amount, credits });
+      
+      // Call the payment verification API to process the payment and add credits
+      const response = await fetch('/api/payment/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: orderId,
+          status: 'paid',
+          transactionId: orderId
+        })
+      });
+
+      if (response.ok) {
+        console.log('✅ Payment processed successfully');
+        setPaymentData({
+          orderId,
+          amount: amount ? parseFloat(amount) : 0,
+          credits: credits ? parseInt(credits) : 0
+        });
+        
+        // Sync user data to get updated credits
+        console.log('🔄 Syncing user data after payment success...');
+        refreshUserData();
+      } else {
+        console.error('❌ Payment processing failed');
+        // Still show success page but with limited data
+        setPaymentData({
+          orderId,
+          amount: amount ? parseFloat(amount) : 0,
+          credits: credits ? parseInt(credits) : 0
+        });
+        refreshUserData();
+      }
+    } catch (error) {
+      console.error('❌ Payment completion error:', error);
+      // Still show success page
+      setPaymentData({
+        orderId,
+        amount: amount ? parseFloat(amount) : 0,
+        credits: credits ? parseInt(credits) : 0
+      });
+      refreshUserData();
+    }
+  };
 
   if (!paymentData) {
     return (

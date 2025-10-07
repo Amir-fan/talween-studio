@@ -15,32 +15,44 @@ export async function POST(request: NextRequest) {
 
     console.log('💳 PAYMENT VERIFY API - Verifying payment:', { orderId, status, transactionId });
 
+    // Get order details from database
+    const order = orderDb.findById(orderId);
+    if (!order) {
+      console.error('💳 PAYMENT VERIFY API - Order not found:', orderId);
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+
+    console.log('💳 PAYMENT VERIFY API - Found order:', { 
+      id: order.id, 
+      user_id: order.user_id, 
+      amount: order.total_amount, 
+      credits: order.credits_purchased, 
+      status: order.status 
+    });
+
     // Step 1: Update local database
     console.log('💾 Step 1: Updating local database...');
     let localSuccess = false;
-    let order = null;
 
     try {
-      order = orderDb.findById(orderId);
-      if (order) {
-        orderDb.updateStatus(orderId, status, transactionId);
+      orderDb.updateStatus(orderId, status, transactionId);
+      
+      // If payment was successful, add credits to user
+      if (status === 'paid' && order.credits_purchased) {
+        userDb.updateCredits(order.user_id, order.credits_purchased);
         
-        // If payment was successful, add credits to user
-        if (status === 'paid' && order.credits_purchased) {
-          userDb.updateCredits(order.user_id, order.credits_purchased);
-          
-          // Update user's subscription tier if applicable
-          if (order.subscription_tier && order.subscription_tier !== 'FREE') {
-            userDb.updateUser(order.user_id, {
-              subscription_tier: order.subscription_tier
-            });
-          }
+        // Update user's subscription tier if applicable
+        if (order.subscription_tier && order.subscription_tier !== 'FREE') {
+          userDb.updateUser(order.user_id, {
+            subscription_tier: order.subscription_tier
+          });
         }
-        localSuccess = true;
-        console.log('💾 Local database updated successfully');
-      } else {
-        console.log('💾 Order not found in local database');
       }
+      localSuccess = true;
+      console.log('💾 Local database updated successfully');
     } catch (error) {
       console.log('💾 Local database error (continuing):', error);
     }
@@ -87,7 +99,9 @@ export async function POST(request: NextRequest) {
       details: {
         localUpdated: localSuccess,
         googleSheetsUpdated: googleSheetsSuccess,
-        orderFound: !!order
+        orderFound: true,
+        orderId: order.id,
+        creditsAdded: order.credits_purchased || 0
       }
     });
 

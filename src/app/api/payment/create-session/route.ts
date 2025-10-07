@@ -87,8 +87,8 @@ export async function POST(request: NextRequest) {
       packageId: packageId,
       credits: credits,
       description: `تالوين — شراء ${credits} نقطة (${packageId})${appliedDiscount ? ` — خصم ${appliedDiscount.percentOff}%: ${appliedDiscount.code}` : ''}`,
-      // Route through server callback endpoint so credits are added before the thank-you page
-      returnUrl: `${baseUrl}/api/payment/callback?orderId=${orderIdStr}`,
+      // Redirect users to success page after payment completion
+      returnUrl: `${baseUrl}/payment/success?orderId=${orderIdStr}`,
       errorUrl: `${baseUrl}/payment/error?orderId=${orderIdStr}`,
     };
 
