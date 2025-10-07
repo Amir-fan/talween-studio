@@ -49,8 +49,20 @@
       "status": "paid",
       "currency": "USD",
       "created_at": 1759853151,
-      "updated_at": 1759853313,
-      "payment_intent_id": "test-txn-final"
+      "updated_at": 1759853524,
+      "payment_intent_id": "test-final-integration"
+    },
+    "eb0f68a5-3652-4681-b3b6-c8e868bc40d5": {
+      "id": "eb0f68a5-3652-4681-b3b6-c8e868bc40d5",
+      "user_id": "test-user-456",
+      "order_number": "TAL-1759853553515",
+      "total_amount": 1,
+      "credits_purchased": 22,
+      "status": "paid",
+      "currency": "USD",
+      "created_at": 1759853553,
+      "updated_at": 1759853599,
+      "payment_intent_id": "MOCK-182839781"
     }
   },
   "emailLogs": {

@@ -34,12 +34,16 @@ export async function POST(request: NextRequest) {
       if (orderId) {
         const existing = orderDb.findById(orderId);
         if (!existing) {
-          const { id: dbOrderId } = orderDb.create(userId, amount, undefined, credits);
+          const { id: dbOrderId } = orderDb.create(userId, finalAmount, packageId, credits);
           orderId = dbOrderId;
+          console.log('🔍 PAYMENT API - Created new order:', { orderId: dbOrderId, amount: finalAmount, credits, packageId });
+        } else {
+          console.log('🔍 PAYMENT API - Using existing order:', { orderId, amount: existing.total_amount, credits: existing.credits_purchased });
         }
       } else {
-        const { id: dbOrderId } = orderDb.create(userId, amount, undefined, credits);
+        const { id: dbOrderId } = orderDb.create(userId, finalAmount, packageId, credits);
         orderId = dbOrderId;
+        console.log('🔍 PAYMENT API - Created new order:', { orderId: dbOrderId, amount: finalAmount, credits, packageId });
       }
     } catch (e) {
       console.log('Order pre-create failed (non-blocking):', e);

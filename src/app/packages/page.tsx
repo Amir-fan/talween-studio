@@ -106,15 +106,23 @@ export default function PackagesPage() {
       const selectedPkg = creditPackages.find(pkg => pkg.id === packageId);
       if (!selectedPkg) return;
 
-      // Handle FREE package
+      // Handle FREE package - do NOT give credits, just show info
       if (selectedPkg.id === 'FREE') {
         toast({
           title: 'الباقة المجانية',
-          description: 'أنت تستخدم بالفعل الباقة المجانية!',
+          description: 'تحصل على 128 نقطة مجانية عند التسجيل. رصيدك الحالي: ' + (user.credits || 0) + ' نقطة',
         });
         setProcessing(false);
         return;
       }
+
+      // All other packages (including TEST) require payment
+      console.log('💳 Creating payment session for package:', {
+        packageId: selectedPkg.id,
+        amount: selectedPkg.price,
+        credits: selectedPkg.credits,
+        userId: user.id
+      });
 
       const response = await fetch('/api/payment/create-session', {
         method: 'POST',
