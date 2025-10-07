@@ -1,27 +1,44 @@
 /**
- * REAL AI Image Converter - Uses actual AI image generation
- * No filters, no fallbacks, just real AI
+ * AI Image Converter - Uses Google Imagen (same as story images)
+ * Consistent with all other features in the app
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ai } from '@/ai';
+
+const STRICT_BLACK_WHITE_PROMPT = `You are an expert at creating professional children's coloring book pages.
+
+CRITICAL REQUIREMENTS:
+- Output MUST be black and white line art ONLY
+- Thick, bold black outlines (2-3px width)
+- Pure white background with NO shading, NO gradients, NO gray tones
+- Simple, clean lines suitable for children ages 3-12 to color
+- NO text, letters, numbers, or words anywhere in the image
+- Professional coloring book quality
+- Clear separation between different parts for easy coloring`;
 
 /**
- * Convert image to coloring page using REAL AI image generation
+ * Convert image to coloring page using Google Imagen (same as other features)
  */
 export async function convertImageToColoringPage(imageDataUri: string): Promise<string> {
-  console.log('🤖 REAL AI: Converting image to coloring page using actual AI image generation...');
+  console.log('🤖 Converting image to coloring page using Google Imagen...');
   
   const apiKey = process.env.IMAGE_TO_LINE_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (!apiKey) {
-    throw new Error('AI API key required');
+    throw new Error('Google AI API key required');
   }
 
   try {
-    // Use real AI to generate coloring page
-    const coloringPageImage = await generateColoringPageWithAI(imageDataUri, apiKey);
-    console.log('🎨 AI Generated Real Coloring Page');
+    // Step 1: Analyze image with Gemini to get detailed description
+    console.log('📝 Step 1: Analyzing image with Gemini...');
+    const detailedDescription = await analyzeImageForColoringPage(imageDataUri, apiKey);
     
-    return coloringPageImage;
+    // Step 2: Generate coloring page with Google Imagen using the description
+    console.log('🎨 Step 2: Generating coloring page with Google Imagen...');
+    const coloringPageUrl = await generateColoringPageWithImagen(detailedDescription);
+    
+    console.log('✅ Coloring page generated successfully');
+    return coloringPageUrl;
     
   } catch (error) {
     console.error('❌ AI conversion failed:', error);
@@ -30,30 +47,77 @@ export async function convertImageToColoringPage(imageDataUri: string): Promise<
 }
 
 /**
- * Generate coloring page using real AI image generation
+ * Generate coloring page using Google Imagen (same model as stories)
  */
-async function generateColoringPageWithAI(imageDataUri: string, apiKey: string): Promise<string> {
-  console.log('🎨 Generating coloring page with REAL AI...');
+async function generateColoringPageWithImagen(description: string): Promise<string> {
+  console.log('🎨 Generating coloring page with Google Imagen...');
   
   try {
-    // Step 1: Use Gemini to analyze the image
-    const analysis = await analyzeImageForColoringPage(imageDataUri, apiKey);
-    console.log('📝 Image analysis completed');
-    
-    // Step 2: Use AI to generate actual coloring page image
-    const coloringPageImage = await generateImageWithAI(analysis, apiKey);
-    
-    if (coloringPageImage) {
-      console.log('✅ AI coloring page generation successful');
-      return coloringPageImage;
-    } else {
-      throw new Error('AI failed to generate coloring page');
-    }
+    // Use retry logic for stability
+    const imageUrl = await generateWithRetryStrict(async () => {
+      const { media } = await ai.generate({
+        model: 'googleai/imagen-4.0-generate-preview-06-06',
+        prompt: `${STRICT_BLACK_WHITE_PROMPT}
+
+Convert this image into a professional coloring book page:
+
+${description}
+
+STYLE REQUIREMENTS:
+- Black and white line art only
+- Bold, clear outlines (2-3px thick)
+- White background
+- No shading, no gradients, no gray tones
+- Simple enough for children to color
+- Preserve the exact subject, pose, and all details from the description
+- Professional coloring book quality
+- Clear areas for coloring
+
+CRITICAL: The coloring page must look exactly like the described image, just converted to black line art on white background.`,
+        config: {
+          responseModalities: ['TEXT', 'IMAGE'],
+        },
+      });
+
+      if (!media?.url) {
+        throw new Error('Google Imagen failed to return a valid image URL');
+      }
+      
+      return media.url;
+    });
+
+    console.log('✅ Google Imagen generation successful');
+    return imageUrl;
     
   } catch (error) {
-    console.error('❌ AI coloring page generation failed:', error);
+    console.error('❌ Google Imagen generation failed:', error);
     throw error;
   }
+}
+
+/**
+ * Retry logic for AI generation (borrowed from story flow)
+ */
+async function generateWithRetryStrict<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🔄 AI generation attempt ${attempt}/${maxRetries}...`);
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      console.error(`❌ Attempt ${attempt} failed:`, error);
+      
+      if (attempt < maxRetries) {
+        const delay = attempt * 2000; // 2s, 4s, 6s
+        console.log(`⏳ Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  throw new Error(`AI generation failed after ${maxRetries} attempts: ${lastError?.message}`);
 }
 
 /**
@@ -150,182 +214,3 @@ CREATE A DESCRIPTION that will allow an AI to generate a coloring book page that
   return analysis;
 }
 
-/**
- * Generate actual coloring page image using AI
- */
-async function generateImageWithAI(description: string, apiKey: string): Promise<string | null> {
-  console.log('🎨 Generating actual coloring page image with AI...');
-  
-  try {
-    // Try primary AI service
-    console.log('🔄 Attempting primary AI service (Hugging Face)...');
-    const coloringPageImage = await generateWithHuggingFace(description, apiKey);
-    
-    if (coloringPageImage) {
-      console.log('✅ Primary AI generation successful');
-      return coloringPageImage;
-    }
-    
-    // If primary fails, try fallback
-    console.log('⚠️ Primary AI failed, trying fallback service...');
-    const fallbackImage = await generateWithOtherAI(description, apiKey);
-    
-    if (fallbackImage) {
-      console.log('✅ Fallback AI generation successful');
-      return fallbackImage;
-    }
-    
-    // If both fail, throw detailed error
-    throw new Error('Both primary and fallback AI services failed to generate the image. Please check API keys and try again.');
-    
-  } catch (error) {
-    console.error('❌ AI image generation completely failed:', error);
-    throw error;
-  }
-}
-
-/**
- * Generate coloring page using Hugging Face AI with detailed prompt
- */
-async function generateWithHuggingFace(description: string, apiKey: string): Promise<string | null> {
-  console.log('🎨 Generating with Hugging Face AI using DETAILED description...');
-  
-  try {
-    const HUGGING_FACE_KEY = process.env.HUGGING_FACE_API_KEY;
-    
-    if (!HUGGING_FACE_KEY) {
-      console.log('⚠️ HUGGING_FACE_API_KEY not found in environment, skipping Hugging Face...');
-      return null;
-    }
-    
-    console.log('🔑 Using Hugging Face API key:', HUGGING_FACE_KEY.substring(0, 10) + '...');
-    
-    // Create a highly detailed prompt for the AI
-    const detailedPrompt = `Professional coloring book illustration, black and white line art, clean bold outlines, no shading, no color, white background, children's coloring page style.
-
-SUBJECT DETAILS:
-${description}
-
-STYLE REQUIREMENTS:
-- Black outlines only, thick clean lines (2-3px width)
-- White background, no textures
-- Simple, child-friendly line art
-- All areas clearly defined for coloring
-- No gradients, no shadows, no shading
-- Professional coloring book quality
-- Clear separation between different parts
-- Suitable for ages 3-12`;
-
-    console.log('📝 Using enhanced prompt (first 300 chars):', detailedPrompt.substring(0, 300) + '...');
-    
-    const response = await fetch('https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${HUGGING_FACE_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        inputs: detailedPrompt,
-        parameters: {
-          num_inference_steps: 30,
-          guidance_scale: 9.0,
-          width: 768,
-          height: 768,
-          negative_prompt: "color, colored, shading, shadow, gradient, photograph, realistic, 3d, blurry, messy lines, thin lines, complex details, photorealistic"
-        }
-      })
-    });
-    
-    console.log('📡 Hugging Face API response status:', response.status);
-    
-    if (response.ok) {
-      const contentType = response.headers.get('content-type');
-      console.log('📄 Response content-type:', contentType);
-      
-      // Check if response is an image
-      if (contentType?.includes('image')) {
-        const imageBlob = await response.blob();
-        const arrayBuffer = await imageBlob.arrayBuffer();
-        const base64 = Buffer.from(arrayBuffer).toString('base64');
-        console.log('✅ Hugging Face generation successful with detailed prompt (image size:', base64.length, 'bytes)');
-        return `data:image/png;base64,${base64}`;
-      } else {
-        // Response might be JSON (error or loading message)
-        const textResponse = await response.text();
-        console.log('⚠️ Hugging Face returned non-image response:', textResponse.substring(0, 200));
-        
-        // Check if model is loading
-        if (textResponse.includes('loading') || textResponse.includes('estimated_time')) {
-          console.log('⏳ Model is loading, this may take a moment...');
-        }
-        return null;
-      }
-    } else {
-      const errorText = await response.text();
-      console.error('❌ Hugging Face API failed with status:', response.status);
-      console.error('❌ Error details:', errorText);
-      return null;
-    }
-    
-  } catch (error) {
-    console.error('❌ Hugging Face generation exception:', error);
-    return null;
-  }
-}
-
-/**
- * Generate coloring page using fallback AI service with detailed prompt
- */
-async function generateWithOtherAI(description: string, apiKey: string): Promise<string | null> {
-  console.log('🎨 Generating with fallback AI service using DETAILED description...');
-  
-  try {
-    // Create an enhanced prompt similar to the primary method
-    const enhancedPrompt = `Coloring book page, line art drawing, black and white illustration, bold outlines, simple clean lines, white background, no shading, children's coloring book style.
-
-DETAILS TO INCLUDE:
-${description}
-
-MUST HAVE:
-- Black outlines only
-- White background
-- No colors, no shading
-- Clear areas for coloring
-- Simple child-friendly style`;
-
-    const response = await fetch('https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        inputs: enhancedPrompt,
-        parameters: {
-          num_inference_steps: 25,
-          guidance_scale: 8.5,
-          width: 512,
-          height: 512,
-          negative_prompt: "color, photograph, realistic, shading, complex, gradient"
-        }
-      })
-    });
-    
-    if (response.ok) {
-      const imageBlob = await response.blob();
-      const arrayBuffer = await imageBlob.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString('base64');
-      console.log('✅ Fallback AI generation successful with enhanced prompt');
-      return `data:image/png;base64,${base64}`;
-    } else {
-      const errorText = await response.text();
-      console.log('❌ Fallback AI API failed:', response.status, errorText);
-      
-      // If all AI services fail, throw error instead of creating stick figure
-      throw new Error('All AI services failed to generate coloring page');
-    }
-    
-  } catch (error) {
-    console.error('❌ Fallback AI generation failed:', error);
-    throw error;
-  }
-}
