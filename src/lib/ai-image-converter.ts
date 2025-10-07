@@ -4,7 +4,7 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { ai } from '@/ai';
+import { ai } from '@/ai/genkit';
 
 const STRICT_BLACK_WHITE_PROMPT = `You are an expert at creating professional children's coloring book pages.
 
