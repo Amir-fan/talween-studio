@@ -48,7 +48,7 @@ interface UserContent {
 }
 
 export default function AccountPage() {
-  const { user, userData } = useAuth();
+  const { user, userData, refreshUserData } = useAuth();
   const { toast } = useToast();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
@@ -65,6 +65,10 @@ export default function AccountPage() {
       }
 
       try {
+        // INSTANTLY refresh credits from Google Sheets first
+        console.log('🔄 Account Page: Refreshing credits from Google Sheets...');
+        await refreshUserData();
+        
         const response = await fetch(`/api/user/stats?userId=${user.id}`);
         const data = await response.json();
         
@@ -73,6 +77,7 @@ export default function AccountPage() {
           setRecentTransactions(data.recentTransactions);
           setUserContent(data.userContent || []);
           setFavorites(data.favorites || []);
+          console.log('✅ Account stats loaded with live credits');
         } else {
           console.error('Failed to fetch user stats:', data.error);
           toast({
@@ -94,7 +99,7 @@ export default function AccountPage() {
     };
 
     fetchUserStats();
-  }, [user?.id, toast]);
+  }, [user?.id, toast, refreshUserData]);
 
   // Handle toggle favorite
   const handleToggleFavorite = async (contentId: string) => {
@@ -207,7 +212,8 @@ export default function AccountPage() {
     );
   }
 
-  const currentCredits = stats.creditsRemaining;
+  // Use LIVE credits from Google Sheets (via userData), fallback to stats
+  const currentCredits = userData?.credits ?? stats.creditsRemaining;
   const creditValueUSD = currentCredits * PRICING_CONFIG.CREDIT_TO_USD;
 
   // Determine subscription tier based on credits
