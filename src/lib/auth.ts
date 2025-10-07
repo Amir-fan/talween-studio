@@ -115,7 +115,7 @@ export async function registerUser(
         subscriptionTier: user.subscriptionTier
       }
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Registration error:', error);
     return { success: false, error: 'حدث خطأ أثناء التسجيل' };
   }
@@ -271,7 +271,7 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
       },
       token
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ CRITICAL LOGIN ERROR:', error);
     return { success: false, error: 'حدث خطأ أثناء تسجيل الدخول' };
   }
@@ -319,7 +319,7 @@ async function restoreUserFromBackup(email: string): Promise<any> {
     }
     
     return null;
-  } catch (error) {
+  } catch (error: any) {
     console.log('  - backup restoration error:', error);
     return null;
   }
@@ -340,7 +340,7 @@ export async function requestPasswordReset(email: string): Promise<AuthResult> {
 
     // For now, just return success since password reset is complex with Google Sheets
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Password reset request error:', error);
     return { success: false, error: 'حدث خطأ أثناء طلب إعادة تعيين كلمة المرور' };
   }
@@ -386,7 +386,7 @@ export async function getUserById(userId: string): Promise<User | null> {
       emailVerified: user.email_verified,
       subscriptionTier: user.subscription_tier
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error getting user by ID:', error);
     return null;
   }
@@ -397,7 +397,7 @@ export function verifyToken(token: string): { userId: string; email: string } | 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     return { userId: decoded.userId, email: decoded.email };
-  } catch (error) {
+  } catch (error: any) {
     return null;
   }
 }
