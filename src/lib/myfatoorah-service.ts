@@ -147,21 +147,47 @@ export async function checkPaymentStatus(key: string, keyType: 'InvoiceId' | 'Pa
 
     const result = await response.json();
 
-    if (result.IsSuccess) {
-      const invoice = result.Data.InvoiceTransactions[0];
-      const rawStatus = String(invoice.TransactionStatus || '').toLowerCase();
+    if (result.IsSuccess && result.Data) {
+      // Handle different MyFatoorah API response structures
+      let invoice = null;
+      let rawStatus = '';
+      let transactionId = key;
+      
+      if (result.Data.InvoiceTransactions && result.Data.InvoiceTransactions.length > 0) {
+        // Standard response structure
+        invoice = result.Data.InvoiceTransactions[0];
+        rawStatus = String(invoice.TransactionStatus || '').toLowerCase();
+        transactionId = invoice.TransactionId || key;
+      } else if (result.Data.TransactionStatus) {
+        // Direct status in Data object
+        rawStatus = String(result.Data.TransactionStatus).toLowerCase();
+        transactionId = result.Data.TransactionId || key;
+      } else if (result.Data.InvoiceStatus) {
+        // Invoice status field
+        rawStatus = String(result.Data.InvoiceStatus).toLowerCase();
+        transactionId = result.Data.InvoiceId || key;
+      } else {
+        // Fallback: assume pending if no status found
+        console.log('MyFatoorah: No transaction status found, assuming pending');
+        rawStatus = 'pending';
+      }
+      
       let normalized: 'Paid' | 'Pending' | 'Failed' | 'Cancelled' = 'Pending';
       if (/(paid|success|succeed|captur)/i.test(rawStatus)) normalized = 'Paid';
       else if (/(pending|init|inprogress|process|authori)/i.test(rawStatus)) normalized = 'Pending';
       else if (/(fail|declin|reject|error)/i.test(rawStatus)) normalized = 'Failed';
       else if (/(cancel)/i.test(rawStatus)) normalized = 'Cancelled';
+      
+      console.log('MyFatoorah status check result:', { rawStatus, normalized, transactionId });
+      
       return {
         success: true,
         status: normalized,
-        transactionId: invoice.TransactionId,
-        rawStatus: invoice.TransactionStatus,
+        transactionId: transactionId,
+        rawStatus: rawStatus,
       };
     } else {
+      console.log('MyFatoorah status check failed:', result);
       return {
         success: false,
         status: 'Failed',

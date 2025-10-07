@@ -1,6 +1,46 @@
 {
-  "users": {},
-  "orders": {},
+  "users": {
+    "aac77340-41c0-436d-bfc5-fc2f60697cad": {
+      "id": "aac77340-41c0-436d-bfc5-fc2f60697cad",
+      "email": "testuser3@example.com",
+      "password": "$2a$12$N4hryuBKPBu9brLi4/P0lu5bOD1ySt3AIC0OlAwaJCzggaK70O9Hq",
+      "display_name": "Test User 3",
+      "credits": 50,
+      "status": "active",
+      "email_verified": true,
+      "verification_token": "1c54b971-2e9b-4ff6-8fc5-25ebf94db800",
+      "subscription_tier": "FREE",
+      "created_at": 1759117054,
+      "updated_at": 1759117054,
+      "total_spent": 0
+    }
+  },
+  "orders": {
+    "ed32e229-c824-4532-8996-b79328d758b1": {
+      "id": "ed32e229-c824-4532-8996-b79328d758b1",
+      "user_id": "test-user-123",
+      "order_number": "TAL-1759852455722",
+      "total_amount": 1,
+      "credits_purchased": 22,
+      "status": "paid",
+      "currency": "USD",
+      "created_at": 1759852455,
+      "updated_at": 1759852462,
+      "payment_intent_id": "test-txn-123"
+    },
+    "bf6dcab6-4b8a-4ef5-bc7b-b0b1e3b371ae": {
+      "id": "bf6dcab6-4b8a-4ef5-bc7b-b0b1e3b371ae",
+      "user_id": "test-user-123",
+      "order_number": "TAL-1759852482271",
+      "total_amount": 1,
+      "credits_purchased": 22,
+      "status": "paid",
+      "currency": "USD",
+      "created_at": 1759852482,
+      "updated_at": 1759852490,
+      "payment_intent_id": "test-txn-123"
+    }
+  },
   "emailLogs": {
     "c1878f85-ac1c-4929-8f5b-ef97a5b6857b": {
       "id": "c1878f85-ac1c-4929-8f5b-ef97a5b6857b",
@@ -36,5 +76,6 @@
       "role": "admin",
       "created_at": 1758940748
     }
-  }
+  },
+  "discounts": {}
 }
