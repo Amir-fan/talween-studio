@@ -157,22 +157,30 @@ async function generateImageWithAI(description: string, apiKey: string): Promise
   console.log('🎨 Generating actual coloring page image with AI...');
   
   try {
-    // Use a real AI image generation service
-    // Let's try using Hugging Face API for actual image generation
-    
+    // Try primary AI service
+    console.log('🔄 Attempting primary AI service (Hugging Face)...');
     const coloringPageImage = await generateWithHuggingFace(description, apiKey);
     
     if (coloringPageImage) {
-      console.log('✅ Hugging Face AI generation successful');
+      console.log('✅ Primary AI generation successful');
       return coloringPageImage;
-    } else {
-      console.log('⚠️ Hugging Face failed, trying other AI...');
-      return await generateWithOtherAI(description, apiKey);
     }
     
+    // If primary fails, try fallback
+    console.log('⚠️ Primary AI failed, trying fallback service...');
+    const fallbackImage = await generateWithOtherAI(description, apiKey);
+    
+    if (fallbackImage) {
+      console.log('✅ Fallback AI generation successful');
+      return fallbackImage;
+    }
+    
+    // If both fail, throw detailed error
+    throw new Error('Both primary and fallback AI services failed to generate the image. Please check API keys and try again.');
+    
   } catch (error) {
-    console.error('❌ AI image generation failed:', error);
-    return null;
+    console.error('❌ AI image generation completely failed:', error);
+    throw error;
   }
 }
 
@@ -183,7 +191,14 @@ async function generateWithHuggingFace(description: string, apiKey: string): Pro
   console.log('🎨 Generating with Hugging Face AI using DETAILED description...');
   
   try {
-    const HUGGING_FACE_KEY = process.env.HUGGING_FACE_API_KEY || apiKey;
+    const HUGGING_FACE_KEY = process.env.HUGGING_FACE_API_KEY;
+    
+    if (!HUGGING_FACE_KEY) {
+      console.log('⚠️ HUGGING_FACE_API_KEY not found in environment, skipping Hugging Face...');
+      return null;
+    }
+    
+    console.log('🔑 Using Hugging Face API key:', HUGGING_FACE_KEY.substring(0, 10) + '...');
     
     // Create a highly detailed prompt for the AI
     const detailedPrompt = `Professional coloring book illustration, black and white line art, clean bold outlines, no shading, no color, white background, children's coloring page style.
@@ -221,20 +236,39 @@ STYLE REQUIREMENTS:
       })
     });
     
+    console.log('📡 Hugging Face API response status:', response.status);
+    
     if (response.ok) {
-      const imageBlob = await response.blob();
-      const arrayBuffer = await imageBlob.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString('base64');
-      console.log('✅ Hugging Face generation successful with detailed prompt');
-      return `data:image/png;base64,${base64}`;
+      const contentType = response.headers.get('content-type');
+      console.log('📄 Response content-type:', contentType);
+      
+      // Check if response is an image
+      if (contentType?.includes('image')) {
+        const imageBlob = await response.blob();
+        const arrayBuffer = await imageBlob.arrayBuffer();
+        const base64 = Buffer.from(arrayBuffer).toString('base64');
+        console.log('✅ Hugging Face generation successful with detailed prompt (image size:', base64.length, 'bytes)');
+        return `data:image/png;base64,${base64}`;
+      } else {
+        // Response might be JSON (error or loading message)
+        const textResponse = await response.text();
+        console.log('⚠️ Hugging Face returned non-image response:', textResponse.substring(0, 200));
+        
+        // Check if model is loading
+        if (textResponse.includes('loading') || textResponse.includes('estimated_time')) {
+          console.log('⏳ Model is loading, this may take a moment...');
+        }
+        return null;
+      }
     } else {
       const errorText = await response.text();
-      console.log('❌ Hugging Face API failed:', response.status, errorText);
+      console.error('❌ Hugging Face API failed with status:', response.status);
+      console.error('❌ Error details:', errorText);
       return null;
     }
     
   } catch (error) {
-    console.error('❌ Hugging Face generation failed:', error);
+    console.error('❌ Hugging Face generation exception:', error);
     return null;
   }
 }
