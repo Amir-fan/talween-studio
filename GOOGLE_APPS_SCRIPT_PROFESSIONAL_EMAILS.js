@@ -514,6 +514,8 @@ function handleDeleteUser(userId) {
 // Add Credits
 function handleAddCredits(userId, amount) {
   try {
+    console.log('➕ ADD CREDITS CALLED:', { userId: userId, amount: amount, timestamp: new Date().toISOString() });
+    
     const sheet = getSheet();
     const userRow = findUserRow(sheet, userId);
     
@@ -531,7 +533,10 @@ function handleAddCredits(userId, amount) {
       getColumnIndex(sheet, 'Credits') : 
       getColumnIndex(sheet, 'النقاط');
     const currentCredits = sheet.getRange(userRow, creditsColumnIndex).getValue();
-    const newCredits = currentCredits + parseInt(amount);
+    const addAmount = parseInt(amount);
+    const newCredits = currentCredits + addAmount;
+    
+    console.log('➕ ADD CREDITS:', { currentCredits: currentCredits, addAmount: addAmount, newCredits: newCredits });
     
     sheet.getRange(userRow, creditsColumnIndex).setValue(newCredits);
     
@@ -539,10 +544,13 @@ function handleAddCredits(userId, amount) {
       .createTextOutput(JSON.stringify({ 
         success: true, 
         message: 'Credits added successfully',
+        currentCredits: currentCredits,
+        addedAmount: addAmount,
         newCredits: newCredits
       }))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
+    console.error('❌ ADD CREDITS ERROR:', error);
     return ContentService
       .createTextOutput(JSON.stringify({ 
         success: false, 
@@ -555,10 +563,13 @@ function handleAddCredits(userId, amount) {
 // Deduct Credits
 function handleDeductCredits(userId, amount) {
   try {
+    console.log('➖ DEDUCT CREDITS CALLED:', { userId: userId, amount: amount, timestamp: new Date().toISOString() });
+    
     const sheet = getSheet();
     const userRow = findUserRow(sheet, userId);
     
     if (!userRow) {
+      console.error('❌ DEDUCT: User not found');
       return ContentService
         .createTextOutput(JSON.stringify({ 
           success: false, 
@@ -572,28 +583,39 @@ function handleDeductCredits(userId, amount) {
       getColumnIndex(sheet, 'Credits') : 
       getColumnIndex(sheet, 'النقاط');
     const currentCredits = sheet.getRange(userRow, creditsColumnIndex).getValue();
-    const deductAmount = parseInt(amount);
+    const deductAmount = Math.abs(parseInt(amount)); // Ensure positive for deduction
+    
+    console.log('➖ DEDUCT CREDITS:', { currentCredits: currentCredits, deductAmount: deductAmount });
     
     if (currentCredits < deductAmount) {
+      console.error('❌ DEDUCT: Insufficient credits');
       return ContentService
         .createTextOutput(JSON.stringify({ 
           success: false, 
-          error: 'Insufficient credits' 
+          error: 'Insufficient credits',
+          currentCredits: currentCredits,
+          requiredCredits: deductAmount
         }))
         .setMimeType(ContentService.MimeType.JSON);
     }
     
     const newCredits = currentCredits - deductAmount;
+    console.log('➖ DEDUCT: Setting new credits:', { before: currentCredits, after: newCredits });
+    
     sheet.getRange(userRow, creditsColumnIndex).setValue(newCredits);
     
+    console.log('✅ DEDUCT CREDITS SUCCESS');
     return ContentService
       .createTextOutput(JSON.stringify({ 
         success: true, 
         message: 'Credits deducted successfully',
+        currentCredits: currentCredits,
+        deductedAmount: deductAmount,
         newCredits: newCredits
       }))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
+    console.error('❌ DEDUCT CREDITS ERROR:', error);
     return ContentService
       .createTextOutput(JSON.stringify({ 
         success: false, 
