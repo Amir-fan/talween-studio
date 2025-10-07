@@ -38,10 +38,29 @@ export async function POST(request: NextRequest) {
     let localSuccess = false;
 
     try {
+      // Check if already processed to prevent duplicates
+      if (order.status === 'paid') {
+        console.log('⚠️ PAYMENT VERIFY - Order already processed, returning existing status');
+        return NextResponse.json({
+          success: true,
+          message: 'Payment already verified',
+          details: {
+            localUpdated: true,
+            googleSheetsUpdated: false,
+            orderFound: true,
+            orderId: order.id,
+            creditsAdded: order.credits_purchased || 0,
+            alreadyProcessed: true
+          }
+        });
+      }
+
+      // Mark as paid FIRST to prevent race conditions
       orderDb.updateStatus(orderId, status, transactionId);
       
       // If payment was successful, add credits to user
       if (status === 'paid' && order.credits_purchased) {
+        console.log('💳 PAYMENT VERIFY - Adding credits:', { userId: order.user_id, credits: order.credits_purchased });
         userDb.updateCredits(order.user_id, order.credits_purchased);
         
         // Update user's subscription tier if applicable

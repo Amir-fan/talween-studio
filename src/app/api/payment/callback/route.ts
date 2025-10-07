@@ -52,6 +52,16 @@ export async function GET(request: NextRequest) {
 
     // Update order status based on payment result
     if (statusResult.status === 'Paid') {
+      // Check if credits were already added to prevent duplicates
+      const currentOrder = orderDb.findById(orderId!);
+      const alreadyProcessed = currentOrder && currentOrder.status === 'paid';
+      
+      if (alreadyProcessed) {
+        console.log('⚠️ [CALLBACK:GET] Order already processed, skipping credit addition to prevent duplicates');
+        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/success?orderId=${orderId}&amount=${order.total_amount}&credits=${order.credits_purchased || 0}`);
+      }
+
+      // Mark order as paid FIRST to prevent race conditions
       orderDb.updateStatus(orderId!, 'paid', paymentId || invoiceId);
       console.log('💳 [CALLBACK:GET] Marked order as paid, will add credits');
 
@@ -178,11 +188,19 @@ export async function POST(request: NextRequest) {
 
     // Update order status
     if (TransactionStatus === 'Paid') {
+      // Check if already processed to prevent duplicates
+      if (order.status === 'paid') {
+        console.log('⚠️ [CALLBACK:POST] Order already processed, skipping to prevent duplicate credits');
+        return NextResponse.json({ success: true, message: 'Already processed' });
+      }
+
+      // Mark as paid FIRST to prevent race conditions
       orderDb.updateStatus(order.id, 'paid', TransactionId);
       
       // Add credits to user in both databases
       const user = userDb.findById(order.user_id);
       if (user) {
+        console.log('💳 [CALLBACK:POST] Adding credits:', { userId: user.id, credits: order.credits_purchased });
         // Update local database
         userDb.updateCredits(user.id, order.credits_purchased || 0);
         
