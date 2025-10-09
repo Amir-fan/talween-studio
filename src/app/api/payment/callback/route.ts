@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
       
       if (alreadyProcessed) {
         console.log('⚠️ [CALLBACK:GET] Order already processed, skipping credit addition to prevent duplicates');
-        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/success?orderId=${orderId}&amount=${order.Amount}&credits=${order.CreditsPurchased || 0}`);
+        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/success?orderId=${orderId}&amount=${order.Amount}&credits=${order.CreditsPurchased || 0}&packageId=${order.PackageID}&userId=${order.UserID}`);
       }
 
       // Mark order as paid in Google Sheets FIRST to prevent race conditions
@@ -171,7 +171,7 @@ export async function GET(request: NextRequest) {
       }
 
       console.log(`✅ [CALLBACK:GET] Payment successful for order ${orderId}, added ${order.CreditsPurchased || 0} credits`);
-        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/success?orderId=${orderId}&amount=${order.Amount}&credits=${order.CreditsPurchased || 0}`);
+        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/success?orderId=${orderId}&amount=${order.Amount}&credits=${order.CreditsPurchased || 0}&packageId=${order.PackageID}&userId=${order.UserID}`);
     } else if (statusResult.status === 'Failed') {
       await updateOrderStatus({
         orderId: orderId!,
