@@ -197,9 +197,9 @@ export async function POST(request: NextRequest) {
     console.log('🔍 [VERIFY API] Results:', {
       localSuccess,
       googleSheetsSuccess,
-      orderId: order.id,
-      amount: order.total_amount,
-      credits: order.credits_purchased
+      orderId: order.ID,
+      amount: order.Amount,
+      credits: order.CreditsPurchased
     });
 
     // Return success if local update succeeded (Google Sheets is optional)
