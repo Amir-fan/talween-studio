@@ -47,22 +47,60 @@ export async function POST(request: NextRequest) {
     // Create a local order record first and use its ID everywhere to keep references consistent
     let orderId: string | null = providedOrderId || null;
     try {
+      console.log('🔍 [CREATE SESSION] === ORDER CREATION START ===');
+      console.log('🔍 [CREATE SESSION] Order creation params:', { 
+        userId, 
+        finalAmount, 
+        packageId, 
+        credits, 
+        providedOrderId 
+      });
+      
       if (orderId) {
         const existing = orderDb.findById(orderId);
         if (!existing) {
           const { id: dbOrderId } = orderDb.create(userId, finalAmount, packageId, credits);
           orderId = dbOrderId;
-          console.log('🔍 PAYMENT API - Created new order:', { orderId: dbOrderId, amount: finalAmount, credits, packageId });
+          console.log('🔍 [CREATE SESSION] ✅ Created new order:', { 
+            orderId: dbOrderId, 
+            amount: finalAmount, 
+            credits, 
+            packageId 
+          });
         } else {
-          console.log('🔍 PAYMENT API - Using existing order:', { orderId, amount: existing.total_amount, credits: existing.credits_purchased });
+          console.log('🔍 [CREATE SESSION] Using existing order:', { 
+            orderId, 
+            amount: existing.total_amount, 
+            credits: existing.credits_purchased 
+          });
         }
       } else {
         const { id: dbOrderId } = orderDb.create(userId, finalAmount, packageId, credits);
         orderId = dbOrderId;
-        console.log('🔍 PAYMENT API - Created new order:', { orderId: dbOrderId, amount: finalAmount, credits, packageId });
+        console.log('🔍 [CREATE SESSION] ✅ Created new order:', { 
+          orderId: dbOrderId, 
+          amount: finalAmount, 
+          credits, 
+          packageId 
+        });
+      }
+      
+      // Verify the order was created correctly
+      const createdOrder = orderDb.findById(orderId);
+      if (createdOrder) {
+        console.log('🔍 [CREATE SESSION] ✅ Order verification:', {
+          id: createdOrder.id,
+          user_id: createdOrder.user_id,
+          total_amount: createdOrder.total_amount,
+          credits_purchased: createdOrder.credits_purchased,
+          status: createdOrder.status,
+          package_id: packageId
+        });
+      } else {
+        console.error('🔍 [CREATE SESSION] ❌ Order not found after creation!');
       }
     } catch (e) {
-      console.log('Order pre-create failed (non-blocking):', e);
+      console.error('🔍 [CREATE SESSION] ❌ Order creation failed:', e);
     }
     console.log('🔍 PAYMENT API - Generated order ID:', orderId);
     if (!orderId) {

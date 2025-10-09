@@ -1,113 +1,196 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { orderDb, userDb } from '@/lib/simple-database';
+import { checkPaymentStatus } from '@/lib/myfatoorah-service';
 import { config } from '@/lib/config';
 
 export async function POST(request: NextRequest) {
   try {
     const { orderId, status, transactionId } = await request.json();
 
-    if (!orderId || !status) {
+    console.log('🔍 [VERIFY API] === PAYMENT VERIFICATION START ===');
+    console.log('🔍 [VERIFY API] Request received:', { orderId, status, transactionId });
+
+    if (!orderId) {
+      console.error('🔍 [VERIFY API] Missing orderId');
       return NextResponse.json(
-        { error: 'Order ID and status are required' },
+        { error: 'Order ID is required' },
         { status: 400 }
       );
     }
 
-    console.log('💳 PAYMENT VERIFY API - Verifying payment:', { orderId, status, transactionId });
-
     // Get order details from database
     const order = orderDb.findById(orderId);
     if (!order) {
-      console.error('💳 PAYMENT VERIFY API - Order not found:', orderId);
+      console.error('🔍 [VERIFY API] Order not found in database:', orderId);
+      console.error('🔍 [VERIFY API] Available orders:', Object.keys(orderDb.getAllOrders().reduce((acc, o) => ({ ...acc, [o.id]: o }), {})));
       return NextResponse.json(
         { error: 'Order not found' },
         { status: 404 }
       );
     }
 
-    console.log('💳 PAYMENT VERIFY API - Found order:', { 
+    console.log('🔍 [VERIFY API] Order found:', { 
       id: order.id, 
       user_id: order.user_id, 
-      amount: order.total_amount, 
-      credits: order.credits_purchased, 
-      status: order.status 
+      total_amount: order.total_amount, 
+      credits_purchased: order.credits_purchased, 
+      status: order.status,
+      payment_intent_id: order.payment_intent_id,
+      subscription_tier: order.subscription_tier
     });
 
+    // CRITICAL: Check payment status with MyFatoorah instead of trusting client
+    console.log('🔍 [VERIFY API] Checking payment status with MyFatoorah...');
+    let myFatoorahStatus;
+    let isPaid = false;
+    
+    try {
+      // Try to get payment status using payment_intent_id or orderId
+      const paymentKey = order.payment_intent_id || orderId;
+      const keyType = order.payment_intent_id ? 'InvoiceId' : 'InvoiceId';
+      
+      console.log('🔍 [VERIFY API] Checking MyFatoorah with:', { paymentKey, keyType });
+      myFatoorahStatus = await checkPaymentStatus(paymentKey, keyType);
+      
+      console.log('🔍 [VERIFY API] MyFatoorah response:', myFatoorahStatus);
+      
+      isPaid = myFatoorahStatus.success && myFatoorahStatus.status === 'Paid';
+      console.log('🔍 [VERIFY API] MyFatoorah reports payment as:', { 
+        success: myFatoorahStatus.success, 
+        status: myFatoorahStatus.status, 
+        isPaid: isPaid 
+      });
+      
+    } catch (error) {
+      console.error('🔍 [VERIFY API] MyFatoorah status check failed:', error);
+      // Fallback to client-provided status if MyFatoorah check fails
+      isPaid = status === 'paid';
+      console.log('🔍 [VERIFY API] Using fallback status from client:', { status, isPaid });
+    }
+
     // Step 1: Update local database
-    console.log('💾 Step 1: Updating local database...');
+    console.log('🔍 [VERIFY API] === STEP 1: LOCAL DATABASE UPDATE ===');
     let localSuccess = false;
 
     try {
       // Check if already processed to prevent duplicates
       if (order.status === 'paid') {
-        console.log('⚠️ PAYMENT VERIFY - Order already processed, returning existing status');
+        console.log('⚠️ [VERIFY API] Order already processed, returning existing status');
         return NextResponse.json({
           success: true,
           message: 'Payment already verified',
-          details: {
-            localUpdated: true,
-            googleSheetsUpdated: false,
-            orderFound: true,
-            orderId: order.id,
-            creditsAdded: order.credits_purchased || 0,
-            alreadyProcessed: true
-          }
+          orderId: order.id,
+          amount: order.total_amount,
+          credits: order.credits_purchased || 0,
+          alreadyProcessed: true
         });
       }
 
+      // Only process if MyFatoorah confirms payment is successful
+      if (!isPaid) {
+        console.error('🔍 [VERIFY API] Payment not confirmed as paid by MyFatoorah');
+        return NextResponse.json({
+          success: false,
+          error: 'Payment not confirmed as successful',
+          myFatoorahStatus: myFatoorahStatus?.status || 'unknown'
+        }, { status: 400 });
+      }
+
+      console.log('🔍 [VERIFY API] Payment confirmed as paid, processing credits...');
+
       // Mark as paid FIRST to prevent race conditions
-      orderDb.updateStatus(orderId, status, transactionId);
+      orderDb.updateStatus(orderId, 'paid', transactionId);
+      console.log('🔍 [VERIFY API] Order status updated to "paid"');
       
-      // If payment was successful, add credits to user
-      if (status === 'paid' && order.credits_purchased) {
-        console.log('💳 PAYMENT VERIFY - Adding credits:', { userId: order.user_id, credits: order.credits_purchased });
+      // Add credits to user
+      if (order.credits_purchased && order.credits_purchased > 0) {
+        console.log('🔍 [VERIFY API] Adding credits to local database:', { 
+          userId: order.user_id, 
+          creditsToAdd: order.credits_purchased,
+          currentCredits: userDb.findById(order.user_id)?.credits || 0
+        });
+        
         userDb.updateCredits(order.user_id, order.credits_purchased);
+        
+        const userAfter = userDb.findById(order.user_id);
+        console.log('🔍 [VERIFY API] Credits added successfully:', { 
+          userId: order.user_id, 
+          newCredits: userAfter?.credits || 0 
+        });
         
         // Update user's subscription tier if applicable
         if (order.subscription_tier && order.subscription_tier !== 'FREE') {
           userDb.updateUser(order.user_id, {
             subscription_tier: order.subscription_tier
           });
+          console.log('🔍 [VERIFY API] Subscription tier updated:', order.subscription_tier);
         }
+      } else {
+        console.warn('🔍 [VERIFY API] No credits to add:', { credits_purchased: order.credits_purchased });
       }
+      
       localSuccess = true;
-      console.log('💾 Local database updated successfully');
+      console.log('🔍 [VERIFY API] Local database updated successfully');
     } catch (error) {
-      console.log('💾 Local database error (continuing):', error);
+      console.error('🔍 [VERIFY API] Local database error:', error);
     }
 
     // Step 2: Update Google Sheets
-    console.log('📊 Step 2: Updating Google Sheets...');
+    console.log('🔍 [VERIFY API] === STEP 2: GOOGLE SHEETS UPDATE ===');
     let googleSheetsSuccess = false;
 
     try {
-      // Use the existing addCredits action for Google Sheets
-      const GOOGLE_APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbz9yA6fJAIHHiroyqX2AUNlZ5C1QqUXh8VKCrGkX3ykIPRcpaHYbpX5wF39M6-y4XQ/exec';
-      const GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
-      
-      const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'addCredits',
-          apiKey: GOOGLE_SHEETS_API_KEY,
-          userId: order.user_id,
-          amount: order.credits_purchased || 0
-        })
-      });
+      if (order.credits_purchased && order.credits_purchased > 0) {
+        console.log('🔍 [VERIFY API] Attempting to add credits to Google Sheets:', { 
+          userId: order.user_id, 
+          creditsToAdd: order.credits_purchased 
+        });
+        
+        // Use the existing addCredits action for Google Sheets
+        const GOOGLE_APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwFLOoyBsDlJPBwJ3LES41P0U3dHeUHHcz14Q0aE5vi6fqGl1qdMAnw0EtKdDRPL2Re/exec';
+        const GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
+        
+        const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'addCredits',
+            apiKey: GOOGLE_SHEETS_API_KEY,
+            userId: order.user_id,
+            amount: order.credits_purchased
+          })
+        });
 
-      if (response.ok) {
-        const result = await response.json();
-        googleSheetsSuccess = result.success;
-        console.log('📊 Google Sheets updated:', result);
+        console.log('🔍 [VERIFY API] Google Sheets response status:', response.status);
+
+        if (response.ok) {
+          const result = await response.json();
+          googleSheetsSuccess = result.success;
+          console.log('🔍 [VERIFY API] Google Sheets updated successfully:', result);
+        } else {
+          const errorText = await response.text();
+          console.error('🔍 [VERIFY API] Google Sheets HTTP error:', { 
+            status: response.status, 
+            body: errorText 
+          });
+        }
       } else {
-        console.log('📊 Google Sheets HTTP error:', response.status);
+        console.log('🔍 [VERIFY API] No credits to add to Google Sheets');
       }
     } catch (error) {
-      console.log('📊 Google Sheets error (continuing):', error);
+      console.error('🔍 [VERIFY API] Google Sheets error:', error);
     }
+
+    console.log('🔍 [VERIFY API] === PAYMENT VERIFICATION COMPLETE ===');
+    console.log('🔍 [VERIFY API] Results:', {
+      localSuccess,
+      googleSheetsSuccess,
+      orderId: order.id,
+      amount: order.total_amount,
+      credits: order.credits_purchased
+    });
 
     // Return success if local update succeeded (Google Sheets is optional)
     if (!localSuccess) {
@@ -119,14 +202,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Payment status updated successfully',
-      details: {
-        localUpdated: localSuccess,
-        googleSheetsUpdated: googleSheetsSuccess,
-        orderFound: true,
-        orderId: order.id,
-        creditsAdded: order.credits_purchased || 0
-      }
+      message: 'Payment verified and credits added successfully',
+      orderId: order.id,
+      amount: order.total_amount,
+      credits: order.credits_purchased || 0,
+      localUpdated: localSuccess,
+      googleSheetsUpdated: googleSheetsSuccess
     });
 
   } catch (error) {
@@ -159,4 +240,5 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?error=${encodeURIComponent('Verification error')}`);
   }
+}
 }

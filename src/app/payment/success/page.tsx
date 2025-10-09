@@ -30,7 +30,8 @@ function PaymentSuccessContent() {
 
   const processPaymentCompletion = async (orderId: string, amount: string | null, credits: string | null) => {
     try {
-      console.log('🔄 Processing payment completion...', { orderId, amount, credits });
+      console.log('🔍 [SUCCESS PAGE] === PAYMENT COMPLETION START ===');
+      console.log('🔍 [SUCCESS PAGE] URL parameters:', { orderId, amount, credits });
       
       // Call the payment verification API to process the payment and add credits
       const response = await fetch('/api/payment/verify', {
@@ -43,23 +44,38 @@ function PaymentSuccessContent() {
         })
       });
 
+      console.log('🔍 [SUCCESS PAGE] Verify API response status:', response.status);
+
       if (response.ok) {
-        console.log('✅ Payment processed successfully');
+        const verifyResult = await response.json();
+        console.log('🔍 [SUCCESS PAGE] Verify API result:', verifyResult);
+        
+        // Use the actual amounts from the verification API response
+        const actualAmount = verifyResult.amount || (amount ? parseFloat(amount) : 0);
+        const actualCredits = verifyResult.credits || (credits ? parseInt(credits) : 0);
+        
+        console.log('🔍 [SUCCESS PAGE] Using amounts from API:', { actualAmount, actualCredits });
         
         // INSTANTLY refresh credits from Google Sheets before showing UI
-        console.log('🔄 INSTANTLY syncing credits from Google Sheets...');
+        console.log('🔍 [SUCCESS PAGE] INSTANTLY syncing credits from Google Sheets...');
         await refreshUserData();
         
         setPaymentData({
           orderId,
-          amount: amount ? parseFloat(amount) : 0,
-          credits: credits ? parseInt(credits) : 0
+          amount: actualAmount,
+          credits: actualCredits
         });
         
-        console.log('✅ Credits updated instantly on success page');
+        console.log('🔍 [SUCCESS PAGE] ✅ Payment processed successfully with amounts:', { 
+          orderId, 
+          amount: actualAmount, 
+          credits: actualCredits 
+        });
       } else {
-        console.error('❌ Payment processing failed');
-        // Still try to refresh credits
+        const errorResult = await response.json();
+        console.error('🔍 [SUCCESS PAGE] ❌ Payment processing failed:', errorResult);
+        
+        // Still try to refresh credits and show URL parameters as fallback
         await refreshUserData();
         
         setPaymentData({
@@ -69,8 +85,8 @@ function PaymentSuccessContent() {
         });
       }
     } catch (error) {
-      console.error('❌ Payment completion error:', error);
-      // Still try to refresh credits
+      console.error('🔍 [SUCCESS PAGE] ❌ Payment completion error:', error);
+      // Still try to refresh credits and show URL parameters as fallback
       await refreshUserData();
       
       setPaymentData({

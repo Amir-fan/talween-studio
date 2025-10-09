@@ -10,9 +10,11 @@ export async function GET(request: NextRequest) {
     let invoiceId = searchParams.get('invoiceId');
     const orderId = searchParams.get('orderId');
 
-    console.log('💳 [CALLBACK:GET] Received payment callback', { paymentId, invoiceId, orderId });
+    console.log('🔍 [CALLBACK] === PAYMENT CALLBACK START ===');
+    console.log('🔍 [CALLBACK] Received payment callback', { paymentId, invoiceId, orderId });
 
     if (!invoiceId && !orderId) {
+      console.error('🔍 [CALLBACK] ❌ Missing payment information');
       return NextResponse.json(
         { error: 'Missing payment information' },
         { status: 400 }
@@ -41,14 +43,21 @@ export async function GET(request: NextRequest) {
     }
 
     // Find the order
-    console.log('💳 [CALLBACK:GET] Looking for order:', orderId);
+    console.log('🔍 [CALLBACK] Looking for order:', orderId);
     const order = orderDb.findById(orderId!);
     if (!order) {
-      console.error('💳 [CALLBACK:GET] Order not found:', orderId);
-      console.error('💳 [CALLBACK:GET] Available orders:', Object.keys(orderDb.getAllOrders().reduce((acc, o) => ({ ...acc, [o.id]: o }), {})));
+      console.error('🔍 [CALLBACK] ❌ Order not found:', orderId);
+      console.error('🔍 [CALLBACK] Available orders:', Object.keys(orderDb.getAllOrders().reduce((acc, o) => ({ ...acc, [o.id]: o }), {})));
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?error=${encodeURIComponent('Order not found')}`);
     }
-    console.log('💳 [CALLBACK:GET] Found order:', { id: order.id, user_id: order.user_id, amount: order.total_amount, credits_purchased: (order as any).credits_purchased, status: order.status });
+    console.log('🔍 [CALLBACK] ✅ Found order:', { 
+      id: order.id, 
+      user_id: order.user_id, 
+      total_amount: order.total_amount, 
+      credits_purchased: order.credits_purchased, 
+      status: order.status,
+      payment_intent_id: order.payment_intent_id
+    });
 
     // Update order status based on payment result
     if (statusResult.status === 'Paid') {
