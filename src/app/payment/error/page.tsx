@@ -58,6 +58,14 @@ function PaymentErrorContent() {
       console.log('🔍 [ERROR PAGE] Expected callback URL should have been:');
       console.log(`🔍 [ERROR PAGE] /api/payment/callback?orderId=${orderId}&paymentId=${paymentId}`);
       
+      // FIX: If MyFatoorah redirected to error page instead of callback,
+      // automatically redirect to the callback endpoint to verify payment status
+      console.log('🔍 [ERROR PAGE] MyFatoorah redirected to error page - attempting to verify payment...');
+      setTimeout(() => {
+        console.log('🔍 [ERROR PAGE] Redirecting to callback for payment verification...');
+        window.location.href = `/api/payment/callback?orderId=${orderId}&paymentId=${paymentId}`;
+      }, 3000); // Wait 3 seconds to show error message first
+      
       // Try to check if the callback endpoint is reachable
       fetch(`/api/payment/callback?orderId=${orderId}&paymentId=${paymentId}`)
         .then(response => {

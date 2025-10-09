@@ -13,6 +13,8 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 [CALLBACK] === PAYMENT CALLBACK START ===');
     console.log('🔍 [CALLBACK] Received payment callback', { paymentId, invoiceId, orderId });
+    console.log('🔍 [CALLBACK] Full URL:', request.url);
+    console.log('🔍 [CALLBACK] All search params:', Object.fromEntries(request.nextUrl.searchParams.entries()));
 
     if (!invoiceId && !orderId) {
       console.error('🔍 [CALLBACK] ❌ Missing payment information');
@@ -52,9 +54,10 @@ export async function GET(request: NextRequest) {
     if (!statusResult.success) {
       const errorMsg = 'error' in statusResult ? statusResult.error : 'Payment verification failed';
       console.error('🔍 [CALLBACK] ❌ Payment status check failed:', errorMsg);
-      console.error('🔍 [CALLBACK] Full status result:', JSON.stringify(statusResult));
+      console.error('🔍 [CALLBACK] Full status result:', JSON.stringify(statusResult, null, 2));
       console.error('🔍 [CALLBACK] Payment details:', { paymentId, invoiceId, orderId });
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?orderId=${orderId}&error=${encodeURIComponent(errorMsg || 'Payment verification failed')}`);
+      console.error('🔍 [CALLBACK] This indicates MyFatoorah API call failed or returned error');
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?orderId=${orderId}&paymentId=${paymentId}&Id=${paymentId}&error=${encodeURIComponent(errorMsg || 'Payment verification failed')}`);
     }
 
     // Find the order in Google Sheets

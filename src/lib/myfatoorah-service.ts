@@ -146,6 +146,7 @@ export async function checkPaymentStatus(key: string, keyType: 'InvoiceId' | 'Pa
     });
 
     const result = await response.json();
+    console.log('🔍 [MYFATOORAH] Payment status API response:', JSON.stringify(result, null, 2));
 
     if (result.IsSuccess && result.Data) {
       // Handle different MyFatoorah API response structures
@@ -168,7 +169,7 @@ export async function checkPaymentStatus(key: string, keyType: 'InvoiceId' | 'Pa
         transactionId = result.Data.InvoiceId || key;
       } else {
         // Fallback: assume pending if no status found
-        console.log('MyFatoorah: No transaction status found, assuming pending');
+        console.log('🔍 [MYFATOORAH] No transaction status found, assuming pending');
         rawStatus = 'pending';
       }
       
@@ -178,7 +179,7 @@ export async function checkPaymentStatus(key: string, keyType: 'InvoiceId' | 'Pa
       else if (/(fail|declin|reject|error)/i.test(rawStatus)) normalized = 'Failed';
       else if (/(cancel)/i.test(rawStatus)) normalized = 'Cancelled';
       
-      console.log('MyFatoorah status check result:', { rawStatus, normalized, transactionId });
+      console.log('🔍 [MYFATOORAH] Status check result:', { rawStatus, normalized, transactionId });
       
       return {
         success: true,
@@ -187,7 +188,7 @@ export async function checkPaymentStatus(key: string, keyType: 'InvoiceId' | 'Pa
         rawStatus: rawStatus,
       };
     } else {
-      console.log('MyFatoorah status check failed:', result);
+      console.error('🔍 [MYFATOORAH] Status check failed:', result);
       return {
         success: false,
         status: 'Failed',
