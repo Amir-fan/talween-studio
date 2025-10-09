@@ -186,8 +186,8 @@ function AdminDashboardContent() {
           activeUsers: usersList.filter((u: User) => u.status === 'active').length
         });
       } else {
-        console.error('Failed to load users:', usersData.error);
-        alert(`فشل في تحميل المستخدمين: ${usersData.error || 'خطأ غير معروف'}`);
+        console.error('Failed to load users: No users data in response');
+        alert(`فشل في تحميل المستخدمين: لا توجد بيانات مستخدمين`);
       }
 
       // Load discounts list
@@ -199,7 +199,7 @@ function AdminDashboardContent() {
         }
       } catch {}
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading admin data:', error);
       alert(`خطأ في تحميل البيانات: ${error.message || 'خطأ في الاتصال'}`);
     } finally {
@@ -239,7 +239,7 @@ function AdminDashboardContent() {
       } else {
         alert(`فشل في إضافة النقاط: ${data.error || 'خطأ غير معروف'}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding credits:', error);
       alert(`حدث خطأ أثناء إضافة النقاط: ${error.message || 'خطأ في الاتصال'}`);
     }
@@ -291,7 +291,7 @@ function AdminDashboardContent() {
         const errorData = await response.json();
         alert(`❌ فشل في حذف المستخدمين: ${errorData.error || 'خطأ غير معروف'}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error clearing all users:', error);
       alert(`❌ حدث خطأ أثناء حذف المستخدمين: ${error.message || 'خطأ في الاتصال'}`);
     }
@@ -349,7 +349,7 @@ function AdminDashboardContent() {
       } else {
         alert(`فشل في حذف المستخدم: ${data.error || 'خطأ غير معروف'}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting user:', error);
       alert(`حدث خطأ أثناء حذف المستخدم: ${error.message || 'خطأ في الاتصال'}`);
     }
