@@ -39,6 +39,8 @@ export async function createOrder(data: CreateOrderData): Promise<{ success: boo
   try {
     console.log('🛒 [GOOGLE SHEETS ORDERS] Creating order:', data);
     
+    const GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
+    
     const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
       method: 'POST',
       headers: {
@@ -46,6 +48,7 @@ export async function createOrder(data: CreateOrderData): Promise<{ success: boo
       },
       body: JSON.stringify({
         action: 'createOrder',
+        apiKey: GOOGLE_SHEETS_API_KEY,
         userId: data.userId,
         amount: data.amount,
         packageId: data.packageId,
@@ -84,6 +87,8 @@ export async function getOrder(orderId: string): Promise<{ success: boolean; ord
   try {
     console.log('🔍 [GOOGLE SHEETS ORDERS] Getting order:', orderId);
     
+    const GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
+    
     const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
       method: 'POST',
       headers: {
@@ -91,6 +96,7 @@ export async function getOrder(orderId: string): Promise<{ success: boolean; ord
       },
       body: JSON.stringify({
         action: 'getOrder',
+        apiKey: GOOGLE_SHEETS_API_KEY,
         orderId: orderId
       })
     });
@@ -125,6 +131,8 @@ export async function updateOrderStatus(data: UpdateOrderStatusData): Promise<{ 
   try {
     console.log('🔄 [GOOGLE SHEETS ORDERS] Updating order status:', data);
     
+    const GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
+    
     const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
       method: 'POST',
       headers: {
@@ -132,6 +140,7 @@ export async function updateOrderStatus(data: UpdateOrderStatusData): Promise<{ 
       },
       body: JSON.stringify({
         action: 'updateOrderStatus',
+        apiKey: GOOGLE_SHEETS_API_KEY,
         orderId: data.orderId,
         status: data.status,
         paymentId: data.paymentId
