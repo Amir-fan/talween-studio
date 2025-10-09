@@ -76,12 +76,6 @@ function PaymentSuccessContent() {
       console.log('🔍 [SUCCESS PAGE] === PAYMENT COMPLETION START ===');
       console.log('🔍 [SUCCESS PAGE] URL parameters:', { orderId, amount, credits });
       
-      console.log('🔍 [SUCCESS PAGE] About to call /api/payment/verify with:', {
-        orderId,
-        status: 'paid',
-        transactionId: orderId
-      });
-      
       // Get package info from URL or extract from orderId
       const packageId = searchParams.get('packageId');
       const userId = searchParams.get('userId') || user?.id;
