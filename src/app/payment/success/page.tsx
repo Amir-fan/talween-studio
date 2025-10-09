@@ -44,13 +44,6 @@ function PaymentSuccessContent() {
       allParams: Object.fromEntries(searchParams.entries())
     });
     
-    // SECURITY: Check if user is authenticated
-    if (!user) {
-      console.log('🔍 [SUCCESS PAGE] User not authenticated, redirecting to login...');
-      router.push('/signup');
-      return;
-    }
-    
     // SECURITY: Validate required parameters
     if (!orderId || !amount || !credits) {
       console.log('🔍 [SUCCESS PAGE] Missing required parameters, redirecting to packages...');
@@ -68,7 +61,15 @@ function PaymentSuccessContent() {
     console.log('🔍 [SUCCESS PAGE] All validations passed, starting payment completion process...');
     // Process payment completion and add credits
     processPaymentCompletion(orderId, amount, credits);
-  }, [searchParams, router, user]);
+  }, [searchParams, router]);
+
+  // Separate useEffect to handle user authentication
+  useEffect(() => {
+    if (!loading && !user) {
+      console.log('🔍 [SUCCESS PAGE] User not authenticated after loading, redirecting to signup...');
+      router.push('/signup');
+    }
+  }, [loading, user, router]);
 
   const processPaymentCompletion = async (orderId: string, amount: string | null, credits: string | null) => {
     try {
