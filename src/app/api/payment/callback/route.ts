@@ -51,11 +51,19 @@ export async function GET(request: NextRequest) {
 
     // Find the order in Google Sheets
     console.log('🔍 [CALLBACK] Looking for order in Google Sheets:', orderId);
-    const orderResult = await getOrder(orderId!);
+    let orderResult;
+    try {
+      orderResult = await getOrder(orderId!);
+      console.log('🔍 [CALLBACK] getOrder result:', orderResult);
+    } catch (getOrderError) {
+      console.error('🔍 [CALLBACK] ❌ getOrder function failed:', getOrderError);
+      throw new Error(`getOrder failed: ${getOrderError instanceof Error ? getOrderError.message : String(getOrderError)}`);
+    }
+    
     if (!orderResult.success || !orderResult.order) {
       console.error('🔍 [CALLBACK] ❌ Order not found in Google Sheets:', orderId);
-      console.error('🔍 [CALLBACK] Error:', orderResult.error);
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?error=${encodeURIComponent('Order not found')}`);
+      console.error('🔍 [CALLBACK] Order result:', orderResult);
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?orderId=${orderId}&error=${encodeURIComponent('Order not found in Google Sheets')}`);
     }
     
     const order = orderResult.order;
@@ -116,7 +124,14 @@ export async function GET(request: NextRequest) {
     }
   } catch (error) {
     console.error('💥 [CALLBACK:GET] Payment callback error:', error);
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?error=${encodeURIComponent('Payment verification error')}`);
+    console.error('💥 [CALLBACK:GET] Error details:', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
+    
+    // Include orderId and paymentId in error redirect for better debugging
+    const searchParams = request.nextUrl.searchParams;
+    const orderId = searchParams.get('orderId');
+    const paymentId = searchParams.get('paymentId');
+    
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?orderId=${orderId || 'unknown'}&paymentId=${paymentId || 'unknown'}&Id=${paymentId || 'unknown'}&error=${encodeURIComponent('Payment verification error')}`);
   }
 }
 
