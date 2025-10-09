@@ -206,54 +206,69 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing InvoiceId' }, { status: 400 });
     }
 
-    // Find order by invoice ID or custom field
-    const orders = orderDb.getAllOrders();
-    const order = orders.find(o => o.id === InvoiceId || o.transactionId === InvoiceId);
+    // Find order by invoice ID in Google Sheets
+    console.log('🔍 [CALLBACK:POST] Looking for order by InvoiceId:', InvoiceId);
+    const orderResult = await getOrder(InvoiceId);
     
-    if (!order) {
-      console.error('Order not found for invoice:', InvoiceId);
+    if (!orderResult.success || !orderResult.order) {
+      console.error('🔍 [CALLBACK:POST] Order not found for invoice:', InvoiceId);
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
+    
+    const order = orderResult.order;
+    console.log('🔍 [CALLBACK:POST] Found order in Google Sheets:', {
+      ID: order.ID,
+      UserID: order.UserID,
+      Amount: order.Amount,
+      CreditsPurchased: order.CreditsPurchased,
+      Status: order.Status
+    });
 
     // Update order status
     if (TransactionStatus === 'Paid') {
       // Check if already processed to prevent duplicates
-      if (order.status === 'paid') {
+      if (order.Status === 'paid') {
         console.log('⚠️ [CALLBACK:POST] Order already processed, skipping to prevent duplicate credits');
         return NextResponse.json({ success: true, message: 'Already processed' });
       }
 
-      // Mark as paid FIRST to prevent race conditions
-      orderDb.updateStatus(order.id, 'paid', TransactionId);
+      // Mark as paid in Google Sheets FIRST to prevent race conditions
+      console.log('🔍 [CALLBACK:POST] Marking order as paid in Google Sheets...');
+      const updateResult = await updateOrderStatus({
+        orderId: order.ID,
+        status: 'paid',
+        paymentId: TransactionId
+      });
+      
+      if (!updateResult.success) {
+        console.error('🔍 [CALLBACK:POST] Failed to update order status:', updateResult.error);
+        return NextResponse.json(
+          { error: 'Failed to update order status: ' + updateResult.error },
+          { status: 500 }
+        );
+      }
       
       // Add credits to user in both databases
-      const user = userDb.findById(order.user_id);
+      const user = userDb.findById(order.UserID);
       if (user) {
-        console.log('💳 [CALLBACK:POST] Adding credits:', { userId: user.id, credits: order.credits_purchased });
+        console.log('💳 [CALLBACK:POST] Adding credits:', { userId: user.id, credits: order.CreditsPurchased });
         // Update local database
-        userDb.updateCredits(user.id, order.credits_purchased || 0);
-        
-        // Update subscription tier if applicable
-        if (order.subscription_tier && order.subscription_tier !== 'FREE') {
-          userDb.updateUser(user.id, {
-            subscription_tier: order.subscription_tier
-          });
-        }
+        userDb.updateCredits(user.id, order.CreditsPurchased || 0);
 
         // Update Google Sheets using server wrapper with email fallback
         try {
           let sheetsUpdated = false;
-          const byId = await googleSheetsUserDb.addCredits(user.id, order.credits_purchased || 0);
+          const byId = await googleSheetsUserDb.addCredits(user.id, order.CreditsPurchased || 0);
           sheetsUpdated = !!byId.success;
           if (!sheetsUpdated) {
             const lookup = await googleSheetsUserDb.findByEmail(user.email);
             if (lookup.success && lookup.user?.id) {
               const targetId = lookup.user.id as string;
-              const addByEmail = await googleSheetsUserDb.addCredits(targetId, order.credits_purchased || 0);
+              const addByEmail = await googleSheetsUserDb.addCredits(targetId, order.CreditsPurchased || 0);
               sheetsUpdated = !!addByEmail.success;
               if (!sheetsUpdated) {
                 const current = Number(lookup.user.credits || 0);
-                await googleSheetsUserDb.updateCredits(targetId, current + (order.credits_purchased || 0));
+                await googleSheetsUserDb.updateCredits(targetId, current + (order.CreditsPurchased || 0));
               }
             }
           }
@@ -262,10 +277,13 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      console.log(`Payment successful for order ${order.id}, added ${order.credits_purchased || 0} credits`);
+      console.log(`🔍 [CALLBACK:POST] Payment successful for order ${order.ID}, added ${order.CreditsPurchased || 0} credits`);
     } else if (TransactionStatus === 'Failed') {
-      orderDb.updateStatus(order.id, 'failed');
-      console.log(`Payment failed for order ${order.id}`);
+      await updateOrderStatus({
+        orderId: order.ID,
+        status: 'failed'
+      });
+      console.log(`🔍 [CALLBACK:POST] Payment failed for order ${order.ID}`);
     }
 
     return NextResponse.json({ received: true });
