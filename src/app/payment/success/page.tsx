@@ -20,24 +20,43 @@ function PaymentSuccessContent() {
     const orderId = searchParams.get('orderId');
     const amount = searchParams.get('amount');
     const credits = searchParams.get('credits');
+    const packageId = searchParams.get('packageId');
+    const userId = searchParams.get('userId');
     
     console.log('🔍 [SUCCESS PAGE] URL Search Params:', {
       orderId,
       amount,
       credits,
+      packageId,
+      userId,
       allParams: Object.fromEntries(searchParams.entries())
     });
     
-    if (orderId) {
-      console.log('🔍 [SUCCESS PAGE] Order ID found, starting payment completion process...');
-      // Process payment completion and add credits
-      processPaymentCompletion(orderId, amount, credits);
-    } else {
-      console.log('🔍 [SUCCESS PAGE] No order ID found, redirecting to packages...');
-      // Redirect to packages if no payment data
-      router.push('/packages');
+    // SECURITY: Check if user is authenticated
+    if (!user) {
+      console.log('🔍 [SUCCESS PAGE] User not authenticated, redirecting to login...');
+      router.push('/signup');
+      return;
     }
-  }, [searchParams, router]);
+    
+    // SECURITY: Validate required parameters
+    if (!orderId || !amount || !credits) {
+      console.log('🔍 [SUCCESS PAGE] Missing required parameters, redirecting to packages...');
+      router.push('/packages');
+      return;
+    }
+    
+    // SECURITY: Validate orderId format
+    if (!orderId.startsWith('order_')) {
+      console.log('🔍 [SUCCESS PAGE] Invalid order ID format, redirecting to packages...');
+      router.push('/packages');
+      return;
+    }
+    
+    console.log('🔍 [SUCCESS PAGE] All validations passed, starting payment completion process...');
+    // Process payment completion and add credits
+    processPaymentCompletion(orderId, amount, credits);
+  }, [searchParams, router, user]);
 
   const processPaymentCompletion = async (orderId: string, amount: string | null, credits: string | null) => {
     try {
@@ -206,6 +225,12 @@ function PaymentSuccessContent() {
                 <span className="text-muted-foreground">رقم الطلب</span>
                 <span className="font-mono text-sm">{paymentData.orderId}</span>
               </div>
+              {paymentData.packageName && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">الباقة المشتراة</span>
+                  <span className="font-bold text-purple-600">{paymentData.packageName}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">المبلغ المدفوع</span>
                 <span className="font-bold text-green-600">${paymentData.amount}</span>
@@ -214,13 +239,24 @@ function PaymentSuccessContent() {
                 <span className="text-muted-foreground">النقاط المضافة</span>
                 <span className="font-bold text-blue-600 flex items-center gap-1">
                   <Coins className="h-4 w-4" />
-                  {paymentData.credits.toLocaleString()}
+                  +{paymentData.credits.toLocaleString()} نقطة
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">تاريخ الدفع</span>
-                <span>{new Date().toLocaleDateString('ar-SA')}</span>
+                <span>{new Date().toLocaleDateString('en-US', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}</span>
               </div>
+              {paymentData.error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-600 text-sm">
+                    ⚠️ {paymentData.error}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 

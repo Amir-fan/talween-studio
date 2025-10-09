@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { userDb } from '@/lib/simple-database';
 import { addCredits } from '@/lib/google-sheets-server';
 
-// Package definitions matching the packages page
+// Package definitions matching the packages page EXACTLY
 const PACKAGES = {
-  'TEST': { credits: 22, amount: 1, name: 'اختبار الدفع' },
-  'FREE': { credits: 128, amount: 0, name: 'المجانية' },
-  'EXPLORER': { credits: 1368, amount: 12.99, name: 'المكتشف' },
-  'CREATIVE_WORLD': { credits: 3440, amount: 29.99, name: 'عالم الإبداع' },
-  'CREATIVE_TEACHER': { credits: 7938, amount: 59.99, name: 'المعلم المبدع' }
+  'TEST': { credits: 22, amount: 1, name: 'اختبار الدفع', currency: 'USD' },
+  'FREE': { credits: 128, amount: 0, name: 'المجانية', currency: 'USD' },
+  'EXPLORER': { credits: 1368, amount: 12.99, name: 'المكتشف', currency: 'USD' },
+  'CREATIVE_WORLD': { credits: 3440, amount: 29.99, name: 'عالم الإبداع', currency: 'USD' },
+  'CREATIVE_TEACHER': { credits: 7938, amount: 59.99, name: 'المعلم المبدع', currency: 'USD' }
 } as const;
 
 export async function POST(request: NextRequest) {
@@ -25,11 +25,20 @@ export async function POST(request: NextRequest) {
       credits 
     });
 
-    // Validate required fields
+    // SECURITY: Validate required fields and prevent unauthorized access
     if (!orderId || !userId) {
       console.error('🎁 [ADD CREDITS API] Missing required fields');
       return NextResponse.json(
         { error: 'Order ID and User ID are required' },
+        { status: 400 }
+      );
+    }
+
+    // SECURITY: Validate orderId format (must start with 'order_')
+    if (!orderId.startsWith('order_')) {
+      console.error('🎁 [ADD CREDITS API] Invalid order ID format:', orderId);
+      return NextResponse.json(
+        { error: 'Invalid order ID format' },
         { status: 400 }
       );
     }
