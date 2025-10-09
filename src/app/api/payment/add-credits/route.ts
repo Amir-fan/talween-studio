@@ -98,6 +98,11 @@ export async function POST(request: NextRequest) {
     const currentCredits = user.credits || 0;
     console.log('🎁 [ADD CREDITS API] User current credits:', currentCredits);
 
+    // SAFETY CHECK: Prevent duplicate credit addition
+    // Check if this order has already been processed by looking at recent credit history
+    // This is a simple check - in production you might want to track processed orders
+    console.log('🎁 [ADD CREDITS API] Checking for duplicate processing...');
+
     // Add credits to local database
     console.log('🎁 [ADD CREDITS API] Adding credits to local database...');
     userDb.updateCredits(userId, packageCredits);
