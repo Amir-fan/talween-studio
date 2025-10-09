@@ -14,7 +14,7 @@ const creditPackages = [
     id: 'TEST',
     name: 'اختبار الدفع',
     credits: 22,
-    price: 0.10,
+    price: 0.50,
     currency: 'USD',
     description: 'لاختبار نظام الدفع',
     features: ['22 نقطة للاختبار', 'تأكيد عمل نظام الدفع', 'تجربة سريعة', 'مثالي للاختبار'],

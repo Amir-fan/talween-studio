@@ -4,7 +4,7 @@ import { googleSheetsUserDb } from '@/lib/google-sheets-server';
 
 // Package definitions matching the packages page EXACTLY
 const PACKAGES = {
-  'TEST': { credits: 22, amount: 0.10, name: 'اختبار الدفع', currency: 'USD' },
+  'TEST': { credits: 22, amount: 0.50, name: 'اختبار الدفع', currency: 'USD' },
   'FREE': { credits: 128, amount: 0, name: 'المجانية', currency: 'USD' },
   'EXPLORER': { credits: 1368, amount: 12.99, name: 'المكتشف', currency: 'USD' },
   'CREATIVE_WORLD': { credits: 3440, amount: 29.99, name: 'عالم الإبداع', currency: 'USD' },
