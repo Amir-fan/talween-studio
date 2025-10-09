@@ -25,11 +25,18 @@ export async function GET(request: NextRequest) {
     // Ensure we use the correct InvoiceId; if missing from query, pull from Google Sheets order
     if (!invoiceId && orderId) {
       try {
+        console.log('🔍 [CALLBACK] Attempting to get invoiceId from order:', orderId);
         const orderResult = await getOrder(orderId);
+        console.log('🔍 [CALLBACK] getOrder result for invoiceId:', orderResult);
         if (orderResult.success && orderResult.order && orderResult.order.PaymentIntentID) {
           invoiceId = orderResult.order.PaymentIntentID;
+          console.log('🔍 [CALLBACK] Found invoiceId from order:', invoiceId);
+        } else {
+          console.log('🔍 [CALLBACK] No invoiceId found in order or getOrder failed');
         }
-      } catch {}
+      } catch (invoiceIdError) {
+        console.error('🔍 [CALLBACK] Error getting invoiceId from order:', invoiceIdError);
+      }
     }
 
     // If a MOCK-* PaymentId is provided, short-circuit as Paid
