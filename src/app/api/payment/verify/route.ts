@@ -241,4 +241,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?error=${encodeURIComponent('Verification error')}`);
   }
 }
-}
