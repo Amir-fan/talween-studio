@@ -44,7 +44,9 @@ export async function GET(request: NextRequest) {
     
     if (!statusResult.success) {
       console.error('🔍 [CALLBACK] ❌ Payment status check failed:', statusResult.error);
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?error=${encodeURIComponent(statusResult.error || 'Payment verification failed')}`);
+      console.error('🔍 [CALLBACK] Full status result:', JSON.stringify(statusResult));
+      console.error('🔍 [CALLBACK] Payment details:', { paymentId, invoiceId, orderId });
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?orderId=${orderId}&error=${encodeURIComponent(statusResult.error || 'Payment verification failed')}`);
     }
 
     // Find the order in Google Sheets
