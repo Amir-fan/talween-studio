@@ -11,15 +11,66 @@ function PaymentErrorContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [errorData, setErrorData] = useState<any>(null);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
 
   useEffect(() => {
+    console.log('🔍 [ERROR PAGE] === ERROR PAGE LOADED ===');
+    
     const orderId = searchParams.get('orderId');
+    const paymentId = searchParams.get('paymentId');
+    const id = searchParams.get('Id');
     const error = searchParams.get('error');
+    
+    // Get all URL parameters for debugging
+    const allParams = Object.fromEntries(searchParams.entries());
+    
+    console.log('🔍 [ERROR PAGE] URL Parameters:', {
+      orderId,
+      paymentId,
+      id,
+      error,
+      allParams
+    });
+    
+    // Check if this is a callback error (has paymentId)
+    const isCallbackError = !!(paymentId && orderId);
+    console.log('🔍 [ERROR PAGE] Is callback error?', isCallbackError);
     
     setErrorData({
       orderId,
-      error: error || 'حدث خطأ غير متوقع'
+      paymentId,
+      id,
+      error: error || 'حدث خطأ غير متوقع',
+      isCallbackError
     });
+    
+    setDebugInfo({
+      allParams,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      referrer: document.referrer,
+      currentUrl: window.location.href
+    });
+    
+    // If this is a callback error, try to diagnose what went wrong
+    if (isCallbackError) {
+      console.log('🔍 [ERROR PAGE] This appears to be a callback error');
+      console.log('🔍 [ERROR PAGE] Expected callback URL should have been:');
+      console.log(`🔍 [ERROR PAGE] /api/payment/callback?orderId=${orderId}&paymentId=${paymentId}`);
+      
+      // Try to check if the callback endpoint is reachable
+      fetch(`/api/payment/callback?orderId=${orderId}&paymentId=${paymentId}`)
+        .then(response => {
+          console.log('🔍 [ERROR PAGE] Callback endpoint test response:', response.status);
+          return response.text();
+        })
+        .then(text => {
+          console.log('🔍 [ERROR PAGE] Callback endpoint test result:', text);
+        })
+        .catch(err => {
+          console.error('🔍 [ERROR PAGE] Callback endpoint test failed:', err);
+        });
+    }
   }, [searchParams]);
 
   return (
@@ -106,6 +157,26 @@ function PaymentErrorContent() {
             </Button>
           </div>
 
+          {/* Debug Information */}
+          {debugInfo && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="text-sm">Debug Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-xs font-mono">
+                  <div><strong>Timestamp:</strong> {debugInfo.timestamp}</div>
+                  <div><strong>Order ID:</strong> {errorData?.orderId}</div>
+                  <div><strong>Payment ID:</strong> {errorData?.paymentId}</div>
+                  <div><strong>Error Type:</strong> {errorData?.isCallbackError ? 'Callback Error' : 'Unknown Error'}</div>
+                  <div><strong>Referrer:</strong> {debugInfo.referrer || 'Direct access'}</div>
+                  <div><strong>Current URL:</strong> {debugInfo.currentUrl}</div>
+                  <div><strong>All Parameters:</strong> {JSON.stringify(debugInfo.allParams, null, 2)}</div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Support Info */}
           <div className="mt-8 text-center">
             <p className="text-sm text-muted-foreground">
@@ -113,6 +184,9 @@ function PaymentErrorContent() {
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               رقم الطلب: {errorData?.orderId}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              تحقق من وحدة التحكم (F12) للمزيد من التفاصيل
             </p>
           </div>
         </div>
