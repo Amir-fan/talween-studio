@@ -59,9 +59,127 @@ function PaymentSuccessContent() {
     }
     
     console.log('🔍 [SUCCESS PAGE] All validations passed, starting payment completion process...');
-    // Process payment completion and add credits
-    processPaymentCompletion(orderId, amount, credits);
-  }, [searchParams, router]);
+    
+    // Process payment completion inline to avoid dependency issues
+    const processPayment = async () => {
+      try {
+        console.log('🔍 [SUCCESS PAGE] === PAYMENT COMPLETION START ===');
+        console.log('🔍 [SUCCESS PAGE] URL parameters:', { orderId, amount, credits });
+        
+        console.log('🔍 [SUCCESS PAGE] Additional params:', { packageId, userId });
+        
+        // Use the new reliable credit system
+        console.log('🔍 [SUCCESS PAGE] Calling /api/payment/add-credits with:', {
+          orderId,
+          packageId,
+          userId,
+          amount,
+          credits
+        });
+        
+        const response = await fetch('/api/payment/add-credits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: orderId,
+            packageId: packageId,
+            userId: userId,
+            amount: amount,
+            credits: credits
+          })
+        });
+
+        console.log('🔍 [SUCCESS PAGE] Add credits API response status:', response.status);
+
+        if (response.ok) {
+          console.log('🔍 [SUCCESS PAGE] ✅ Add credits API call successful, parsing response...');
+          const addCreditsResult = await response.json();
+          console.log('🔍 [SUCCESS PAGE] Add credits API result:', addCreditsResult);
+          
+          // Use the amounts from the add credits API response
+          const actualAmount = addCreditsResult.amount || (amount ? parseFloat(amount) : 0);
+          const actualCredits = addCreditsResult.credits || (credits ? parseInt(credits) : 0);
+          
+          console.log('🔍 [SUCCESS PAGE] Using amounts from API:', { actualAmount, actualCredits });
+          
+          // INSTANTLY refresh credits from Google Sheets before showing UI
+          console.log('🔍 [SUCCESS PAGE] INSTANTLY syncing credits from Google Sheets...');
+          await refreshUserData();
+          console.log('🔍 [SUCCESS PAGE] ✅ User data refreshed');
+          
+          setPaymentData({
+            orderId,
+            amount: actualAmount,
+            credits: actualCredits,
+            packageName: addCreditsResult.packageName
+          });
+          
+          console.log('🔍 [SUCCESS PAGE] ✅ Credits added successfully with amounts:', { 
+            orderId, 
+            amount: actualAmount, 
+            credits: actualCredits,
+            packageName: addCreditsResult.packageName
+          });
+        } else {
+          console.error('🔍 [SUCCESS PAGE] ❌ Add credits API call failed with status:', response.status);
+          const errorText = await response.text();
+          console.error('🔍 [SUCCESS PAGE] ❌ Add credits API error response:', errorText);
+          
+          let errorResult;
+          try {
+            errorResult = JSON.parse(errorText);
+            console.error('🔍 [SUCCESS PAGE] ❌ Credit addition failed (JSON):', errorResult);
+          } catch (parseError) {
+            console.error('🔍 [SUCCESS PAGE] ❌ Credit addition failed (text):', errorText);
+          }
+          
+          // Still try to refresh credits and show URL parameters as fallback
+          console.log('🔍 [SUCCESS PAGE] Attempting to refresh user data as fallback...');
+          await refreshUserData();
+          
+          setPaymentData({
+            orderId,
+            amount: amount ? parseFloat(amount) : 0,
+            credits: credits ? parseInt(credits) : 0,
+            error: errorResult?.error || 'Failed to add credits'
+          });
+          
+          console.log('🔍 [SUCCESS PAGE] Set fallback payment data:', {
+            orderId,
+            amount: amount ? parseFloat(amount) : 0,
+            credits: credits ? parseInt(credits) : 0
+          });
+        }
+      } catch (error: any) {
+        console.error('🔍 [SUCCESS PAGE] ❌ Payment completion error:', error);
+        console.error('🔍 [SUCCESS PAGE] ❌ Error stack:', error.stack);
+        
+        // Still try to refresh credits and show URL parameters as fallback
+        console.log('🔍 [SUCCESS PAGE] Attempting to refresh user data after error...');
+        try {
+          await refreshUserData();
+        } catch (refreshError) {
+          console.error('🔍 [SUCCESS PAGE] ❌ Failed to refresh user data:', refreshError);
+        }
+        
+        setPaymentData({
+          orderId,
+          amount: amount ? parseFloat(amount) : 0,
+          credits: credits ? parseInt(credits) : 0,
+          error: error.message || 'Payment processing error'
+        });
+        
+        console.log('🔍 [SUCCESS PAGE] Set error payment data:', {
+          orderId,
+          amount: amount ? parseFloat(amount) : 0,
+          credits: credits ? parseInt(credits) : 0,
+          error: error.message
+        });
+      }
+    };
+    
+    processPayment();
+  }, [searchParams, router, refreshUserData]);
 
   // Separate useEffect to handle user authentication
   useEffect(() => {
@@ -70,126 +188,6 @@ function PaymentSuccessContent() {
       router.push('/signup');
     }
   }, [loading, user, router]);
-
-  const processPaymentCompletion = async (orderId: string, amount: string | null, credits: string | null) => {
-    try {
-      console.log('🔍 [SUCCESS PAGE] === PAYMENT COMPLETION START ===');
-      console.log('🔍 [SUCCESS PAGE] URL parameters:', { orderId, amount, credits });
-      
-      // Get package info from URL or extract from orderId
-      const packageId = searchParams.get('packageId');
-      const userId = searchParams.get('userId') || user?.id;
-      
-      console.log('🔍 [SUCCESS PAGE] Additional params:', { packageId, userId });
-      
-      // Use the new reliable credit system
-      console.log('🔍 [SUCCESS PAGE] Calling /api/payment/add-credits with:', {
-        orderId,
-        packageId,
-        userId,
-        amount,
-        credits
-      });
-      
-      const response = await fetch('/api/payment/add-credits', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: orderId,
-          packageId: packageId,
-          userId: userId,
-          amount: amount,
-          credits: credits
-        })
-      });
-
-      console.log('🔍 [SUCCESS PAGE] Add credits API response status:', response.status);
-
-      if (response.ok) {
-        console.log('🔍 [SUCCESS PAGE] ✅ Add credits API call successful, parsing response...');
-        const addCreditsResult = await response.json();
-        console.log('🔍 [SUCCESS PAGE] Add credits API result:', addCreditsResult);
-        
-        // Use the amounts from the add credits API response
-        const actualAmount = addCreditsResult.amount || (amount ? parseFloat(amount) : 0);
-        const actualCredits = addCreditsResult.credits || (credits ? parseInt(credits) : 0);
-        
-        console.log('🔍 [SUCCESS PAGE] Using amounts from API:', { actualAmount, actualCredits });
-        
-        // INSTANTLY refresh credits from Google Sheets before showing UI
-        console.log('🔍 [SUCCESS PAGE] INSTANTLY syncing credits from Google Sheets...');
-        await refreshUserData();
-        console.log('🔍 [SUCCESS PAGE] ✅ User data refreshed');
-        
-        setPaymentData({
-          orderId,
-          amount: actualAmount,
-          credits: actualCredits,
-          packageName: addCreditsResult.packageName
-        });
-        
-        console.log('🔍 [SUCCESS PAGE] ✅ Credits added successfully with amounts:', { 
-          orderId, 
-          amount: actualAmount, 
-          credits: actualCredits,
-          packageName: addCreditsResult.packageName
-        });
-      } else {
-        console.error('🔍 [SUCCESS PAGE] ❌ Add credits API call failed with status:', response.status);
-        const errorText = await response.text();
-        console.error('🔍 [SUCCESS PAGE] ❌ Add credits API error response:', errorText);
-        
-        let errorResult;
-        try {
-          errorResult = JSON.parse(errorText);
-          console.error('🔍 [SUCCESS PAGE] ❌ Credit addition failed (JSON):', errorResult);
-        } catch (parseError) {
-          console.error('🔍 [SUCCESS PAGE] ❌ Credit addition failed (text):', errorText);
-        }
-        
-        // Still try to refresh credits and show URL parameters as fallback
-        console.log('🔍 [SUCCESS PAGE] Attempting to refresh user data as fallback...');
-        await refreshUserData();
-        
-        setPaymentData({
-          orderId,
-          amount: amount ? parseFloat(amount) : 0,
-          credits: credits ? parseInt(credits) : 0,
-          error: errorResult?.error || 'Failed to add credits'
-        });
-        
-        console.log('🔍 [SUCCESS PAGE] Set fallback payment data:', {
-          orderId,
-          amount: amount ? parseFloat(amount) : 0,
-          credits: credits ? parseInt(credits) : 0
-        });
-      }
-    } catch (error) {
-      console.error('🔍 [SUCCESS PAGE] ❌ Payment completion error:', error);
-      console.error('🔍 [SUCCESS PAGE] ❌ Error stack:', error.stack);
-      
-      // Still try to refresh credits and show URL parameters as fallback
-      console.log('🔍 [SUCCESS PAGE] Attempting to refresh user data after error...');
-      try {
-        await refreshUserData();
-      } catch (refreshError) {
-        console.error('🔍 [SUCCESS PAGE] ❌ Failed to refresh user data:', refreshError);
-      }
-      
-      setPaymentData({
-        orderId,
-        amount: amount ? parseFloat(amount) : 0,
-        credits: credits ? parseInt(credits) : 0,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
-      
-      console.log('🔍 [SUCCESS PAGE] Set error fallback payment data:', {
-        orderId,
-        amount: amount ? parseFloat(amount) : 0,
-        credits: credits ? parseInt(credits) : 0
-      });
-    }
-  };
 
   if (!paymentData) {
     return (
