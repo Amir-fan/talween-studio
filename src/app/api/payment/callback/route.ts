@@ -44,16 +44,17 @@ export async function GET(request: NextRequest) {
     console.log('🔍 [CALLBACK] Checking if mock payment:', { isMock, paymentId });
     
     const statusResult = isMock
-      ? { success: true, status: 'Paid', transactionId: paymentId || 'MOCK-TXN' }
+      ? { success: true, status: 'Paid' as const, transactionId: paymentId || 'MOCK-TXN' }
       : await checkPaymentStatus(paymentId || (invoiceId as string), paymentId ? 'PaymentId' : 'InvoiceId');
     
     console.log('🔍 [CALLBACK] Payment status check result:', statusResult);
     
     if (!statusResult.success) {
-      console.error('🔍 [CALLBACK] ❌ Payment status check failed:', statusResult.error);
+      const errorMsg = 'error' in statusResult ? statusResult.error : 'Payment verification failed';
+      console.error('🔍 [CALLBACK] ❌ Payment status check failed:', errorMsg);
       console.error('🔍 [CALLBACK] Full status result:', JSON.stringify(statusResult));
       console.error('🔍 [CALLBACK] Payment details:', { paymentId, invoiceId, orderId });
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?orderId=${orderId}&error=${encodeURIComponent(statusResult.error || 'Payment verification failed')}`);
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?orderId=${orderId}&error=${encodeURIComponent(errorMsg || 'Payment verification failed')}`);
     }
 
     // Find the order in Google Sheets
@@ -98,7 +99,7 @@ export async function GET(request: NextRequest) {
       const updateResult = await updateOrderStatus({
         orderId: orderId!,
         status: 'paid',
-        paymentId: paymentId || invoiceId
+        paymentId: (paymentId || invoiceId) || undefined
       });
       
       if (!updateResult.success) {
