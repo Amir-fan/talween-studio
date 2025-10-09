@@ -104,8 +104,16 @@ export async function POST(request: NextRequest) {
           status: createdOrder.status,
           package_id: packageId
         });
+        
+        // Also log all orders to verify it's in the database
+        const allOrders = orderDb.getAllOrders();
+        console.log('🔍 [CREATE SESSION] All orders in database:', allOrders.length);
+        console.log('🔍 [CREATE SESSION] Order IDs in database:', allOrders.map(o => o.id));
       } else {
         console.error('🔍 [CREATE SESSION] ❌ Order not found after creation!');
+        console.error('🔍 [CREATE SESSION] Order ID that was created:', orderId);
+        const allOrders = orderDb.getAllOrders();
+        console.error('🔍 [CREATE SESSION] Available orders:', allOrders.map(o => o.id));
       }
     } catch (e) {
       console.error('🔍 [CREATE SESSION] ❌ Order creation failed:', e);

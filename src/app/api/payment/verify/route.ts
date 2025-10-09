@@ -19,12 +19,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Get order details from database
+    console.log('🔍 [VERIFY API] Looking for order in database:', orderId);
     const order = orderDb.findById(orderId);
+    
     if (!order) {
-      console.error('🔍 [VERIFY API] Order not found in database:', orderId);
-      console.error('🔍 [VERIFY API] Available orders:', Object.keys(orderDb.getAllOrders().reduce((acc, o) => ({ ...acc, [o.id]: o }), {})));
+      console.error('🔍 [VERIFY API] ❌ Order not found in database:', orderId);
+      const allOrders = orderDb.getAllOrders();
+      console.error('🔍 [VERIFY API] Available orders count:', allOrders.length);
+      console.error('🔍 [VERIFY API] Available order IDs:', allOrders.map(o => o.id));
+      console.error('🔍 [VERIFY API] Available orders details:', allOrders.map(o => ({ 
+        id: o.id, 
+        user_id: o.user_id, 
+        amount: o.total_amount, 
+        credits: o.credits_purchased,
+        status: o.status 
+      })));
       return NextResponse.json(
-        { error: 'Order not found' },
+        { error: 'Order not found', orderId, availableOrders: allOrders.length },
         { status: 404 }
       );
     }
