@@ -101,13 +101,23 @@ export default function PackagesPage() {
   }
 
   const handlePurchase = async (packageId: string) => {
+    console.log('🔍 [PACKAGES PAGE] === PURCHASE BUTTON CLICKED ===');
+    console.log('🔍 [PACKAGES PAGE] Package ID:', packageId);
+    console.log('🔍 [PACKAGES PAGE] Current user:', user);
+    
     setProcessing(true);
     try {
       const selectedPkg = creditPackages.find(pkg => pkg.id === packageId);
-      if (!selectedPkg) return;
+      console.log('🔍 [PACKAGES PAGE] Selected package:', selectedPkg);
+      
+      if (!selectedPkg) {
+        console.error('🔍 [PACKAGES PAGE] ❌ Package not found:', packageId);
+        return;
+      }
 
       // Handle FREE package - do NOT give credits, just show info
       if (selectedPkg.id === 'FREE') {
+        console.log('🔍 [PACKAGES PAGE] FREE package selected, showing info only');
         toast({
           title: 'الباقة المجانية',
           description: 'تحصل على 128 نقطة مجانية عند التسجيل. رصيدك الحالي: ' + (user.credits || 0) + ' نقطة',
@@ -117,11 +127,20 @@ export default function PackagesPage() {
       }
 
       // All other packages (including TEST) require payment
-      console.log('💳 Creating payment session for package:', {
+      console.log('🔍 [PACKAGES PAGE] Creating payment session for package:', {
         packageId: selectedPkg.id,
+        name: selectedPkg.name,
         amount: selectedPkg.price,
         credits: selectedPkg.credits,
         userId: user.id
+      });
+
+      console.log('🔍 [PACKAGES PAGE] About to call /api/payment/create-session with:', {
+        amount: selectedPkg.price,
+        currency: selectedPkg.currency,
+        packageId: selectedPkg.id,
+        credits: selectedPkg.credits,
+        userId: user?.id,
       });
 
       const response = await fetch('/api/payment/create-session', {
@@ -138,13 +157,19 @@ export default function PackagesPage() {
         }),
       });
 
+      console.log('🔍 [PACKAGES PAGE] Create session response status:', response.status);
+      
       const result = await response.json();
+      console.log('🔍 [PACKAGES PAGE] Create session response:', result);
 
       if (result.success && result.paymentUrl) {
+        console.log('🔍 [PACKAGES PAGE] ✅ Payment session created successfully, redirecting...');
         // Redirect to payment page with order details
         const paymentUrl = `/payment?orderId=${result.orderId}&amount=${selectedPkg.price}&packageId=${selectedPkg.id}&credits=${selectedPkg.credits}`;
+        console.log('🔍 [PACKAGES PAGE] Redirecting to:', paymentUrl);
         window.location.href = paymentUrl;
       } else {
+        console.error('🔍 [PACKAGES PAGE] ❌ Payment session creation failed:', result);
         throw new Error(result.error || 'فشل في إنشاء جلسة الدفع');
       }
     } catch (error) {

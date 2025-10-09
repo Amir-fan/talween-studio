@@ -33,12 +33,16 @@ export async function GET(request: NextRequest) {
 
     // If a MOCK-* PaymentId is provided, short-circuit as Paid
     const isMock = (paymentId?.startsWith('MOCK-') ?? false);
+    console.log('🔍 [CALLBACK] Checking if mock payment:', { isMock, paymentId });
+    
     const statusResult = isMock
       ? { success: true, status: 'Paid', transactionId: paymentId || 'MOCK-TXN' }
       : await checkPaymentStatus(paymentId || (invoiceId as string), paymentId ? 'PaymentId' : 'InvoiceId');
     
+    console.log('🔍 [CALLBACK] Payment status check result:', statusResult);
+    
     if (!statusResult.success) {
-      console.error('💳 [CALLBACK:GET] Payment status check failed:', statusResult.error);
+      console.error('🔍 [CALLBACK] ❌ Payment status check failed:', statusResult.error);
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?error=${encodeURIComponent(statusResult.error || 'Payment verification failed')}`);
     }
 

@@ -15,14 +15,25 @@ function PaymentSuccessContent() {
   const [paymentData, setPaymentData] = useState<any>(null);
 
   useEffect(() => {
+    console.log('🔍 [SUCCESS PAGE] === USEEFFECT TRIGGERED ===');
+    
     const orderId = searchParams.get('orderId');
     const amount = searchParams.get('amount');
     const credits = searchParams.get('credits');
     
+    console.log('🔍 [SUCCESS PAGE] URL Search Params:', {
+      orderId,
+      amount,
+      credits,
+      allParams: Object.fromEntries(searchParams.entries())
+    });
+    
     if (orderId) {
+      console.log('🔍 [SUCCESS PAGE] Order ID found, starting payment completion process...');
       // Process payment completion and add credits
       processPaymentCompletion(orderId, amount, credits);
     } else {
+      console.log('🔍 [SUCCESS PAGE] No order ID found, redirecting to packages...');
       // Redirect to packages if no payment data
       router.push('/packages');
     }
@@ -32,6 +43,12 @@ function PaymentSuccessContent() {
     try {
       console.log('🔍 [SUCCESS PAGE] === PAYMENT COMPLETION START ===');
       console.log('🔍 [SUCCESS PAGE] URL parameters:', { orderId, amount, credits });
+      
+      console.log('🔍 [SUCCESS PAGE] About to call /api/payment/verify with:', {
+        orderId,
+        status: 'paid',
+        transactionId: orderId
+      });
       
       // Call the payment verification API to process the payment and add credits
       const response = await fetch('/api/payment/verify', {
@@ -45,8 +62,10 @@ function PaymentSuccessContent() {
       });
 
       console.log('🔍 [SUCCESS PAGE] Verify API response status:', response.status);
+      console.log('🔍 [SUCCESS PAGE] Verify API response headers:', Object.fromEntries(response.headers.entries()));
 
       if (response.ok) {
+        console.log('🔍 [SUCCESS PAGE] ✅ Verify API call successful, parsing response...');
         const verifyResult = await response.json();
         console.log('🔍 [SUCCESS PAGE] Verify API result:', verifyResult);
         
@@ -59,6 +78,7 @@ function PaymentSuccessContent() {
         // INSTANTLY refresh credits from Google Sheets before showing UI
         console.log('🔍 [SUCCESS PAGE] INSTANTLY syncing credits from Google Sheets...');
         await refreshUserData();
+        console.log('🔍 [SUCCESS PAGE] ✅ User data refreshed');
         
         setPaymentData({
           orderId,
@@ -72,10 +92,20 @@ function PaymentSuccessContent() {
           credits: actualCredits 
         });
       } else {
-        const errorResult = await response.json();
-        console.error('🔍 [SUCCESS PAGE] ❌ Payment processing failed:', errorResult);
+        console.error('🔍 [SUCCESS PAGE] ❌ Verify API call failed with status:', response.status);
+        const errorText = await response.text();
+        console.error('🔍 [SUCCESS PAGE] ❌ Verify API error response:', errorText);
+        
+        let errorResult;
+        try {
+          errorResult = JSON.parse(errorText);
+          console.error('🔍 [SUCCESS PAGE] ❌ Payment processing failed (JSON):', errorResult);
+        } catch (parseError) {
+          console.error('🔍 [SUCCESS PAGE] ❌ Payment processing failed (text):', errorText);
+        }
         
         // Still try to refresh credits and show URL parameters as fallback
+        console.log('🔍 [SUCCESS PAGE] Attempting to refresh user data as fallback...');
         await refreshUserData();
         
         setPaymentData({
@@ -83,13 +113,32 @@ function PaymentSuccessContent() {
           amount: amount ? parseFloat(amount) : 0,
           credits: credits ? parseInt(credits) : 0
         });
+        
+        console.log('🔍 [SUCCESS PAGE] Set fallback payment data:', {
+          orderId,
+          amount: amount ? parseFloat(amount) : 0,
+          credits: credits ? parseInt(credits) : 0
+        });
       }
     } catch (error) {
       console.error('🔍 [SUCCESS PAGE] ❌ Payment completion error:', error);
+      console.error('🔍 [SUCCESS PAGE] ❌ Error stack:', error.stack);
+      
       // Still try to refresh credits and show URL parameters as fallback
-      await refreshUserData();
+      console.log('🔍 [SUCCESS PAGE] Attempting to refresh user data after error...');
+      try {
+        await refreshUserData();
+      } catch (refreshError) {
+        console.error('🔍 [SUCCESS PAGE] ❌ Failed to refresh user data:', refreshError);
+      }
       
       setPaymentData({
+        orderId,
+        amount: amount ? parseFloat(amount) : 0,
+        credits: credits ? parseInt(credits) : 0
+      });
+      
+      console.log('🔍 [SUCCESS PAGE] Set error fallback payment data:', {
         orderId,
         amount: amount ? parseFloat(amount) : 0,
         credits: credits ? parseInt(credits) : 0

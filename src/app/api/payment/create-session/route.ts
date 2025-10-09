@@ -4,10 +4,18 @@ import { orderDb, userDb } from '@/lib/simple-database';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🔍 PAYMENT API - Starting payment session creation');
+    console.log('🔍 [CREATE SESSION] === PAYMENT SESSION CREATION START ===');
 
     const { amount, currency, packageId, credits, userId, orderId: providedOrderId, discountCode } = await request.json();
-    console.log('🔍 PAYMENT API - Request data:', { amount, currency, packageId, credits, userId });
+    console.log('🔍 [CREATE SESSION] Request data received:', { 
+      amount, 
+      currency, 
+      packageId, 
+      credits, 
+      userId, 
+      providedOrderId, 
+      discountCode 
+    });
 
     // Require API key for real MyFatoorah integration
     if (!process.env.MYFATOORAH_API_KEY) {
