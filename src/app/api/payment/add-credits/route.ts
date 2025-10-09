@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { userDb } from '@/lib/simple-database';
-import { addCredits } from '@/lib/google-sheets-server';
+import { googleSheetsUserDb } from '@/lib/google-sheets-server';
 
 // Package definitions matching the packages page EXACTLY
 const PACKAGES = {
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
     let googleSheetsSuccess = false;
     
     try {
-      const addCreditsResult = await addCredits(userId, packageCredits);
+      const addCreditsResult = await googleSheetsUserDb.addCredits(userId, packageCredits);
       googleSheetsSuccess = addCreditsResult.success;
       
       if (addCreditsResult.success) {
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
       } else {
         console.error('🎁 [ADD CREDITS API] ❌ Google Sheets update failed:', addCreditsResult.error);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('🎁 [ADD CREDITS API] ❌ Google Sheets error:', error);
     }
 
