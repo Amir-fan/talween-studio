@@ -5,6 +5,12 @@ import { googleSheetsUserDb } from '@/lib/google-sheets-server';
 import { getOrder, updateOrderStatus } from '@/lib/google-sheets-orders';
 
 export async function GET(request: NextRequest) {
+  // Log immediately - before any try-catch
+  const timestamp = new Date().toISOString();
+  console.log('='=50);
+  console.log(`🔍 [CALLBACK] ${timestamp} - PAYMENT CALLBACK TRIGGERED`);
+  console.log('='=50);
+  
   try {
     const searchParams = request.nextUrl.searchParams;
     const paymentId = searchParams.get('paymentId');

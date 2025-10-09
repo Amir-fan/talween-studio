@@ -12,6 +12,8 @@ function PaymentErrorContent() {
   const router = useRouter();
   const [errorData, setErrorData] = useState<any>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [liveDebug, setLiveDebug] = useState<any>(null);
+  const [isLoadingDebug, setIsLoadingDebug] = useState(false);
 
   useEffect(() => {
     console.log('🔍 [ERROR PAGE] === ERROR PAGE LOADED ===');
@@ -51,6 +53,26 @@ function PaymentErrorContent() {
       referrer: document.referrer,
       currentUrl: window.location.href
     });
+
+    // Fetch live debug info from our debug endpoint
+    if (orderId || paymentId) {
+      setIsLoadingDebug(true);
+      const debugUrl = `/api/payment/debug-status?orderId=${orderId || ''}&paymentId=${paymentId || ''}`;
+      console.log('🔍 [ERROR PAGE] Fetching debug info from:', debugUrl);
+      
+      fetch(debugUrl)
+        .then(res => res.json())
+        .then(data => {
+          console.log('🔍 [ERROR PAGE] Live debug data:', data);
+          setLiveDebug(data);
+          setIsLoadingDebug(false);
+        })
+        .catch(err => {
+          console.error('🔍 [ERROR PAGE] Failed to fetch debug info:', err);
+          setLiveDebug({ error: err.message });
+          setIsLoadingDebug(false);
+        });
+    }
     
     // If this is a callback error, try to diagnose what went wrong
     if (isCallbackError) {
@@ -66,14 +88,26 @@ function PaymentErrorContent() {
         window.location.href = `/api/payment/callback?orderId=${orderId}&paymentId=${paymentId}`;
       }, 3000); // Wait 3 seconds to show error message first
       
-      // Try to check if the callback endpoint is reachable
+      // Try to check if the callback endpoint is reachable and get the response
+      console.log('🔍 [ERROR PAGE] Testing callback endpoint...');
       fetch(`/api/payment/callback?orderId=${orderId}&paymentId=${paymentId}`)
         .then(response => {
           console.log('🔍 [ERROR PAGE] Callback endpoint test response:', response.status);
+          console.log('🔍 [ERROR PAGE] Response headers:', Object.fromEntries(response.headers.entries()));
+          console.log('🔍 [ERROR PAGE] Response redirected:', response.redirected);
+          console.log('🔍 [ERROR PAGE] Response URL:', response.url);
           return response.text();
         })
         .then(text => {
-          console.log('🔍 [ERROR PAGE] Callback endpoint test result:', text);
+          console.log('🔍 [ERROR PAGE] Callback endpoint test result:');
+          console.log(text);
+          // Try to parse as JSON if possible
+          try {
+            const json = JSON.parse(text);
+            console.log('🔍 [ERROR PAGE] Parsed JSON response:', json);
+          } catch (e) {
+            console.log('🔍 [ERROR PAGE] Response is not JSON (might be HTML redirect)');
+          }
         })
         .catch(err => {
           console.error('🔍 [ERROR PAGE] Callback endpoint test failed:', err);
@@ -184,6 +218,120 @@ function PaymentErrorContent() {
               </CardContent>
             </Card>
           )}
+
+          {/* Live Debug Information from Server */}
+          <Card className="mb-6 border-2 border-blue-500">
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                🔍 Live Payment Status Check
+                {isLoadingDebug && <span className="text-xs text-muted-foreground">(Loading...)</span>}
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Real-time payment verification from MyFatoorah and Google Sheets
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingDebug && (
+                <div className="text-sm text-muted-foreground">Checking payment status...</div>
+              )}
+              
+              {liveDebug && (
+                <div className="space-y-4">
+                  {/* Summary */}
+                  {liveDebug.summary && (
+                    <div className="p-4 bg-blue-50 rounded-lg">
+                      <h4 className="font-semibold text-sm mb-2">📊 Summary</h4>
+                      <div className="space-y-1 text-xs">
+                        <div><strong>Order Found:</strong> {liveDebug.summary.orderFound ? '✅ Yes' : '❌ No'}</div>
+                        <div><strong>Payment Checked:</strong> {liveDebug.summary.paymentChecked ? '✅ Yes' : '❌ No'}</div>
+                        <div className="text-lg font-bold mt-2">
+                          <strong>Payment Status:</strong>{' '}
+                          <span className={
+                            liveDebug.summary.paymentStatus === 'Paid' ? 'text-green-600' :
+                            liveDebug.summary.paymentStatus === 'Failed' ? 'text-red-600' :
+                            liveDebug.summary.paymentStatus === 'Pending' ? 'text-yellow-600' :
+                            'text-gray-600'
+                          }>
+                            {liveDebug.summary.paymentStatus}
+                          </span>
+                        </div>
+                        {liveDebug.summary.shouldSucceed && (
+                          <div className="mt-2 p-2 bg-green-100 text-green-800 rounded">
+                            ✅ Payment was successful! Credits should be added.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Order Details */}
+                  {liveDebug.orderDetails && (
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <h4 className="font-semibold text-sm mb-2">📦 Order Details (Google Sheets)</h4>
+                      <div className="space-y-1 text-xs font-mono">
+                        <div><strong>Order ID:</strong> {liveDebug.orderDetails.orderId}</div>
+                        <div><strong>User ID:</strong> {liveDebug.orderDetails.userId}</div>
+                        <div><strong>Amount:</strong> ${liveDebug.orderDetails.amount}</div>
+                        <div><strong>Credits:</strong> {liveDebug.orderDetails.credits}</div>
+                        <div><strong>Package:</strong> {liveDebug.orderDetails.packageId}</div>
+                        <div><strong>Status:</strong> <span className="font-bold">{liveDebug.orderDetails.status}</span></div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* MyFatoorah Status */}
+                  {liveDebug.myFatoorahStatus && (
+                    <div className="p-4 bg-purple-50 rounded-lg">
+                      <h4 className="font-semibold text-sm mb-2">💳 MyFatoorah Payment Status</h4>
+                      <div className="space-y-1 text-xs font-mono">
+                        <div><strong>API Success:</strong> {liveDebug.myFatoorahStatus.success ? '✅' : '❌'}</div>
+                        <div><strong>Status:</strong> <span className="font-bold">{liveDebug.myFatoorahStatus.status}</span></div>
+                        <div><strong>Is Paid:</strong> {liveDebug.myFatoorahStatus.isPaid ? '✅ Yes' : '❌ No'}</div>
+                        <div><strong>Is Pending:</strong> {liveDebug.myFatoorahStatus.isPending ? '⏳ Yes' : '❌ No'}</div>
+                        <div><strong>Is Failed:</strong> {liveDebug.myFatoorahStatus.isFailed ? '❌ Yes' : '✅ No'}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Processing Steps */}
+                  {liveDebug.steps && (
+                    <div className="p-4 bg-green-50 rounded-lg">
+                      <h4 className="font-semibold text-sm mb-2">🔄 Processing Steps</h4>
+                      <div className="space-y-2">
+                        {liveDebug.steps.map((step: any, index: number) => (
+                          <div key={index} className="text-xs border-l-2 border-gray-300 pl-3">
+                            <div className="font-semibold">
+                              Step {step.step}: {step.name} - {step.status}
+                            </div>
+                            {step.error && (
+                              <div className="text-red-600 mt-1">Error: {step.error}</div>
+                            )}
+                            {step.paymentStatus && (
+                              <div className="mt-1">Payment Status: <strong>{step.paymentStatus}</strong></div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Full Debug Data (Collapsible) */}
+                  <details className="text-xs">
+                    <summary className="cursor-pointer font-semibold">🔧 Full Debug Data (Click to expand)</summary>
+                    <pre className="mt-2 p-4 bg-gray-900 text-green-400 rounded overflow-auto max-h-96">
+                      {JSON.stringify(liveDebug, null, 2)}
+                    </pre>
+                  </details>
+                </div>
+              )}
+
+              {liveDebug?.error && (
+                <div className="p-4 bg-red-50 text-red-800 rounded">
+                  <strong>Error loading debug info:</strong> {liveDebug.error}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Support Info */}
           <div className="mt-8 text-center">
