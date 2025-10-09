@@ -118,8 +118,8 @@ export async function POST(request: NextRequest) {
       packageId: packageId,
       credits: credits,
       description: `تالوين — شراء ${credits} نقطة (${packageId})${appliedDiscount ? ` — خصم ${appliedDiscount.percentOff}%: ${appliedDiscount.code}` : ''}`,
-      // Redirect users to success page after payment completion
-      returnUrl: `${baseUrl}/payment/success?orderId=${orderIdStr}`,
+      // Redirect users to success page after payment completion with all parameters
+      returnUrl: `${baseUrl}/payment/success?orderId=${orderIdStr}&amount=${finalAmount}&credits=${credits}&packageId=${packageId}&userId=${userId}`,
       errorUrl: `${baseUrl}/payment/error?orderId=${orderIdStr}`,
     };
 

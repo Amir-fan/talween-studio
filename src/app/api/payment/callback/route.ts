@@ -186,7 +186,7 @@ export async function GET(request: NextRequest) {
         status: 'pending'
       });
       console.log(`⏳ [CALLBACK:GET] Payment pending for order ${orderId}, status: ${statusResult.status}`);
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/pending?orderId=${orderId}`);
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/pending?orderId=${orderId}&amount=${order.Amount}&credits=${order.CreditsPurchased || 0}&packageId=${order.PackageID}&userId=${order.UserID}`);
     }
   } catch (error) {
     console.error('💥 [CALLBACK:GET] Payment callback error:', error);
