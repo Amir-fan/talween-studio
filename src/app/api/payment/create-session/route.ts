@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPaymentSession } from '@/lib/myfatoorah-service';
-import { orderDb, userDb } from '@/lib/simple-database';
+import { createOrder, updateOrderStatus } from '@/lib/google-sheets-orders';
+import { userDb } from '@/lib/simple-database';
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
     let orderId: string | null = providedOrderId || null;
     try {
       console.log('🔍 [CREATE SESSION] === ORDER CREATION START ===');
-      console.log('🔍 [CREATE SESSION] Order creation params:', { 
+      console.log('🔍 [CREATE SESSION] Creating order in Google Sheets:', { 
         userId, 
         finalAmount, 
         packageId, 
@@ -64,57 +65,30 @@ export async function POST(request: NextRequest) {
         providedOrderId 
       });
       
-      if (orderId) {
-        const existing = orderDb.findById(orderId);
-        if (!existing) {
-          const { id: dbOrderId } = orderDb.create(userId, finalAmount, packageId, credits);
-          orderId = dbOrderId;
-          console.log('🔍 [CREATE SESSION] ✅ Created new order:', { 
-            orderId: dbOrderId, 
-            amount: finalAmount, 
-            credits, 
-            packageId 
-          });
-        } else {
-          console.log('🔍 [CREATE SESSION] Using existing order:', { 
-            orderId, 
-            amount: existing.total_amount, 
-            credits: existing.credits_purchased 
-          });
-        }
-      } else {
-        const { id: dbOrderId } = orderDb.create(userId, finalAmount, packageId, credits);
-        orderId = dbOrderId;
-        console.log('🔍 [CREATE SESSION] ✅ Created new order:', { 
-          orderId: dbOrderId, 
-          amount: finalAmount, 
-          credits, 
-          packageId 
-        });
+      // Create order in Google Sheets
+      const orderResult = await createOrder({
+        userId,
+        amount: finalAmount,
+        packageId,
+        credits: credits
+      });
+      
+      if (!orderResult.success) {
+        console.error('🔍 [CREATE SESSION] ❌ Failed to create order in Google Sheets:', orderResult.error);
+        throw new Error('Failed to create order: ' + orderResult.error);
       }
       
-      // Verify the order was created correctly
-      const createdOrder = orderDb.findById(orderId);
-      if (createdOrder) {
-        console.log('🔍 [CREATE SESSION] ✅ Order verification:', {
-          id: createdOrder.id,
-          user_id: createdOrder.user_id,
-          total_amount: createdOrder.total_amount,
-          credits_purchased: createdOrder.credits_purchased,
-          status: createdOrder.status,
-          package_id: packageId
-        });
-        
-        // Also log all orders to verify it's in the database
-        const allOrders = orderDb.getAllOrders();
-        console.log('🔍 [CREATE SESSION] All orders in database:', allOrders.length);
-        console.log('🔍 [CREATE SESSION] Order IDs in database:', allOrders.map(o => o.id));
-      } else {
-        console.error('🔍 [CREATE SESSION] ❌ Order not found after creation!');
-        console.error('🔍 [CREATE SESSION] Order ID that was created:', orderId);
-        const allOrders = orderDb.getAllOrders();
-        console.error('🔍 [CREATE SESSION] Available orders:', allOrders.map(o => o.id));
-      }
+      orderId = orderResult.orderId!;
+      const orderNumber = orderResult.orderNumber!;
+      
+      console.log('🔍 [CREATE SESSION] ✅ Order created successfully in Google Sheets:', {
+        orderId,
+        orderNumber,
+        userId,
+        totalAmount: finalAmount,
+        creditsPurchased: credits,
+        packageId
+      });
     } catch (e) {
       console.error('🔍 [CREATE SESSION] ❌ Order creation failed:', e);
     }
@@ -158,7 +132,11 @@ export async function POST(request: NextRequest) {
       // Store invoice id on the order (as payment_intent_id) with pending status
       try {
         if (paymentResult.invoiceId) {
-          orderDb.updateStatus(orderIdStr, 'pending', paymentResult.invoiceId);
+          await updateOrderStatus({
+            orderId: orderIdStr,
+            status: 'pending',
+            paymentId: paymentResult.invoiceId
+          });
         }
       } catch (e) {
         console.log('Failed to store invoiceId on order (non-blocking):', e);

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { orderDb, userDb } from '@/lib/simple-database';
+import { userDb } from '@/lib/simple-database';
+import { addCredits } from '@/lib/google-sheets-server';
+import { getOrder, updateOrderStatus } from '@/lib/google-sheets-orders';
 import { checkPaymentStatus } from '@/lib/myfatoorah-service';
 import { config } from '@/lib/config';
 
@@ -18,36 +20,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get order details from database
-    console.log('🔍 [VERIFY API] Looking for order in database:', orderId);
-    const order = orderDb.findById(orderId);
+    // Get order details from Google Sheets
+    console.log('🔍 [VERIFY API] Looking for order in Google Sheets:', orderId);
+    const orderResult = await getOrder(orderId);
     
-    if (!order) {
-      console.error('🔍 [VERIFY API] ❌ Order not found in database:', orderId);
-      const allOrders = orderDb.getAllOrders();
-      console.error('🔍 [VERIFY API] Available orders count:', allOrders.length);
-      console.error('🔍 [VERIFY API] Available order IDs:', allOrders.map(o => o.id));
-      console.error('🔍 [VERIFY API] Available orders details:', allOrders.map(o => ({ 
-        id: o.id, 
-        user_id: o.user_id, 
-        amount: o.total_amount, 
-        credits: o.credits_purchased,
-        status: o.status 
-      })));
+    if (!orderResult.success || !orderResult.order) {
+      console.error('🔍 [VERIFY API] ❌ Order not found in Google Sheets:', orderId);
+      console.error('🔍 [VERIFY API] Error:', orderResult.error);
       return NextResponse.json(
-        { error: 'Order not found', orderId, availableOrders: allOrders.length },
+        { error: 'Order not found: ' + (orderResult.error || 'Unknown error') },
         { status: 404 }
       );
     }
 
-    console.log('🔍 [VERIFY API] Order found:', { 
-      id: order.id, 
-      user_id: order.user_id, 
-      total_amount: order.total_amount, 
-      credits_purchased: order.credits_purchased, 
-      status: order.status,
-      payment_intent_id: order.payment_intent_id,
-      subscription_tier: order.subscription_tier
+    const order = orderResult.order;
+    console.log('🔍 [VERIFY API] Order found in Google Sheets:', { 
+      ID: order.ID, 
+      UserID: order.UserID, 
+      Amount: order.Amount, 
+      CreditsPurchased: order.CreditsPurchased, 
+      Status: order.Status,
+      PaymentIntentID: order.PaymentIntentID,
+      PackageID: order.PackageID
     });
 
     // CRITICAL: Check payment status with MyFatoorah instead of trusting client
@@ -57,8 +51,8 @@ export async function POST(request: NextRequest) {
     
     try {
       // Try to get payment status using payment_intent_id or orderId
-      const paymentKey = order.payment_intent_id || orderId;
-      const keyType = order.payment_intent_id ? 'InvoiceId' : 'InvoiceId';
+      const paymentKey = order.PaymentIntentID || orderId;
+      const keyType = order.PaymentIntentID ? 'InvoiceId' : 'InvoiceId';
       
       console.log('🔍 [VERIFY API] Checking MyFatoorah with:', { paymentKey, keyType });
       myFatoorahStatus = await checkPaymentStatus(paymentKey, keyType);
@@ -85,14 +79,14 @@ export async function POST(request: NextRequest) {
 
     try {
       // Check if already processed to prevent duplicates
-      if (order.status === 'paid') {
+      if (order.Status === 'paid') {
         console.log('⚠️ [VERIFY API] Order already processed, returning existing status');
         return NextResponse.json({
           success: true,
           message: 'Payment already verified',
-          orderId: order.id,
-          amount: order.total_amount,
-          credits: order.credits_purchased || 0,
+          orderId: order.ID,
+          amount: order.Amount,
+          credits: order.CreditsPurchased || 0,
           alreadyProcessed: true
         });
       }
@@ -109,35 +103,40 @@ export async function POST(request: NextRequest) {
 
       console.log('🔍 [VERIFY API] Payment confirmed as paid, processing credits...');
 
-      // Mark as paid FIRST to prevent race conditions
-      orderDb.updateStatus(orderId, 'paid', transactionId);
-      console.log('🔍 [VERIFY API] Order status updated to "paid"');
+      // Mark as paid in Google Sheets FIRST to prevent race conditions
+      console.log('🔍 [VERIFY API] Marking order as paid in Google Sheets...');
+      const updateResult = await updateOrderStatus({
+        orderId,
+        status: 'paid',
+        paymentId: transactionId
+      });
+      
+      if (!updateResult.success) {
+        console.error('🔍 [VERIFY API] Failed to update order status:', updateResult.error);
+        return NextResponse.json(
+          { error: 'Failed to update order status: ' + updateResult.error },
+          { status: 500 }
+        );
+      }
+      console.log('🔍 [VERIFY API] Order status updated to "paid" in Google Sheets');
       
       // Add credits to user
-      if (order.credits_purchased && order.credits_purchased > 0) {
+      if (order.CreditsPurchased && order.CreditsPurchased > 0) {
         console.log('🔍 [VERIFY API] Adding credits to local database:', { 
-          userId: order.user_id, 
-          creditsToAdd: order.credits_purchased,
-          currentCredits: userDb.findById(order.user_id)?.credits || 0
+          userId: order.UserID, 
+          creditsToAdd: order.CreditsPurchased,
+          currentCredits: userDb.findById(order.UserID)?.credits || 0
         });
         
-        userDb.updateCredits(order.user_id, order.credits_purchased);
+        userDb.updateCredits(order.UserID, order.CreditsPurchased);
         
-        const userAfter = userDb.findById(order.user_id);
+        const userAfter = userDb.findById(order.UserID);
         console.log('🔍 [VERIFY API] Credits added successfully:', { 
-          userId: order.user_id, 
+          userId: order.UserID, 
           newCredits: userAfter?.credits || 0 
         });
-        
-        // Update user's subscription tier if applicable
-        if (order.subscription_tier && order.subscription_tier !== 'FREE') {
-          userDb.updateUser(order.user_id, {
-            subscription_tier: order.subscription_tier
-          });
-          console.log('🔍 [VERIFY API] Subscription tier updated:', order.subscription_tier);
-        }
       } else {
-        console.warn('🔍 [VERIFY API] No credits to add:', { credits_purchased: order.credits_purchased });
+        console.warn('🔍 [VERIFY API] No credits to add:', { CreditsPurchased: order.CreditsPurchased });
       }
       
       localSuccess = true;
@@ -151,10 +150,10 @@ export async function POST(request: NextRequest) {
     let googleSheetsSuccess = false;
 
     try {
-      if (order.credits_purchased && order.credits_purchased > 0) {
+      if (order.CreditsPurchased && order.CreditsPurchased > 0) {
         console.log('🔍 [VERIFY API] Attempting to add credits to Google Sheets:', { 
-          userId: order.user_id, 
-          creditsToAdd: order.credits_purchased 
+          userId: order.UserID, 
+          creditsToAdd: order.CreditsPurchased 
         });
         
         // Use the existing addCredits action for Google Sheets
@@ -169,8 +168,8 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({
             action: 'addCredits',
             apiKey: GOOGLE_SHEETS_API_KEY,
-            userId: order.user_id,
-            amount: order.credits_purchased
+            userId: order.UserID,
+            amount: order.CreditsPurchased
           })
         });
 
@@ -214,9 +213,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Payment verified and credits added successfully',
-      orderId: order.id,
-      amount: order.total_amount,
-      credits: order.credits_purchased || 0,
+      orderId: order.ID,
+      amount: order.Amount,
+      credits: order.CreditsPurchased || 0,
       localUpdated: localSuccess,
       googleSheetsUpdated: googleSheetsSuccess
     });
@@ -238,13 +237,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?error=${encodeURIComponent('Missing orderId')}`);
     }
 
-    // Pull stored invoiceId
-    const order = orderDb.findById(orderId);
-    if (!order) {
+    // Pull stored invoiceId from Google Sheets
+    const orderResult = await getOrder(orderId);
+    if (!orderResult.success || !orderResult.order) {
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?error=${encodeURIComponent('Order not found')}`);
     }
 
-    const invoiceId = (order as any).payment_intent_id || orderId;
+    const order = orderResult.order;
+    const invoiceId = order.PaymentIntentID || orderId;
 
     // Reuse callback endpoint to keep logic consistent
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/api/payment/callback?orderId=${orderId}&invoiceId=${invoiceId}`);

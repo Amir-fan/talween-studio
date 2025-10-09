@@ -30,12 +30,18 @@ function doGet(e) {
         return handleGetUsers();
       case 'getUser':
         return handleGetUser(e.parameter.userId);
-      case 'syncCredits':
-        return handleSyncCredits(e.parameter.userId);
-      case 'clearAllData':
-        return handleClearAllData();
-      case 'forceResetSheet':
-        return handleForceResetSheet();
+    case 'syncCredits':
+      return handleSyncCredits(e.parameter.userId);
+    case 'createOrder':
+      return handleCreateOrder(e.parameter.userId, e.parameter.amount, e.parameter.packageId, e.parameter.credits);
+    case 'getOrder':
+      return handleGetOrder(e.parameter.orderId);
+    case 'updateOrderStatus':
+      return handleUpdateOrderStatus(e.parameter.orderId, e.parameter.status, e.parameter.paymentId);
+    case 'clearAllData':
+      return handleClearAllData();
+    case 'forceResetSheet':
+      return handleForceResetSheet();
       default:
         return ContentService
           .createTextOutput(JSON.stringify({ 
@@ -113,6 +119,12 @@ function handleDatabaseAction(data) {
       return handleGetUserByEmail(data.email);
     case 'syncCredits':
       return handleSyncCredits(data.userId);
+    case 'createOrder':
+      return handleCreateOrder(data.userId, data.amount, data.packageId, data.credits);
+    case 'getOrder':
+      return handleGetOrder(data.orderId);
+    case 'updateOrderStatus':
+      return handleUpdateOrderStatus(data.orderId, data.status, data.paymentId);
     case 'clearAllData':
       return handleClearAllData();
     case 'forceResetSheet':
@@ -826,6 +838,175 @@ function getSheet() {
   }
   
   return sheet;
+}
+
+// Helper function to get the orders sheet
+function getOrdersSheet() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = spreadsheet.getSheetByName('Orders');
+  
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('Orders');
+    
+    // Create headers for orders sheet
+    const headers = ['ID', 'UserID', 'OrderNumber', 'Status', 'Amount', 'Currency', 'PackageID', 'CreditsPurchased', 'PaymentIntentID', 'Created', 'Updated'];
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+  
+  return sheet;
+}
+
+// Create Order
+function handleCreateOrder(userId, amount, packageId, credits) {
+  try {
+    console.log('🛒 CREATE ORDER CALLED:', { userId, amount, packageId, credits, timestamp: new Date().toISOString() });
+    
+    const sheet = getOrdersSheet();
+    
+    // Generate order ID and number
+    const orderId = 'order_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    const orderNumber = 'TAL-' + Date.now();
+    
+    // Prepare order data
+    const orderData = [
+      orderId,                    // A: ID
+      userId || '',              // B: UserID
+      orderNumber,               // C: OrderNumber
+      'pending',                 // D: Status
+      amount || 0,               // E: Amount
+      'USD',                     // F: Currency
+      packageId || '',           // G: PackageID
+      credits || 0,              // H: CreditsPurchased
+      '',                        // I: PaymentIntentID (empty initially)
+      new Date().toISOString(),  // J: Created
+      new Date().toISOString()   // K: Updated
+    ];
+    
+    console.log('🛒 CREATE ORDER - Order data:', orderData);
+    
+    sheet.appendRow(orderData);
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: true, 
+        message: 'Order created successfully',
+        orderId: orderId,
+        orderNumber: orderNumber
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    console.error('❌ CREATE ORDER ERROR:', error);
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'Failed to create order: ' + error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Get Order
+function handleGetOrder(orderId) {
+  try {
+    console.log('🔍 GET ORDER CALLED:', { orderId, timestamp: new Date().toISOString() });
+    
+    const sheet = getOrdersSheet();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    // Find order by ID
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (row[0] === orderId) { // ID column
+        const order = {};
+        headers.forEach((header, index) => {
+          order[header] = row[index];
+        });
+        
+        console.log('🔍 GET ORDER - Found order:', order);
+        
+        return ContentService
+          .createTextOutput(JSON.stringify({ 
+            success: true, 
+            order: order
+          }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+    
+    console.log('🔍 GET ORDER - Order not found:', orderId);
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'Order not found' 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    console.error('❌ GET ORDER ERROR:', error);
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'Failed to get order: ' + error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Update Order Status
+function handleUpdateOrderStatus(orderId, status, paymentId) {
+  try {
+    console.log('🔄 UPDATE ORDER STATUS CALLED:', { orderId, status, paymentId, timestamp: new Date().toISOString() });
+    
+    const sheet = getOrdersSheet();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    // Find order by ID
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (row[0] === orderId) { // ID column
+        // Update status and payment ID
+        const statusIndex = headers.indexOf('Status');
+        const paymentIdIndex = headers.indexOf('PaymentIntentID');
+        const updatedIndex = headers.indexOf('Updated');
+        
+        if (statusIndex !== -1) {
+          sheet.getRange(i + 1, statusIndex + 1).setValue(status);
+        }
+        if (paymentIdIndex !== -1 && paymentId) {
+          sheet.getRange(i + 1, paymentIdIndex + 1).setValue(paymentId);
+        }
+        if (updatedIndex !== -1) {
+          sheet.getRange(i + 1, updatedIndex + 1).setValue(new Date().toISOString());
+        }
+        
+        console.log('🔄 UPDATE ORDER STATUS - Updated order:', { orderId, status, paymentId });
+        
+        return ContentService
+          .createTextOutput(JSON.stringify({ 
+            success: true, 
+            message: 'Order status updated successfully'
+          }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+    
+    console.log('🔄 UPDATE ORDER STATUS - Order not found:', orderId);
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'Order not found' 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    console.error('❌ UPDATE ORDER STATUS ERROR:', error);
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: 'Failed to update order status: ' + error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 function findUserByEmail(sheet, email) {

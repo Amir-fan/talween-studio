@@ -1,0 +1,159 @@
+/**
+ * Google Sheets Order Management Service
+ * Handles all order operations using Google Apps Script
+ */
+
+const GOOGLE_APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwFLOoyBsDlJPBwJ3LES41P0U3dHeUHHcz14Q0aE5vi6fqGl1qdMAnw0EtKdDRPL2Re/exec';
+
+export interface GoogleSheetsOrder {
+  ID: string;
+  UserID: string;
+  OrderNumber: string;
+  Status: string;
+  Amount: number;
+  Currency: string;
+  PackageID: string;
+  CreditsPurchased: number;
+  PaymentIntentID: string;
+  Created: string;
+  Updated: string;
+}
+
+export interface CreateOrderData {
+  userId: string;
+  amount: number;
+  packageId: string;
+  credits: number;
+}
+
+export interface UpdateOrderStatusData {
+  orderId: string;
+  status: string;
+  paymentId?: string;
+}
+
+/**
+ * Create a new order in Google Sheets
+ */
+export async function createOrder(data: CreateOrderData): Promise<{ success: boolean; orderId?: string; orderNumber?: string; error?: string }> {
+  try {
+    console.log('🛒 [GOOGLE SHEETS ORDERS] Creating order:', data);
+    
+    const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'createOrder',
+        userId: data.userId,
+        amount: data.amount,
+        packageId: data.packageId,
+        credits: data.credits
+      })
+    });
+
+    const result = await response.json();
+    console.log('🛒 [GOOGLE SHEETS ORDERS] Create order response:', result);
+    
+    if (result.success) {
+      return {
+        success: true,
+        orderId: result.orderId,
+        orderNumber: result.orderNumber
+      };
+    } else {
+      return {
+        success: false,
+        error: result.error || 'Failed to create order'
+      };
+    }
+  } catch (error: any) {
+    console.error('❌ [GOOGLE SHEETS ORDERS] Create order error:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to create order'
+    };
+  }
+}
+
+/**
+ * Get an order from Google Sheets
+ */
+export async function getOrder(orderId: string): Promise<{ success: boolean; order?: GoogleSheetsOrder; error?: string }> {
+  try {
+    console.log('🔍 [GOOGLE SHEETS ORDERS] Getting order:', orderId);
+    
+    const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'getOrder',
+        orderId: orderId
+      })
+    });
+
+    const result = await response.json();
+    console.log('🔍 [GOOGLE SHEETS ORDERS] Get order response:', result);
+    
+    if (result.success) {
+      return {
+        success: true,
+        order: result.order
+      };
+    } else {
+      return {
+        success: false,
+        error: result.error || 'Order not found'
+      };
+    }
+  } catch (error: any) {
+    console.error('❌ [GOOGLE SHEETS ORDERS] Get order error:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to get order'
+    };
+  }
+}
+
+/**
+ * Update order status in Google Sheets
+ */
+export async function updateOrderStatus(data: UpdateOrderStatusData): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('🔄 [GOOGLE SHEETS ORDERS] Updating order status:', data);
+    
+    const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'updateOrderStatus',
+        orderId: data.orderId,
+        status: data.status,
+        paymentId: data.paymentId
+      })
+    });
+
+    const result = await response.json();
+    console.log('🔄 [GOOGLE SHEETS ORDERS] Update order status response:', result);
+    
+    if (result.success) {
+      return { success: true };
+    } else {
+      return {
+        success: false,
+        error: result.error || 'Failed to update order status'
+      };
+    }
+  } catch (error: any) {
+    console.error('❌ [GOOGLE SHEETS ORDERS] Update order status error:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to update order status'
+    };
+  }
+}
