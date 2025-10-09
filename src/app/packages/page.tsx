@@ -165,7 +165,7 @@ export default function PackagesPage() {
       if (result.success && result.paymentUrl) {
         console.log('🔍 [PACKAGES PAGE] ✅ Payment session created successfully, redirecting...');
         // Redirect to payment page with order details
-        const paymentUrl = `/payment?orderId=${result.orderId}&amount=${selectedPkg.price}&packageId=${selectedPkg.id}&credits=${selectedPkg.credits}`;
+        const paymentUrl = `/payment?orderId=${result.orderId}&amount=${selectedPkg.price}&packageId=${selectedPkg.id}&credits=${selectedPkg.credits}&userId=${user.id}`;
         console.log('🔍 [PACKAGES PAGE] Redirecting to:', paymentUrl);
         window.location.href = paymentUrl;
       } else {

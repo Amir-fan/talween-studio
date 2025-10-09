@@ -50,28 +50,43 @@ function PaymentSuccessContent() {
         transactionId: orderId
       });
       
-      // Call the payment verification API to process the payment and add credits
-      const response = await fetch('/api/payment/verify', {
+      // Get package info from URL or extract from orderId
+      const packageId = searchParams.get('packageId');
+      const userId = searchParams.get('userId') || user?.id;
+      
+      console.log('🔍 [SUCCESS PAGE] Additional params:', { packageId, userId });
+      
+      // Use the new reliable credit system
+      console.log('🔍 [SUCCESS PAGE] Calling /api/payment/add-credits with:', {
+        orderId,
+        packageId,
+        userId,
+        amount,
+        credits
+      });
+      
+      const response = await fetch('/api/payment/add-credits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId: orderId,
-          status: 'paid',
-          transactionId: orderId
+          packageId: packageId,
+          userId: userId,
+          amount: amount,
+          credits: credits
         })
       });
 
-      console.log('🔍 [SUCCESS PAGE] Verify API response status:', response.status);
-      console.log('🔍 [SUCCESS PAGE] Verify API response headers:', Object.fromEntries(response.headers.entries()));
+      console.log('🔍 [SUCCESS PAGE] Add credits API response status:', response.status);
 
       if (response.ok) {
-        console.log('🔍 [SUCCESS PAGE] ✅ Verify API call successful, parsing response...');
-        const verifyResult = await response.json();
-        console.log('🔍 [SUCCESS PAGE] Verify API result:', verifyResult);
+        console.log('🔍 [SUCCESS PAGE] ✅ Add credits API call successful, parsing response...');
+        const addCreditsResult = await response.json();
+        console.log('🔍 [SUCCESS PAGE] Add credits API result:', addCreditsResult);
         
-        // Use the actual amounts from the verification API response
-        const actualAmount = verifyResult.amount || (amount ? parseFloat(amount) : 0);
-        const actualCredits = verifyResult.credits || (credits ? parseInt(credits) : 0);
+        // Use the amounts from the add credits API response
+        const actualAmount = addCreditsResult.amount || (amount ? parseFloat(amount) : 0);
+        const actualCredits = addCreditsResult.credits || (credits ? parseInt(credits) : 0);
         
         console.log('🔍 [SUCCESS PAGE] Using amounts from API:', { actualAmount, actualCredits });
         
@@ -83,25 +98,27 @@ function PaymentSuccessContent() {
         setPaymentData({
           orderId,
           amount: actualAmount,
-          credits: actualCredits
+          credits: actualCredits,
+          packageName: addCreditsResult.packageName
         });
         
-        console.log('🔍 [SUCCESS PAGE] ✅ Payment processed successfully with amounts:', { 
+        console.log('🔍 [SUCCESS PAGE] ✅ Credits added successfully with amounts:', { 
           orderId, 
           amount: actualAmount, 
-          credits: actualCredits 
+          credits: actualCredits,
+          packageName: addCreditsResult.packageName
         });
       } else {
-        console.error('🔍 [SUCCESS PAGE] ❌ Verify API call failed with status:', response.status);
+        console.error('🔍 [SUCCESS PAGE] ❌ Add credits API call failed with status:', response.status);
         const errorText = await response.text();
-        console.error('🔍 [SUCCESS PAGE] ❌ Verify API error response:', errorText);
+        console.error('🔍 [SUCCESS PAGE] ❌ Add credits API error response:', errorText);
         
         let errorResult;
         try {
           errorResult = JSON.parse(errorText);
-          console.error('🔍 [SUCCESS PAGE] ❌ Payment processing failed (JSON):', errorResult);
+          console.error('🔍 [SUCCESS PAGE] ❌ Credit addition failed (JSON):', errorResult);
         } catch (parseError) {
-          console.error('🔍 [SUCCESS PAGE] ❌ Payment processing failed (text):', errorText);
+          console.error('🔍 [SUCCESS PAGE] ❌ Credit addition failed (text):', errorText);
         }
         
         // Still try to refresh credits and show URL parameters as fallback
@@ -111,7 +128,8 @@ function PaymentSuccessContent() {
         setPaymentData({
           orderId,
           amount: amount ? parseFloat(amount) : 0,
-          credits: credits ? parseInt(credits) : 0
+          credits: credits ? parseInt(credits) : 0,
+          error: errorResult?.error || 'Failed to add credits'
         });
         
         console.log('🔍 [SUCCESS PAGE] Set fallback payment data:', {
@@ -135,7 +153,8 @@ function PaymentSuccessContent() {
       setPaymentData({
         orderId,
         amount: amount ? parseFloat(amount) : 0,
-        credits: credits ? parseInt(credits) : 0
+        credits: credits ? parseInt(credits) : 0,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       });
       
       console.log('🔍 [SUCCESS PAGE] Set error fallback payment data:', {
