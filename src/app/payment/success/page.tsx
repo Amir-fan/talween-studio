@@ -9,28 +9,17 @@ import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 
 function PaymentSuccessContent() {
+  // ===== ALL HOOKS MUST BE DECLARED FIRST - BEFORE ANY CONDITIONS OR RETURNS =====
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, refreshUserData, loading } = useAuth();
   const [paymentData, setPaymentData] = useState<any>(null);
   const [hasProcessed, setHasProcessed] = useState(false);
 
-  // Show loading while user data is being fetched
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50/30 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">جاري التحميل...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Process payment inline - this approach worked before without infinite loops
+  // Process payment - runs once when component mounts
   useEffect(() => {
-    // Prevent double processing
-    if (hasProcessed) return;
+    // Skip if already processed or still loading
+    if (hasProcessed || loading) return;
     
     const orderId = searchParams.get('orderId');
     const amount = searchParams.get('amount');
@@ -99,9 +88,9 @@ function PaymentSuccessContent() {
     };
     
     processPayment();
-  }, [searchParams, router]); // Only searchParams and router - NO refreshUserData!
+  }, [searchParams, router, loading, hasProcessed, refreshUserData]);
 
-  // Separate useEffect to handle user authentication
+  // Handle user authentication redirect
   useEffect(() => {
     if (!loading && !user) {
       console.log('🔍 [SUCCESS PAGE] User not authenticated after loading, redirecting to signup...');
@@ -109,12 +98,27 @@ function PaymentSuccessContent() {
     }
   }, [loading, user, router]);
 
-  if (!paymentData) {
+  // ===== ALL HOOKS DECLARED - NOW SAFE TO RETURN CONDITIONALLY =====
+
+  // Show loading spinner while auth is initializing
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50/30 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading spinner while processing payment
+  if (!paymentData) {
+    return (
+      <div className="min-h-screen bg-gray-50/30 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">جاري معالجة الدفع...</p>
         </div>
       </div>
     );
