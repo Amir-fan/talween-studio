@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,35 +22,52 @@ function PaymentPageContent() {
   const [error, setError] = useState<string>('');
   const [discountCode, setDiscountCode] = useState<string>('');
   const [discountApplied, setDiscountApplied] = useState<{percentOff:number, finalAmount:number} | null>(null);
+  
+  // Use ref to guarantee exactly-once session creation
+  const createdRef = useRef(false);
 
+  // Initialize payment session EXACTLY ONCE when component mounts
   useEffect(() => {
+    // Guarantee exactly-once processing
+    if (createdRef.current) {
+      console.log('🔍 [PAYMENT PAGE] Session already created, skipping');
+      return;
+    }
+    
+    // Wait for user to be loaded
+    if (!user || !user.id) {
+      console.log('🔍 [PAYMENT PAGE] Waiting for user data...');
+      return;
+    }
+    
+    // Read URL params once at start
+    const orderId = searchParams.get('orderId');
+    const amount = searchParams.get('amount');
+    const packageId = searchParams.get('packageId');
+    const credits = searchParams.get('credits');
+    
+    if (!orderId || !amount || !packageId || !credits) {
+      console.log('🔍 [PAYMENT PAGE] Missing parameters, redirecting to packages');
+      router.push('/packages');
+      return;
+    }
+
+    // Mark as created IMMEDIATELY to prevent duplicate session creation
+    createdRef.current = true;
+
+    setPaymentData({
+      orderId,
+      amount: parseFloat(amount),
+      packageId,
+      credits: parseInt(credits)
+    });
+
+    // Create MyFatoorah payment session
     const initializePayment = async () => {
-      const orderId = searchParams.get('orderId');
-      const amount = searchParams.get('amount');
-      const packageId = searchParams.get('packageId');
-      const credits = searchParams.get('credits');
-      
-      if (!orderId || !amount || !packageId || !credits) {
-        router.push('/packages');
-        return;
-      }
-
-      // Wait until user is loaded to ensure we pass the correct userId to the order
-      if (!user || !user.id) {
-        // Defer until user is available
-        return;
-      }
-
-      setPaymentData({
-        orderId,
-        amount: parseFloat(amount),
-        packageId,
-        credits: parseInt(credits)
-      });
-
-      // Create MyFatoorah payment session
       try {
         setLoading(true);
+        console.log('🔍 [PAYMENT PAGE] Creating payment session...');
+        
         const response = await fetch('/api/payment/create-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -61,18 +78,19 @@ function PaymentPageContent() {
             packageId,
             credits: parseInt(credits),
             userId: user.id,
-            discountCode: discountCode || undefined
+            // Discount is not applied during init - only when user clicks Apply
+            discountCode: undefined
           })
         });
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('API Error:', response.status, errorText);
+          console.error('🔍 [PAYMENT PAGE] API Error:', response.status, errorText);
           throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
-        console.log('Payment API Response:', data);
+        console.log('🔍 [PAYMENT PAGE] Payment session created:', data);
         
         if (data.success) {
           setPaymentUrl(data.paymentUrl);
@@ -85,7 +103,7 @@ function PaymentPageContent() {
           setError(data.error || 'فشل في إنشاء جلسة الدفع');
         }
       } catch (error) {
-        console.error('Payment initialization error:', error);
+        console.error('🔍 [PAYMENT PAGE] Payment initialization error:', error);
         setError(error instanceof Error ? error.message : 'حدث خطأ أثناء تحميل صفحة الدفع');
       } finally {
         setLoading(false);
@@ -93,15 +111,15 @@ function PaymentPageContent() {
     };
 
     initializePayment();
-  }, [searchParams, router, user, discountCode]);
+  }, [router, user]); // Only router and user - no discountCode!
 
   const handleProceedToPayment = () => {
-    console.log('Payment URL:', paymentUrl);
+    console.log('🔍 [PAYMENT PAGE] Proceeding to payment:', paymentUrl);
     if (paymentUrl) {
-      // Open MyFatoorah payment page in new tab
-      window.open(paymentUrl, '_blank');
+      // Navigate in same tab to avoid popup blockers
+      window.location.assign(paymentUrl);
     } else {
-      console.error('No payment URL available');
+      console.error('🔍 [PAYMENT PAGE] No payment URL available');
       setError('لم يتم إنشاء رابط الدفع');
     }
   };
@@ -167,26 +185,13 @@ function PaymentPageContent() {
               <CardContent>
                 {paymentUrl ? (
                   <div className="space-y-6">
-                    {/* Discount input */}
+                    {/* Discount feature disabled to prevent duplicate session creation 
+                        TODO: Implement proper discount flow that recreates session only on explicit Apply click
                     <div className="mb-4">
                       <label className="block text-sm font-medium mb-2">رمز الخصم</label>
-                      <div className="flex gap-2">
-                        <input value={discountCode} onChange={(e)=>setDiscountCode(e.target.value)} placeholder="ادخل الكود" className="flex-1 rounded border px-3 py-2" />
-                        <Button type="button" variant="outline" onClick={async ()=>{
-                          try{
-                            const resp = await fetch('/api/discounts/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:discountCode,amount:paymentData?.amount})});
-                            const data = await resp.json();
-                            if(data.success){ setDiscountApplied({percentOff:data.percentOff, finalAmount:data.finalAmount});}
-                            else{ setDiscountApplied(null); setError(data.error||'رمز الخصم غير صالح'); }
-                          }catch{ setDiscountApplied(null);} 
-                        }}>
-                          <Tag className="ml-2 h-4 w-4"/>تطبيق
-                        </Button>
-                      </div>
-                      {discountApplied && (
-                        <p className="mt-2 text-sm text-green-600">تم تطبيق خصم {discountApplied.percentOff}% — المبلغ بعد الخصم ${discountApplied.finalAmount}</p>
-                      )}
+                      <p className="text-sm text-muted-foreground">Discount codes coming soon</p>
                     </div>
+                    */}
                     <div className="text-center py-8">
                       <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <CreditCard className="h-8 w-8 text-blue-600" />

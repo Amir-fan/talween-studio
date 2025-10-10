@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,13 +14,22 @@ function PaymentSuccessContent() {
   const router = useRouter();
   const { user, refreshUserData, loading } = useAuth();
   const [paymentData, setPaymentData] = useState<any>(null);
-  const [hasProcessed, setHasProcessed] = useState(false);
+  
+  // Use ref instead of state to avoid triggering re-renders
+  const processedRef = useRef(false);
 
-  // Process payment - runs once when component mounts
+  // Process payment EXACTLY ONCE - runs when component mounts
   useEffect(() => {
-    // Skip if already processed or still loading
-    if (hasProcessed || loading) return;
+    // Skip if loading
+    if (loading) return;
     
+    // Guarantee exactly-once processing with ref guard
+    if (processedRef.current) {
+      console.log('🔍 [SUCCESS PAGE] Already processed, skipping');
+      return;
+    }
+    
+    // Read URL params once at start
     const orderId = searchParams.get('orderId');
     const amount = searchParams.get('amount');
     const credits = searchParams.get('credits');
@@ -36,10 +45,12 @@ function PaymentSuccessContent() {
       return;
     }
     
+    // Mark as processed IMMEDIATELY to prevent any duplicate attempts
+    processedRef.current = true;
+    
     const processPayment = async () => {
       try {
-        // Mark as processed to prevent double execution
-        setHasProcessed(true);
+        console.log('🔍 [SUCCESS PAGE] Calling /api/payment/add-credits...');
         
         // Add credits via API
         const response = await fetch('/api/payment/add-credits', {
@@ -52,7 +63,8 @@ function PaymentSuccessContent() {
           const result = await response.json();
           console.log('🔍 [SUCCESS PAGE] ✅ Credits added successfully:', result);
           
-          // Refresh user data
+          // Refresh user data (not in dependency array - called directly)
+          // eslint-disable-next-line react-hooks/exhaustive-deps
           await refreshUserData();
           
           // Set payment data for display
@@ -66,6 +78,7 @@ function PaymentSuccessContent() {
           console.error('🔍 [SUCCESS PAGE] ❌ Failed to add credits:', response.status);
           
           // Still refresh and show fallback data
+          // eslint-disable-next-line react-hooks/exhaustive-deps
           await refreshUserData();
           setPaymentData({
             orderId,
@@ -88,7 +101,7 @@ function PaymentSuccessContent() {
     };
     
     processPayment();
-  }, [searchParams, router, loading, hasProcessed, refreshUserData]);
+  }, [router]); // Only router - we read searchParams once inside
 
   // Handle user authentication redirect
   useEffect(() => {
