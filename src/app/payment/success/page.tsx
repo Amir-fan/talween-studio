@@ -14,14 +14,70 @@ function PaymentSuccessContent() {
   const { user, refreshUserData, loading } = useAuth();
   const [paymentData, setPaymentData] = useState<any>(null);
 
-  // Memoize refreshUserData to prevent infinite re-renders
-  const memoizedRefreshUserData = useCallback(async () => {
-    try {
-      await refreshUserData();
-    } catch (error) {
-      console.error('🔍 [SUCCESS PAGE] ❌ Failed to refresh user data:', error);
+  // Single function to handle payment completion - memoized to prevent infinite loops
+  const handlePaymentCompletion = useCallback(async () => {
+    const orderId = searchParams.get('orderId');
+    const amount = searchParams.get('amount');
+    const credits = searchParams.get('credits');
+    const packageId = searchParams.get('packageId');
+    const userId = searchParams.get('userId');
+    
+    console.log('🔍 [SUCCESS PAGE] Processing payment completion:', { orderId, amount, credits });
+    
+    // Validate parameters
+    if (!orderId || !amount || !credits || !orderId.startsWith('order_')) {
+      console.log('🔍 [SUCCESS PAGE] Invalid parameters, redirecting to packages...');
+      router.push('/packages');
+      return;
     }
-  }, [refreshUserData]);
+    
+    try {
+      // Add credits via API
+      const response = await fetch('/api/payment/add-credits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, packageId, userId, amount, credits })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('🔍 [SUCCESS PAGE] ✅ Credits added successfully:', result);
+        
+        // Refresh user data
+        await refreshUserData();
+        
+        // Set payment data for display
+        setPaymentData({
+          orderId,
+          amount: result.amount || parseFloat(amount),
+          credits: result.credits || parseInt(credits),
+          packageName: result.packageName
+        });
+      } else {
+        console.error('🔍 [SUCCESS PAGE] ❌ Failed to add credits:', response.status);
+        const errorText = await response.text();
+        
+        // Still refresh and show fallback data
+        await refreshUserData();
+        setPaymentData({
+          orderId,
+          amount: parseFloat(amount),
+          credits: parseInt(credits),
+          error: 'Failed to add credits'
+        });
+      }
+    } catch (error: any) {
+      console.error('🔍 [SUCCESS PAGE] ❌ Payment completion error:', error);
+      
+      // Show fallback data
+      setPaymentData({
+        orderId,
+        amount: parseFloat(amount),
+        credits: parseInt(credits),
+        error: error.message || 'Payment processing error'
+      });
+    }
+  }, [searchParams, router, refreshUserData]); // Only these dependencies
 
   // Show loading while user data is being fetched
   if (loading) {
@@ -35,160 +91,10 @@ function PaymentSuccessContent() {
     );
   }
 
+  // Simple useEffect that calls our single function
   useEffect(() => {
-    console.log('🔍 [SUCCESS PAGE] === USEEFFECT TRIGGERED ===');
-    
-    const orderId = searchParams.get('orderId');
-    const amount = searchParams.get('amount');
-    const credits = searchParams.get('credits');
-    const packageId = searchParams.get('packageId');
-    const userId = searchParams.get('userId');
-    
-    console.log('🔍 [SUCCESS PAGE] URL Search Params:', {
-      orderId,
-      amount,
-      credits,
-      packageId,
-      userId,
-      allParams: Object.fromEntries(searchParams.entries())
-    });
-    
-    // SECURITY: Validate required parameters
-    if (!orderId || !amount || !credits) {
-      console.log('🔍 [SUCCESS PAGE] Missing required parameters, redirecting to packages...');
-      router.push('/packages');
-      return;
-    }
-    
-    // SECURITY: Validate orderId format
-    if (!orderId.startsWith('order_')) {
-      console.log('🔍 [SUCCESS PAGE] Invalid order ID format, redirecting to packages...');
-      router.push('/packages');
-      return;
-    }
-    
-    console.log('🔍 [SUCCESS PAGE] All validations passed, starting payment completion process...');
-    
-    // Process payment completion inline to avoid dependency issues
-    const processPayment = async () => {
-      try {
-        console.log('🔍 [SUCCESS PAGE] === PAYMENT COMPLETION START ===');
-        console.log('🔍 [SUCCESS PAGE] URL parameters:', { orderId, amount, credits });
-        
-        console.log('🔍 [SUCCESS PAGE] Additional params:', { packageId, userId });
-        
-        // Use the new reliable credit system
-        console.log('🔍 [SUCCESS PAGE] Calling /api/payment/add-credits with:', {
-          orderId,
-          packageId,
-          userId,
-          amount,
-          credits
-        });
-        
-        const response = await fetch('/api/payment/add-credits', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId: orderId,
-            packageId: packageId,
-            userId: userId,
-            amount: amount,
-            credits: credits
-          })
-        });
-
-        console.log('🔍 [SUCCESS PAGE] Add credits API response status:', response.status);
-
-        if (response.ok) {
-          console.log('🔍 [SUCCESS PAGE] ✅ Add credits API call successful, parsing response...');
-          const addCreditsResult = await response.json();
-          console.log('🔍 [SUCCESS PAGE] Add credits API result:', addCreditsResult);
-          
-          // Use the amounts from the add credits API response
-          const actualAmount = addCreditsResult.amount || (amount ? parseFloat(amount) : 0);
-          const actualCredits = addCreditsResult.credits || (credits ? parseInt(credits) : 0);
-          
-          console.log('🔍 [SUCCESS PAGE] Using amounts from API:', { actualAmount, actualCredits });
-          
-          // INSTANTLY refresh credits from Google Sheets before showing UI
-          console.log('🔍 [SUCCESS PAGE] INSTANTLY syncing credits from Google Sheets...');
-          await memoizedRefreshUserData();
-          console.log('🔍 [SUCCESS PAGE] ✅ User data refreshed');
-          
-          setPaymentData({
-            orderId,
-            amount: actualAmount,
-            credits: actualCredits,
-            packageName: addCreditsResult.packageName
-          });
-          
-          console.log('🔍 [SUCCESS PAGE] ✅ Credits added successfully with amounts:', { 
-            orderId, 
-            amount: actualAmount, 
-            credits: actualCredits,
-            packageName: addCreditsResult.packageName
-          });
-        } else {
-          console.error('🔍 [SUCCESS PAGE] ❌ Add credits API call failed with status:', response.status);
-          const errorText = await response.text();
-          console.error('🔍 [SUCCESS PAGE] ❌ Add credits API error response:', errorText);
-          
-          let errorResult;
-          try {
-            errorResult = JSON.parse(errorText);
-            console.error('🔍 [SUCCESS PAGE] ❌ Credit addition failed (JSON):', errorResult);
-          } catch (parseError) {
-            console.error('🔍 [SUCCESS PAGE] ❌ Credit addition failed (text):', errorText);
-          }
-          
-          // Still try to refresh credits and show URL parameters as fallback
-          console.log('🔍 [SUCCESS PAGE] Attempting to refresh user data as fallback...');
-          await memoizedRefreshUserData();
-          
-          setPaymentData({
-            orderId,
-            amount: amount ? parseFloat(amount) : 0,
-            credits: credits ? parseInt(credits) : 0,
-            error: errorResult?.error || 'Failed to add credits'
-          });
-          
-          console.log('🔍 [SUCCESS PAGE] Set fallback payment data:', {
-            orderId,
-            amount: amount ? parseFloat(amount) : 0,
-            credits: credits ? parseInt(credits) : 0
-          });
-        }
-      } catch (error: any) {
-        console.error('🔍 [SUCCESS PAGE] ❌ Payment completion error:', error);
-        console.error('🔍 [SUCCESS PAGE] ❌ Error stack:', error.stack);
-        
-        // Still try to refresh credits and show URL parameters as fallback
-        console.log('🔍 [SUCCESS PAGE] Attempting to refresh user data after error...');
-        try {
-          await memoizedRefreshUserData();
-        } catch (refreshError) {
-          console.error('🔍 [SUCCESS PAGE] ❌ Failed to refresh user data:', refreshError);
-        }
-        
-        setPaymentData({
-          orderId,
-          amount: amount ? parseFloat(amount) : 0,
-          credits: credits ? parseInt(credits) : 0,
-          error: error.message || 'Payment processing error'
-        });
-        
-        console.log('🔍 [SUCCESS PAGE] Set error payment data:', {
-          orderId,
-          amount: amount ? parseFloat(amount) : 0,
-          credits: credits ? parseInt(credits) : 0,
-          error: error.message
-        });
-      }
-    };
-    
-    processPayment();
-  }, [searchParams, router, memoizedRefreshUserData]);
+    handlePaymentCompletion();
+  }, [handlePaymentCompletion]);
 
   // Separate useEffect to handle user authentication
   useEffect(() => {
