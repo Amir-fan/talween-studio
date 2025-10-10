@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,15 @@ function PaymentSuccessContent() {
   const router = useRouter();
   const { user, refreshUserData, loading } = useAuth();
   const [paymentData, setPaymentData] = useState<any>(null);
+
+  // Memoize refreshUserData to prevent infinite re-renders
+  const memoizedRefreshUserData = useCallback(async () => {
+    try {
+      await refreshUserData();
+    } catch (error) {
+      console.error('🔍 [SUCCESS PAGE] ❌ Failed to refresh user data:', error);
+    }
+  }, [refreshUserData]);
 
   // Show loading while user data is being fetched
   if (loading) {
@@ -104,7 +113,7 @@ function PaymentSuccessContent() {
           
           // INSTANTLY refresh credits from Google Sheets before showing UI
           console.log('🔍 [SUCCESS PAGE] INSTANTLY syncing credits from Google Sheets...');
-          await refreshUserData();
+          await memoizedRefreshUserData();
           console.log('🔍 [SUCCESS PAGE] ✅ User data refreshed');
           
           setPaymentData({
@@ -135,7 +144,7 @@ function PaymentSuccessContent() {
           
           // Still try to refresh credits and show URL parameters as fallback
           console.log('🔍 [SUCCESS PAGE] Attempting to refresh user data as fallback...');
-          await refreshUserData();
+          await memoizedRefreshUserData();
           
           setPaymentData({
             orderId,
@@ -157,7 +166,7 @@ function PaymentSuccessContent() {
         // Still try to refresh credits and show URL parameters as fallback
         console.log('🔍 [SUCCESS PAGE] Attempting to refresh user data after error...');
         try {
-          await refreshUserData();
+          await memoizedRefreshUserData();
         } catch (refreshError) {
           console.error('🔍 [SUCCESS PAGE] ❌ Failed to refresh user data:', refreshError);
         }
@@ -179,7 +188,7 @@ function PaymentSuccessContent() {
     };
     
     processPayment();
-  }, [searchParams, router, refreshUserData]);
+  }, [searchParams, router, memoizedRefreshUserData]);
 
   // Separate useEffect to handle user authentication
   useEffect(() => {
