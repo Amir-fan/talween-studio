@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense, useCallback } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,9 +13,25 @@ function PaymentSuccessContent() {
   const router = useRouter();
   const { user, refreshUserData, loading } = useAuth();
   const [paymentData, setPaymentData] = useState<any>(null);
+  const [hasProcessed, setHasProcessed] = useState(false);
 
-  // Single function to handle payment completion - memoized to prevent infinite loops
-  const handlePaymentCompletion = useCallback(async () => {
+  // Show loading while user data is being fetched
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50/30 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Process payment inline - this approach worked before without infinite loops
+  useEffect(() => {
+    // Prevent double processing
+    if (hasProcessed) return;
+    
     const orderId = searchParams.get('orderId');
     const amount = searchParams.get('amount');
     const credits = searchParams.get('credits');
@@ -31,70 +47,59 @@ function PaymentSuccessContent() {
       return;
     }
     
-    try {
-      // Add credits via API
-      const response = await fetch('/api/payment/add-credits', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId, packageId, userId, amount, credits })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('🔍 [SUCCESS PAGE] ✅ Credits added successfully:', result);
+    const processPayment = async () => {
+      try {
+        // Mark as processed to prevent double execution
+        setHasProcessed(true);
         
-        // Refresh user data
-        await refreshUserData();
-        
-        // Set payment data for display
-        setPaymentData({
-          orderId,
-          amount: result.amount || parseFloat(amount),
-          credits: result.credits || parseInt(credits),
-          packageName: result.packageName
+        // Add credits via API
+        const response = await fetch('/api/payment/add-credits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId, packageId, userId, amount, credits })
         });
-      } else {
-        console.error('🔍 [SUCCESS PAGE] ❌ Failed to add credits:', response.status);
-        const errorText = await response.text();
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('🔍 [SUCCESS PAGE] ✅ Credits added successfully:', result);
+          
+          // Refresh user data
+          await refreshUserData();
+          
+          // Set payment data for display
+          setPaymentData({
+            orderId,
+            amount: result.amount || parseFloat(amount),
+            credits: result.credits || parseInt(credits),
+            packageName: result.packageName
+          });
+        } else {
+          console.error('🔍 [SUCCESS PAGE] ❌ Failed to add credits:', response.status);
+          
+          // Still refresh and show fallback data
+          await refreshUserData();
+          setPaymentData({
+            orderId,
+            amount: parseFloat(amount),
+            credits: parseInt(credits),
+            error: 'Failed to add credits'
+          });
+        }
+      } catch (error: any) {
+        console.error('🔍 [SUCCESS PAGE] ❌ Payment completion error:', error);
         
-        // Still refresh and show fallback data
-        await refreshUserData();
+        // Show fallback data
         setPaymentData({
           orderId,
           amount: parseFloat(amount),
           credits: parseInt(credits),
-          error: 'Failed to add credits'
+          error: error.message || 'Payment processing error'
         });
       }
-    } catch (error: any) {
-      console.error('🔍 [SUCCESS PAGE] ❌ Payment completion error:', error);
-      
-      // Show fallback data
-      setPaymentData({
-        orderId,
-        amount: parseFloat(amount),
-        credits: parseInt(credits),
-        error: error.message || 'Payment processing error'
-      });
-    }
-  }, [searchParams, router, refreshUserData]); // Only these dependencies
-
-  // Show loading while user data is being fetched
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50/30 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">جاري التحميل...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Simple useEffect that calls our single function
-  useEffect(() => {
-    handlePaymentCompletion();
-  }, [handlePaymentCompletion]);
+    };
+    
+    processPayment();
+  }, [searchParams, router]); // Only searchParams and router - NO refreshUserData!
 
   // Separate useEffect to handle user authentication
   useEffect(() => {

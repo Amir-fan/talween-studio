@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface User {
@@ -320,7 +320,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const refreshUserData = async () => {
+  const refreshUserData = useCallback(async () => {
     // Refresh user data from Google Sheets - this is the INSTANT version
     const storedUser = localStorage.getItem('talween_user');
     
@@ -400,7 +400,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Error refreshing user data:', error);
       }
     }
-  };
+  }, []); // Empty dependency array - this function is stable
 
   return (
     <AuthContext.Provider value={{ 
