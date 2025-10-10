@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/context/auth-context';
 
 function PaymentPageContent() {
+  // ===== ALL HOOKS MUST BE DECLARED FIRST - BEFORE ANY CONDITIONS OR RETURNS =====
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
@@ -92,7 +93,7 @@ function PaymentPageContent() {
     };
 
     initializePayment();
-  }, [searchParams, router, user]);
+  }, [searchParams, router, user, discountCode]);
 
   const handleProceedToPayment = () => {
     console.log('Payment URL:', paymentUrl);
@@ -104,6 +105,8 @@ function PaymentPageContent() {
       setError('لم يتم إنشاء رابط الدفع');
     }
   };
+
+  // ===== ALL HOOKS DECLARED - NOW SAFE TO RETURN CONDITIONALLY =====
 
   if (loading || !paymentData) {
     return (
@@ -196,7 +199,7 @@ function PaymentPageContent() {
                       <Button
                         onClick={handleProceedToPayment}
                         className="w-full text-white text-base md:text-lg py-6 bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800"
-                        size="xl"
+                        size="lg"
                       >
                         <ArrowRight className="ml-2 h-5 w-5" />
                         متابعة إلى الدفع الآمن
