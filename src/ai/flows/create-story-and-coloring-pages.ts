@@ -14,6 +14,7 @@ import {z} from 'genkit';
 import { StoryAndPagesInputSchema, StoryAndPagesOutputSchema } from '@/app/create/story/types';
 import type { StoryAndPagesOutput, StoryAndPagesInput } from '@/app/create/story/types';
 import { generateWithRetryStrict, STRICT_BLACK_WHITE_PROMPT } from '@/lib/image-validation';
+import { extractCharacterFromPhoto, validateCharacterPhoto } from '@/ai/services/character-extraction';
 
 
 const ChapterSchema = z.object({
@@ -118,13 +119,15 @@ Additional Requirements:
 
 
 // Real page image generation using AI
-async function generatePageImage(sceneDescription: string, characterName: string, characterDescription: string): Promise<string> {
+async function generatePageImage(
+  sceneDescription: string, 
+  characterName: string, 
+  characterDescription: string,
+  characterReferenceImage?: string
+): Promise<string> {
   console.log(`Generating AI scene image for: ${sceneDescription}`);
   
-  const imageUrl = await generateWithRetryStrict(async () => {
-    const { media } = await ai.generate({
-      model: 'googleai/imagen-4.0-generate-preview-06-06',
-      prompt: `${STRICT_BLACK_WHITE_PROMPT}
+  const basePrompt = `${STRICT_BLACK_WHITE_PROMPT}
 
 Scene: ${sceneDescription}
 Character: ${characterName} (${characterDescription})
@@ -136,11 +139,26 @@ Additional Requirements:
 - NO TEXT OR LETTERS of any kind (no signs, labels, or writing)
 - IMPORTANT: If character is a BOY, never add hijab
 - If character is a GIRL and setting is Islamic, draw her with hijab covering all hair
-- Keep the SAME character appearance throughout all scenes`,
+- Keep the SAME character appearance throughout all scenes`;
+
+  const imageUrl = await generateWithRetryStrict(async () => {
+    const generateParams: any = {
+      model: 'googleai/imagen-4.0-generate-preview-06-06',
+      prompt: basePrompt,
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
       },
-    });
+    };
+
+    // If we have a character reference image, include it
+    if (characterReferenceImage) {
+      generateParams.config = {
+        ...generateParams.config,
+        referenceImage: characterReferenceImage,
+      };
+    }
+
+    const { media } = await ai.generate(generateParams);
 
     if (!media?.url) {
       throw new Error("AI scene image generation failed to return a valid URL");
@@ -156,7 +174,14 @@ Additional Requirements:
 
 export async function createStoryAndColoringPagesFlow(input: StoryAndPagesInput): Promise<StoryAndPagesOutput> {
   try {
-    // 1. Generate all story text content and character description first.
+    console.log('📖 [STORY GENERATION] Starting story creation flow');
+    console.log('📖 [STORY GENERATION] Using uploaded photo:', input.useUploadedPhoto);
+    
+    // 1. Handle character description - either from uploaded photo or AI generation
+    let characterDescription: string;
+    let characterReferenceImage: string;
+    
+    // 1. Generate story content first (always needed)
     const { output: storyContent } = await storyContentPrompt({
         childName: input.childName,
         ageGroup: input.ageGroup,
@@ -167,17 +192,43 @@ export async function createStoryAndColoringPagesFlow(input: StoryAndPagesInput)
     if (!storyContent || !storyContent.chapters || storyContent.chapters.length === 0 || !storyContent.characterDescription) {
       throw new Error('Story text generation failed to return complete content.');
     }
-    
-    // 2. Generate the character reference image.
-    let characterReferenceImage: string;
-    try {
-      characterReferenceImage = await generateCharacterReferenceImage(
-        storyContent.characterDescription,
-        input.childName
-      );
-    } catch (error) {
-      console.error('Character image generation failed (strict):', error);
-      throw error;
+
+    // 2. Handle character description - either from uploaded photo or AI generation
+    if (input.useUploadedPhoto && input.childPhoto) {
+      console.log('📖 [STORY GENERATION] Processing uploaded character photo...');
+      
+      // Validate the uploaded photo
+      const validation = validateCharacterPhoto(input.childPhoto);
+      if (!validation.isValid) {
+        throw new Error(validation.error || 'Invalid character photo');
+      }
+      
+      // Extract character description from uploaded photo
+      const characterExtraction = await extractCharacterFromPhoto(input.childPhoto, input.childName);
+      if (!characterExtraction.success || !characterExtraction.characterDescription) {
+        throw new Error(characterExtraction.error || 'Failed to extract character from photo');
+      }
+      
+      characterDescription = characterExtraction.characterDescription;
+      console.log('✅ [STORY GENERATION] Character extracted from photo');
+      
+      // Use the uploaded photo as character reference
+      characterReferenceImage = input.childPhoto;
+      
+    } else {
+      console.log('📖 [STORY GENERATION] Using AI-generated character description...');
+      characterDescription = storyContent.characterDescription;
+      
+      // Generate the character reference image
+      try {
+        characterReferenceImage = await generateCharacterReferenceImage(
+          characterDescription,
+          input.childName
+        );
+      } catch (error) {
+        console.error('Character image generation failed (strict):', error);
+        throw error;
+      }
     }
 
     // 3. Generate images for each chapter using the reference image.
@@ -189,7 +240,8 @@ export async function createStoryAndColoringPagesFlow(input: StoryAndPagesInput)
         return await generatePageImage(
           chapter.illustrationDescription,
           input.childName,
-          storyContent.characterDescription
+          characterDescription,
+          characterReferenceImage
         );
       } catch (error) {
         console.error(`Page ${index + 1} image generation failed (strict):`, error);

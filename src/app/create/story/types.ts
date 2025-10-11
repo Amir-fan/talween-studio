@@ -22,5 +22,7 @@ export const StoryAndPagesInputSchema = z.object({
   numberOfPages: z.enum(['4', '8', '12', '16']).describe('The number of pages for the story.'),
   setting: z.string().describe("Location or 'auto-select'"),
   lesson: z.string().describe("Moral value or 'auto-select'"),
+  childPhoto: z.string().optional().describe("Base64 encoded child photo for character consistency"),
+  useUploadedPhoto: z.boolean().default(false).describe("Whether to use uploaded photo for character"),
 });
 export type StoryAndPagesInput = z.infer<typeof StoryAndPagesInputSchema>;

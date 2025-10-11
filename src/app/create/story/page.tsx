@@ -47,6 +47,7 @@ import { useToast } from '@/hooks/use-toast';
 import React from 'react';
 import withAuth from '@/hoc/withAuth';
 import { InsufficientCreditsPopup } from '@/components/popups/insufficient-credits-popup';
+import { PhotoUpload } from '@/components/photo-upload';
 // import { TenorGIF } from '@/components/tenor-gif';
 import type { StoryAndPagesOutput, StoryAndPagesInput } from './types';
 import { generateStoryAction } from './actions';
@@ -93,6 +94,8 @@ function CreateStoryPage() {
   const [customLesson, setCustomLesson] = useState('');
   const [showCustomSetting, setShowCustomSetting] = useState(false);
   const [showCustomLesson, setShowCustomLesson] = useState(false);
+  const [childPhoto, setChildPhoto] = useState<string>('');
+  const [useUploadedPhoto, setUseUploadedPhoto] = useState(false);
 
   const [story, setStory] = useState<StoryAndPagesOutput | null>(null);
   const [loading, setLoading] = useState(false);
@@ -471,6 +474,8 @@ function CreateStoryPage() {
           numberOfPages,
           setting: setting === 'other' ? customSetting : setting,
           lesson: lesson === 'other' ? customLesson : lesson,
+          childPhoto: useUploadedPhoto ? childPhoto : undefined,
+          useUploadedPhoto,
       };
 
       const result = await generateStoryAction(input);
@@ -598,6 +603,25 @@ function CreateStoryPage() {
                         </SelectContent>
                     </Select>
                 </div>
+              </div>
+
+              <div>
+                <Label className="mb-4 block text-right font-semibold">صورة الطفل (اختيارية)</Label>
+                <PhotoUpload
+                  onPhotoSelect={(photoData) => {
+                    setChildPhoto(photoData);
+                    setUseUploadedPhoto(true);
+                  }}
+                  onPhotoRemove={() => {
+                    setChildPhoto('');
+                    setUseUploadedPhoto(false);
+                  }}
+                  selectedPhoto={childPhoto}
+                  className="max-w-md mx-auto"
+                />
+                <p className="text-sm text-gray-600 text-center mt-2">
+                  ارفع صورة واضحة لطفلك ليصبح البطل في القصة
+                </p>
               </div>
 
 
