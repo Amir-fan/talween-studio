@@ -53,62 +53,35 @@ function PaymentSuccessContent() {
     
     const processPayment = async () => {
       try {
-        console.log('🔍 [SUCCESS PAGE] Calling /api/payment/add-credits...');
+        console.log('🔍 [SUCCESS PAGE] Payment confirmed by callback - credits already added server-side');
+        console.log('🔍 [SUCCESS PAGE] Refreshing user data to show updated balance...');
         
-        // Add credits via API
-        const response = await fetch('/api/payment/add-credits', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderId, packageId, userId, amount, credits })
-        });
-
-        console.log('🔍 [SUCCESS PAGE] API Response status:', response.status);
-
-        if (response.ok) {
-          const result = await response.json();
-          console.log('🔍 [SUCCESS PAGE] ✅ Credits added successfully:', result);
-          
-          // Refresh user data (not in dependency array - called directly)
-          try {
-            await refreshUserData();
-            console.log('🔍 [SUCCESS PAGE] ✅ User data refreshed');
-          } catch (refreshError) {
-            console.error('🔍 [SUCCESS PAGE] ⚠️ Failed to refresh user data:', refreshError);
-          }
-          
-          // Set payment data for display
-          setPaymentData({
-            orderId,
-            amount: result.amount || parseFloat(amount),
-            credits: result.credits || parseInt(credits),
-            packageName: result.packageName
-          });
-        } else {
-          const errorText = await response.text();
-          console.error('🔍 [SUCCESS PAGE] ❌ Failed to add credits:', response.status, errorText);
-          
-          // Still refresh and show fallback data
-          try {
-            await refreshUserData();
-          } catch (refreshError) {
-            console.error('🔍 [SUCCESS PAGE] ⚠️ Failed to refresh user data:', refreshError);
-          }
-          setPaymentData({
-            orderId,
-            amount: parseFloat(amount),
-            credits: parseInt(credits),
-            error: 'Failed to add credits'
-          });
+        // Credits were already added in the callback (server-side)
+        // Just refresh user data and display confirmation
+        try {
+          await refreshUserData();
+          console.log('🔍 [SUCCESS PAGE] ✅ User data refreshed');
+        } catch (refreshError) {
+          console.error('🔍 [SUCCESS PAGE] ⚠️ Failed to refresh user data:', refreshError);
         }
-      } catch (error: any) {
-        console.error('🔍 [SUCCESS PAGE] ❌ Payment completion error:', error);
         
-        // Show fallback data even on error so page doesn't stay stuck
+        // Set payment data for display
         setPaymentData({
           orderId,
           amount: parseFloat(amount),
           credits: parseInt(credits),
-          error: error.message || 'Payment processing error'
+          packageName: packageId
+        });
+        
+      } catch (error: any) {
+        console.error('🔍 [SUCCESS PAGE] ❌ Error displaying payment:', error);
+        
+        // Still show payment data
+        setPaymentData({
+          orderId,
+          amount: parseFloat(amount),
+          credits: parseInt(credits),
+          error: error.message || 'Error displaying payment'
         });
       }
     };

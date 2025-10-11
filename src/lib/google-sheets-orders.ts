@@ -31,6 +31,7 @@ export interface UpdateOrderStatusData {
   orderId: string;
   status: string;
   paymentId?: string;
+  CreditsAdded?: boolean;
 }
 
 /**

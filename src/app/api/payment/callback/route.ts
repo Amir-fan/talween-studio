@@ -62,12 +62,28 @@ export async function GET(request: NextRequest) {
 
     // Handle different payment statuses
     if (paymentStatus.status === 'Paid') {
-      // Mark order as paid
+      // Mark order as paid FIRST
       const markResult = await orderManagerService.markAsPaid(orderId!, paymentId || invoiceId || undefined);
       
       if (!markResult.success) {
         console.error('🔍 [CALLBACK] ❌ Failed to mark order as paid');
         return NextResponse.redirect(`${APP_URL}/payment/error?orderId=${orderId}&error=${encodeURIComponent('Failed to update order')}`);
+      }
+
+      // Add credits immediately in callback (server-side, reliable)
+      console.log('💰 [CALLBACK] Adding credits for successful payment...');
+      const creditResult = await creditService.addCredits(
+        order.UserID,
+        order.CreditsPurchased || 0,
+        `Payment verified: ${orderId}`
+      );
+
+      if (!creditResult.success) {
+        console.error('🔍 [CALLBACK] ⚠️ Credit addition failed:', creditResult.error);
+        // Order is marked paid, user can contact support
+        // Still redirect to success with warning
+      } else {
+        console.log('✅ [CALLBACK] Credits added successfully:', creditResult.newBalance);
       }
 
       console.log('✅ [CALLBACK] Payment successful, redirecting to success page');
@@ -130,7 +146,7 @@ export async function POST(request: NextRequest) {
 
     // Update order status and add credits
     if (TransactionStatus === 'Paid') {
-      // Mark as paid
+      // Mark as paid FIRST
       const markResult = await orderManagerService.markAsPaid(order.ID, TransactionId);
       
       if (!markResult.success) {
@@ -138,16 +154,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to update order status' }, { status: 500 });
       }
       
-      // Add credits using centralized service
+      // Add credits using centralized service (same as GET handler)
+      console.log('💰 [CALLBACK:POST] Adding credits for successful payment...');
       const creditResult = await creditService.addCredits(
         order.UserID,
         order.CreditsPurchased || 0,
-        `Payment callback: ${order.ID}`
+        `Payment verified: ${order.ID}`
       );
 
       if (!creditResult.success) {
-        console.error('🔍 [CALLBACK:POST] Failed to add credits:', creditResult.error);
-        // Order is marked as paid, so return success but log the error
+        console.error('🔍 [CALLBACK:POST] ⚠️ Credit addition failed:', creditResult.error);
+        // Order is marked as paid, user can contact support
         return NextResponse.json({
           success: true,
           warning: 'Order processed but credits addition failed'
