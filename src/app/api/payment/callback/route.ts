@@ -13,16 +13,16 @@ export async function GET(request: NextRequest) {
   
   try {
     const searchParams = request.nextUrl.searchParams;
-    const paymentId = searchParams.get('paymentId');
-    const invoiceId = searchParams.get('invoiceId');
+    let paymentId = searchParams.get('paymentId');
+    let invoiceId = searchParams.get('invoiceId');
     const orderId = searchParams.get('orderId');
 
     console.log('🔍 [CALLBACK] Payment callback:', { paymentId, invoiceId, orderId });
 
-    // Validate required parameters
-    if (!paymentVerificationService.validateCallbackParams({ orderId, paymentId, invoiceId })) {
-      console.error('🔍 [CALLBACK] ❌ Missing required parameters');
-      return NextResponse.redirect(`${APP_URL}/payment/error?error=${encodeURIComponent('Missing payment information')}`);
+    // Must have orderId at minimum
+    if (!orderId) {
+      console.error('🔍 [CALLBACK] ❌ Missing orderId');
+      return NextResponse.redirect(`${APP_URL}/payment/error?error=${encodeURIComponent('Missing order information')}`);
     }
 
     // Find order
@@ -33,6 +33,12 @@ export async function GET(request: NextRequest) {
     }
 
     const order = orderResult.order;
+
+    // If payment ID not in URL, try to get it from the order
+    if (!paymentId && !invoiceId && order.PaymentIntentID) {
+      console.log('🔍 [CALLBACK] Using PaymentIntentID from order:', order.PaymentIntentID);
+      invoiceId = order.PaymentIntentID.toString();
+    }
 
     // Check if already processed
     if (orderManagerService.isAlreadyProcessed(order)) {
