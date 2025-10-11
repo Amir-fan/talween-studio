@@ -31,7 +31,7 @@ export async function extractCharacterFromPhoto(
   }
 }
 
-export function validateCharacterPhoto(photoDataUri: string): { isValid: boolean; error?: string; } {
+export async function validateCharacterPhoto(photoDataUri: string): Promise<{ isValid: boolean; error?: string; }> {
   try {
     if (!photoDataUri || !photoDataUri.startsWith('data:image/')) {
       return {

@@ -14,7 +14,7 @@ import {z} from 'genkit';
 import { StoryAndPagesInputSchema, StoryAndPagesOutputSchema } from '@/app/create/story/types';
 import type { StoryAndPagesOutput, StoryAndPagesInput } from '@/app/create/story/types';
 import { generateWithRetryStrict, STRICT_BLACK_WHITE_PROMPT } from '@/lib/image-validation';
-// import { extractCharacterFromPhoto, validateCharacterPhoto } from '@/ai/services/character-extraction';
+import { extractCharacterFromPhoto, validateCharacterPhoto } from '@/ai/services/character-extraction';
 
 
 const ChapterSchema = z.object({
@@ -217,13 +217,19 @@ export async function createStoryAndColoringPagesFlow(input: StoryAndPagesInput)
     if (input.useUploadedPhoto && input.childPhoto) {
       console.log('📖 [STORY GENERATION] Processing uploaded character photo...');
       
-      // Simple validation for uploaded photo
-      if (!input.childPhoto || !input.childPhoto.startsWith('data:image/')) {
-        throw new Error('Invalid character photo format');
+      // Validate the uploaded photo
+      const validation = await validateCharacterPhoto(input.childPhoto);
+      if (!validation.isValid) {
+        throw new Error(validation.error || 'Invalid character photo');
       }
       
-      // Create character description for uploaded photo
-      characterDescription = 'The EXACT child from the uploaded photo named ' + input.childName + '. CRITICAL INSTRUCTIONS: This character must be drawn to look EXACTLY like the child in the uploaded photo. Copy the child\'s precise facial features, hair style, skin tone, eye shape, nose, mouth, clothing, and distinctive characteristics from the reference photo. The character should be identical to the uploaded image in every scene throughout the story. This is NOT a generic character - this is the specific child from the uploaded photo and must match them exactly in appearance, clothing, and all physical features.';
+      // Extract character description from uploaded photo
+      const characterExtraction = await extractCharacterFromPhoto(input.childPhoto, input.childName);
+      if (!characterExtraction.success || !characterExtraction.characterDescription) {
+        throw new Error(characterExtraction.error || 'Failed to extract character from photo');
+      }
+      
+      characterDescription = characterExtraction.characterDescription;
       console.log('✅ [STORY GENERATION] Character extracted from photo');
       
       // Use the uploaded photo as character reference
