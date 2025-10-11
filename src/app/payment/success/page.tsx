@@ -79,7 +79,7 @@ function PaymentSuccessContent() {
             },
             body: JSON.stringify({
               userId,
-              credits: parseInt(credits)
+              amount: parseInt(credits)
             }),
             signal: controller.signal
           });
