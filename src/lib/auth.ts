@@ -3,17 +3,25 @@ import { passwordVerifier } from './services/password-verifier';
 import { tokenService } from './services/token-service';
 import { userActivityService } from './services/user-activity-service';
 import { sendEmail } from './email-service-apps-script';
+import { userDb } from './simple-database';
+import { googleSheetsUserDb } from './google-sheets-server';
+import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 export interface User {
   id: string;
   email: string;
-  displayName: string;
-  credits: number;
-  status: string;
-  emailVerified: boolean;
-  subscriptionTier: string;
+  displayName?: string;
+  display_name?: string;
+  password?: string;
+  credits?: number;
+  status?: string;
+  emailVerified?: boolean;
+  email_verified?: boolean;
+  subscriptionTier?: string;
+  subscription_tier?: string;
+  role?: string;
 }
 
 export interface AuthResult {
@@ -108,11 +116,12 @@ export async function registerUser(
       user: {
         id: user.id,
         email: user.email,
-        displayName: user.displayName,
-        credits: user.credits,
-        status: user.status,
-        emailVerified: user.emailVerified,
-        subscriptionTier: user.subscriptionTier
+        displayName: user.displayName || user.display_name || displayName,
+        credits: user.credits || 50,
+        status: user.status || 'active',
+        emailVerified: user.emailVerified || user.email_verified || false,
+        subscriptionTier: user.subscriptionTier || user.subscription_tier || 'free',
+        role: user.role || 'user'
       }
     };
   } catch (error: any) {
@@ -158,11 +167,11 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
       user: {
         id: user.id,
         email: user.email,
-        displayName: user.displayName || user.display_name,
-        credits: user.credits,
-        status: user.status,
-        emailVerified: user.email_verified,
-        subscriptionTier: user.subscription_tier,
+        displayName: user.displayName || user.display_name || 'User',
+        credits: user.credits || 0,
+        status: user.status || 'active',
+        emailVerified: user.email_verified || false,
+        subscriptionTier: user.subscription_tier || 'free',
         role: user.role || 'user'
       },
       token
