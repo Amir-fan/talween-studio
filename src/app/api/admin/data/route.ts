@@ -80,6 +80,14 @@ export async function GET(request: NextRequest) {
     }, {} as Record<string, number>);
     const emailLogs = []; // You'll need to implement this in database.ts
     
+    // Calculate total paid orders (purchases/subscriptions)
+    const paidOrders = orders.filter((o: any) => 
+      o.status === 'paid' || 
+      o.Status === 'paid' || 
+      o.status === 'completed' || 
+      o.Status === 'completed'
+    );
+    
     // Calculate stats
     const stats = {
       totalUsers: uniqueUsers.length,
@@ -87,7 +95,7 @@ export async function GET(request: NextRequest) {
       activeUsers: uniqueUsers.filter(u => (u.status || u.Status) === 'active').length,
       totalCredits: uniqueUsers.reduce((sum, u) => sum + (u.credits || u.Credits || 0), 0),
       totalSpent: uniqueUsers.reduce((sum, u) => sum + (u.total_spent || u.TotalPaid || 0), 0),
-      totalSubscriptions: Object.entries(subscriptionCounts).reduce((s, [,c]) => s + (c as number), 0),
+      totalSubscriptions: paidOrders.length, // Count paid orders instead of subscription tiers
       subscriptionCounts,
       packageCounts,
     };
