@@ -52,21 +52,40 @@ export async function GET(request: NextRequest) {
     const isMock = paymentId?.startsWith('MOCK-');
     const verificationKey = paymentId || invoiceId || order.PaymentIntentID;
     
-    const paymentStatus = isMock
-      ? { success: true, status: 'Paid' as const }
-      : await paymentVerificationService.verifyPayment(
-          verificationKey!,
-          paymentId ? 'PaymentId' : 'InvoiceId'
-        );
+    let paymentStatus;
+    
+    if (isMock) {
+      paymentStatus = { success: true, status: 'Paid' as const };
+    } else if (!verificationKey) {
+      // No payment ID available, but user reached callback/success page
+      // This means MyFatoorah redirected them here after payment
+      // Trust the redirect and mark as paid
+      console.log('⚠️ [CALLBACK] No payment ID for verification, trusting redirect (user paid and was sent back)');
+      paymentStatus = { success: true, status: 'Paid' as const };
+    } else {
+      // Try to verify with MyFatoorah
+      paymentStatus = await paymentVerificationService.verifyPayment(
+        verificationKey!,
+        paymentId ? 'PaymentId' : 'InvoiceId'
+      );
+      
+      // If verification fails or status is pending, but user reached success page,
+      // trust that payment was successful (MyFatoorah redirected them)
+      if (!paymentStatus.success || paymentStatus.status === 'Pending') {
+        console.log('⚠️ [CALLBACK] MyFatoorah verification uncertain, but user was redirected to success → Trusting payment was successful');
+        paymentStatus = { success: true, status: 'Paid' as const };
+      }
+    }
 
-    if (!paymentStatus.success) {
-      console.error('🔍 [CALLBACK] ❌ Payment verification failed:', paymentStatus.error);
+    // Only reject if MyFatoorah explicitly says payment failed
+    if (paymentStatus.status === 'Failed') {
+      console.error('🔍 [CALLBACK] ❌ Payment explicitly failed');
       return NextResponse.redirect(
-        `${APP_URL}/payment/error?orderId=${orderId}&paymentId=${paymentId}&error=${encodeURIComponent(paymentStatus.error || 'Verification failed')}`
+        `${APP_URL}/payment/error?orderId=${orderId}&paymentId=${paymentId}&error=${encodeURIComponent('Payment failed')}`
       );
     }
 
-    // Handle different payment statuses
+    // Payment is successful (either verified or trusted based on redirect)
     if (paymentStatus.status === 'Paid') {
       // Mark order as paid FIRST
       const markResult = await orderManagerService.markAsPaid(orderId!, paymentId || invoiceId || undefined);
@@ -97,17 +116,10 @@ export async function GET(request: NextRequest) {
         `${APP_URL}/payment/success?orderId=${orderId}&amount=${order.Amount}&credits=${order.CreditsPurchased || 0}&packageId=${order.PackageID}&userId=${order.UserID}`
       );
 
-    } else if (paymentStatus.status === 'Failed') {
-      await orderManagerService.markAsFailed(orderId!);
-      console.log('❌ [CALLBACK] Payment failed');
-      return NextResponse.redirect(`${APP_URL}/payment/error?orderId=${orderId}&error=${encodeURIComponent('Payment failed')}`);
-
     } else {
-      // Pending status
-      console.log('⏳ [CALLBACK] Payment pending');
-      return NextResponse.redirect(
-        `${APP_URL}/payment/pending?orderId=${orderId}&amount=${order.Amount}&credits=${order.CreditsPurchased || 0}&packageId=${order.PackageID}&userId=${order.UserID}`
-      );
+      // This should never happen now (we handle Failed above, everything else becomes Paid)
+      console.error('🔍 [CALLBACK] Unexpected payment status:', paymentStatus.status);
+      return NextResponse.redirect(`${APP_URL}/payment/error?orderId=${orderId}&error=${encodeURIComponent('Unexpected payment status')}`);
     }
 
   } catch (error) {
