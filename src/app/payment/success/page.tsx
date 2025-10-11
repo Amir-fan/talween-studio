@@ -53,11 +53,35 @@ function PaymentSuccessContent() {
     
     const processPayment = async () => {
       try {
-        console.log('🔍 [SUCCESS PAGE] Payment confirmed by callback - credits already added server-side');
-        console.log('🔍 [SUCCESS PAGE] Refreshing user data to show updated balance...');
+        console.log('🔍 [SUCCESS PAGE] Verifying payment and credits...');
         
-        // Credits were already added in the callback (server-side)
-        // Just refresh user data and display confirmation
+        // CRITICAL FIX: Check if callback already processed this order
+        // If MyFatoorah bypassed callback and came straight here, we need to trigger credit addition
+        console.log('🔍 [SUCCESS PAGE] Checking order status...');
+        
+        try {
+          // Call our callback endpoint to ensure credits are added
+          // The callback has idempotency built-in (checks if order.Status === 'paid')
+          const callbackUrl = `/api/payment/callback?orderId=${orderId}`;
+          console.log('🔍 [SUCCESS PAGE] Triggering callback for credit safety:', callbackUrl);
+          
+          // Use fetch with no-redirect to handle the response ourselves
+          const response = await fetch(callbackUrl, {
+            redirect: 'manual' // Don't follow redirects
+          });
+          
+          console.log('🔍 [SUCCESS PAGE] Callback triggered, status:', response.status);
+          
+          // Wait a moment for server-side processing
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+        } catch (callbackError) {
+          console.error('🔍 [SUCCESS PAGE] ⚠️ Callback trigger failed:', callbackError);
+          // Continue anyway - we'll refresh user data below
+        }
+        
+        // Refresh user data to show updated balance
+        console.log('🔍 [SUCCESS PAGE] Refreshing user data...');
         try {
           await refreshUserData();
           console.log('🔍 [SUCCESS PAGE] ✅ User data refreshed');
