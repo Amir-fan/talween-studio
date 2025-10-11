@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { authApiService } from '@/lib/services/auth-api-service';
+import { userStorageService } from '@/lib/services/user-storage-service';
 
 interface User {
   id: string;
@@ -147,15 +149,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = () => {
-    localStorage.removeItem('talween_user');
-    localStorage.removeItem('talween_user_data');
+    // Clear storage
+    userStorageService.clear();
+    localStorage.removeItem('talween_user_data'); // Legacy cleanup
+    
+    // Update React state
     setUser(null);
     setUserData(null);
     setIsAdmin(false);
     
-    // Clear admin token
+    // Clear admin token cookie
     document.cookie = 'admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     
+    console.log('✅ [AUTH CONTEXT] User logged out');
     router.push('/');
   };
 
@@ -218,44 +224,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signUp = async (email: string, password: string, displayName?: string) => {
+    setLoading(true);
+    
     try {
-      setLoading(true);
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, displayName })
-      });
+      // Call API service
+      const data = await authApiService.signUp(email, password, displayName);
 
-      const data = await response.json();
-
-      if (data.success) {
-        console.log('🔍 REGISTRATION SUCCESS - User data from server:');
-        console.log('  - data.user:', data.user);
-        console.log('  - data.user.id:', data.user.id);
+      if (data.success && data.user) {
+        console.log('✅ [AUTH CONTEXT] Registration successful');
         
-        // Auto-login user after successful registration (no verification needed)
-        if (data.user) {
-          // Use server's user.id directly (matches database)
-          const userWithId = {
-            ...data.user,
-            id: data.user.id // Use server's id directly
-          };
-          
-          console.log('  - Final userWithId:', userWithId);
-          
-          // Store user in localStorage for persistence - include both id and uid for compatibility
-          const userForStorage = { ...userWithId, uid: userWithId.id };
-          localStorage.setItem('talween_user', JSON.stringify(userForStorage));
-          setUser(userWithId);
-          setUserData(userWithId);
-          setIsAdmin(userWithId.id === 'admin');
-          
-          console.log('✅ User registered and logged in automatically');
-        }
+        // Normalize user data
+        const userWithId = { ...data.user, id: data.user.id };
+        
+        // Save to localStorage
+        userStorageService.save(userWithId);
+        
+        // Update React state
+        setUser(userWithId);
+        setUserData(userWithId);
+        setIsAdmin(userWithId.role === 'admin');
+        
         return { success: true };
-      } else {
-        return { success: false, error: data.error };
       }
+      
+      return { success: false, error: data.error };
+
     } catch (error) {
       return { success: false, error: 'Network error' };
     } finally {
@@ -264,55 +257,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signIn = async (email: string, password: string) => {
+    setLoading(true);
+    
     try {
-      setLoading(true);
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
+      // Call API service
+      const data = await authApiService.signIn(email, password);
 
-      const data = await response.json();
-
-      if (data.success) {
-        console.log('🔍 LOGIN SUCCESS - User data from server:');
-        console.log('  - data.user:', data.user);
-        console.log('  - data.user.id:', data.user.id);
-        console.log('  - data.user.uid:', data.user.uid);
+      if (data.success && data.user) {
+        console.log('✅ [AUTH CONTEXT] Login successful');
         
-        // Use the server's user.id directly (should match database)
-        const userWithId = {
-          ...data.user,
-          id: data.user.id // Use the server's id directly
-        };
+        // Normalize user data
+        const userWithId = { ...data.user, id: data.user.id };
         
-        console.log('  - Final userWithId:', userWithId);
+        // Save to localStorage
+        userStorageService.save(userWithId);
         
-        // Store user in localStorage for persistence - include both id and uid for compatibility
-        const userForStorage = { ...userWithId, uid: userWithId.id };
-        // Ensure initial credits field is present to reflect server value
-        if (typeof userForStorage.credits !== 'number') {
-          userForStorage.credits = 50;
-        }
-        localStorage.setItem('talween_user', JSON.stringify(userForStorage));
+        // Update React state
         setUser(userWithId);
         setUserData(userWithId);
         
-        // Check if user is admin by role, not by hardcoded ID
+        // Check if user is admin
         const isAdminUser = userWithId.role === 'admin';
         setIsAdmin(isAdminUser);
         
-        // If this is an admin user, also set the admin token cookie
+        // Set admin token cookie if admin
         if (isAdminUser) {
           const adminToken = `admin_${Date.now()}`;
           document.cookie = `admin_token=${adminToken}; path=/; max-age=86400; SameSite=Lax; Secure=false`;
-          console.log('✅ Admin token set by signIn function:', adminToken);
+          console.log('✅ [AUTH CONTEXT] Admin token set');
         }
         
         return { success: true };
-      } else {
-        return { success: false, error: data.error };
       }
+      
+      return { success: false, error: data.error };
+
     } catch (error) {
       return { success: false, error: 'Network error' };
     } finally {
