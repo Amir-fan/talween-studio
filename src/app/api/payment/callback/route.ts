@@ -87,14 +87,6 @@ export async function GET(request: NextRequest) {
 
     // Payment is successful (either verified or trusted based on redirect)
     if (paymentStatus.status === 'Paid') {
-      // Mark order as paid FIRST
-      const markResult = await orderManagerService.markAsPaid(orderId!, paymentId || invoiceId || undefined);
-      
-      if (!markResult.success) {
-        console.error('🔍 [CALLBACK] ❌ Failed to mark order as paid');
-        return NextResponse.redirect(`${APP_URL}/payment/error?orderId=${orderId}&error=${encodeURIComponent('Failed to update order')}`);
-      }
-
       // Add credits immediately in callback (server-side, reliable)
       console.log('💰 [CALLBACK] Adding credits for successful payment...');
       const creditResult = await creditService.addCredits(
@@ -105,10 +97,30 @@ export async function GET(request: NextRequest) {
 
       if (!creditResult.success) {
         console.error('🔍 [CALLBACK] ⚠️ Credit addition failed:', creditResult.error);
-        // Order is marked paid, user can contact support
-        // Still redirect to success with warning
+        // Still try to mark as paid
       } else {
         console.log('✅ [CALLBACK] Credits added successfully:', creditResult.newBalance);
+      }
+
+      // Mark order as paid AND set CreditsAdded flag
+      const markResult = await orderManagerService.markAsPaid(orderId!, paymentId || invoiceId || undefined);
+      
+      if (!markResult.success) {
+        console.error('🔍 [CALLBACK] ❌ Failed to mark order as paid');
+        return NextResponse.redirect(`${APP_URL}/payment/error?orderId=${orderId}&error=${encodeURIComponent('Failed to update order')}`);
+      }
+
+      // Set CreditsAdded flag to prevent duplicates
+      try {
+        const { updateOrderStatus } = await import('@/lib/google-sheets-orders');
+        await updateOrderStatus({
+          orderId: orderId!,
+          status: 'paid',
+          CreditsAdded: true
+        });
+        console.log('✅ [CALLBACK] CreditsAdded flag set');
+      } catch (flagError) {
+        console.error('⚠️ [CALLBACK] Failed to set CreditsAdded flag (non-critical):', flagError);
       }
 
       console.log('✅ [CALLBACK] Payment successful, redirecting to success page');

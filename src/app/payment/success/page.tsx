@@ -53,30 +53,40 @@ function PaymentSuccessContent() {
     
     const processPayment = async () => {
       try {
-        console.log('🔍 [SUCCESS PAGE] Verifying payment and credits...');
+        console.log('🔍 [SUCCESS PAGE] Processing payment and adding credits...');
         
-        // CRITICAL FIX: Check if callback already processed this order
-        // If MyFatoorah bypassed callback and came straight here, we need to trigger credit addition
-        console.log('🔍 [SUCCESS PAGE] Checking order status...');
+        // Call add-credits API to ensure credits are added
+        // This API has built-in duplicate prevention (checks CreditsAdded flag)
+        console.log('🔍 [SUCCESS PAGE] Calling add-credits API...');
         
         try {
-          // Call our callback endpoint to ensure credits are added
-          // The callback has idempotency built-in (checks if order.Status === 'paid')
-          const callbackUrl = `/api/payment/callback?orderId=${orderId}`;
-          console.log('🔍 [SUCCESS PAGE] Triggering callback for credit safety:', callbackUrl);
-          
-          // Use fetch with no-redirect to handle the response ourselves
-          const response = await fetch(callbackUrl, {
-            redirect: 'manual' // Don't follow redirects
+          const response = await fetch('/api/payment/add-credits', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              orderId,
+              packageId,
+              userId,
+              amount: parseFloat(amount),
+              credits: parseInt(credits)
+            })
           });
           
-          console.log('🔍 [SUCCESS PAGE] Callback triggered, status:', response.status);
+          const result = await response.json();
+          console.log('🔍 [SUCCESS PAGE] Add-credits response:', result);
           
-          // Wait a moment for server-side processing
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          if (result.success) {
+            console.log('✅ [SUCCESS PAGE] Credits added successfully:', result.newCredits);
+          } else if (result.alreadyProcessed) {
+            console.log('⚠️ [SUCCESS PAGE] Credits already added (prevented duplicate)');
+          } else {
+            console.error('❌ [SUCCESS PAGE] Failed to add credits:', result.error);
+          }
           
-        } catch (callbackError) {
-          console.error('🔍 [SUCCESS PAGE] ⚠️ Callback trigger failed:', callbackError);
+        } catch (apiError) {
+          console.error('🔍 [SUCCESS PAGE] ⚠️ Add-credits API failed:', apiError);
           // Continue anyway - we'll refresh user data below
         }
         
