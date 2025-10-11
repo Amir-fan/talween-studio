@@ -137,6 +137,25 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // CRITICAL FIX: If order is "pending" but user reached success page, trust the payment
+    if (orderResult.order.Status === 'pending') {
+      console.log('🎁 [ADD CREDITS API] Order is pending but user reached success page - trusting payment was successful');
+      console.log('🎁 [ADD CREDITS API] This means MyFatoorah bypassed our callback, but payment was successful');
+      
+      // Mark order as paid first
+      try {
+        await updateOrderStatus({
+          orderId: orderId,
+          status: 'paid',
+          CreditsAdded: false // Will be set to true after credits added
+        });
+        console.log('✅ [ADD CREDITS API] Order marked as paid (was pending)');
+      } catch (updateError) {
+        console.error('⚠️ [ADD CREDITS API] Failed to mark pending order as paid:', updateError);
+        // Continue anyway - we'll still add credits
+      }
+    }
+
     console.log('✅ [ADD CREDITS API] Order not yet processed, proceeding with credit addition');
 
     // Get current balance before adding credits
