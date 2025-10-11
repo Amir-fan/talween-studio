@@ -17,6 +17,7 @@ export interface GoogleSheetsOrder {
   PaymentIntentID: string;
   Created: string;
   Updated: string;
+  CreditsAdded?: boolean | string; // Track if credits were added (prevents duplicates)
 }
 
 export interface CreateOrderData {

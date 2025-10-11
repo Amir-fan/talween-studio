@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { creditService } from '@/lib/services/credit-service';
+import { orderManagerService } from '@/lib/services/order-manager-service';
+import { updateOrderStatus } from '@/lib/google-sheets-orders';
 
 // Package definitions matching the packages page EXACTLY
 const PACKAGES = {
@@ -84,6 +86,46 @@ export async function POST(request: NextRequest) {
       userId
     });
 
+    // CRITICAL: Check if credits already added to prevent duplicates on page refresh
+    console.log('🎁 [ADD CREDITS API] Checking for duplicate processing...');
+    const orderResult = await orderManagerService.findById(orderId);
+    
+    if (!orderResult.success || !orderResult.order) {
+      console.error('🎁 [ADD CREDITS API] Order not found:', orderId);
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+
+    // Check if credits were already added for this order
+    if (orderResult.order.CreditsAdded === true || orderResult.order.CreditsAdded === 'true') {
+      console.log('⚠️ [ADD CREDITS API] Credits already added for this order - preventing duplicate!');
+      console.log('🎁 [ADD CREDITS API] Order details:', {
+        orderId: orderResult.order.ID,
+        status: orderResult.order.Status,
+        creditsAdded: orderResult.order.CreditsAdded,
+        creditsPurchased: orderResult.order.CreditsPurchased
+      });
+
+      // Return success with existing data (don't add credits again)
+      return NextResponse.json({
+        success: true,
+        message: 'Credits already added (duplicate prevented)',
+        orderId,
+        packageId,
+        packageName,
+        credits: orderResult.order.CreditsPurchased || packageCredits,
+        amount: orderResult.order.Amount || packageAmount,
+        userId,
+        currentCredits: creditService.getBalance(userId),
+        newCredits: creditService.getBalance(userId),
+        alreadyProcessed: true
+      });
+    }
+
+    console.log('✅ [ADD CREDITS API] Order not yet processed, proceeding with credit addition');
+
     // Get current balance before adding credits
     const currentCredits = creditService.getBalance(userId);
     console.log('🎁 [ADD CREDITS API] User current credits:', currentCredits);
@@ -104,6 +146,20 @@ export async function POST(request: NextRequest) {
     }
 
     const newCredits = creditResult.newBalance || 0;
+
+    // Mark order as processed to prevent future duplicates
+    console.log('🎁 [ADD CREDITS API] Marking order as processed...');
+    try {
+      await updateOrderStatus({
+        orderId: orderId,
+        status: 'paid',
+        CreditsAdded: true
+      });
+      console.log('✅ [ADD CREDITS API] Order marked with CreditsAdded=true');
+    } catch (updateError) {
+      console.error('⚠️ [ADD CREDITS API] Failed to mark order (non-critical):', updateError);
+      // Non-critical - credits were added successfully, just log the error
+    }
 
     console.log('🎁 [ADD CREDITS API] === CREDIT ADDITION COMPLETE ===');
     console.log('🎁 [ADD CREDITS API] Results:', {
