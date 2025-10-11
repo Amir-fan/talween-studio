@@ -123,6 +123,65 @@ export async function GET(request: NextRequest) {
         console.error('⚠️ [CALLBACK] Failed to set CreditsAdded flag (non-critical):', flagError);
       }
 
+      // Send high-value lead to LeadConnector (non-blocking)
+      try {
+        console.log('📞 Sending payment lead to LeadConnector webhook...');
+        
+        // Get user details for lead
+        const { userDb } = await import('@/lib/simple-database');
+        const user = userDb.findById(order.UserID);
+        
+        if (user) {
+          await fetch('https://services.leadconnectorhq.com/hooks/2xJ6VY43ugovZK68Cz74/webhook-trigger/260c7d50-814b-47de-9245-257723375ee0', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+              // Lead basic information
+              email: user.email,
+              first_name: (user.displayName || user.display_name || 'User').split(' ')[0],
+              last_name: (user.displayName || user.display_name || 'User').split(' ').slice(1).join(' ') || '',
+              full_name: user.displayName || user.display_name || 'User',
+              
+              // Lead source and tracking
+              source: 'talween-studio-payment',
+              lead_source: 'Payment Success',
+              campaign: 'Credit Purchase',
+              
+              // Lead details
+              lead_type: 'Customer Purchase',
+              status: 'Customer',
+              tags: ['customer', 'paid', 'credits-purchase', 'high-value'],
+              
+              // Purchase data
+              user_id: user.id,
+              order_id: orderId,
+              purchase_amount: order.Amount,
+              credits_purchased: order.CreditsPurchased || 0,
+              package_id: order.PackageID,
+              payment_method: 'MyFatoorah',
+              
+              // Timestamps
+              created_at: new Date().toISOString(),
+              timestamp: Date.now(),
+              
+              // Additional metadata
+              metadata: {
+                purchase_method: 'online',
+                platform_version: '1.0',
+                payment_source: 'myfatoorah',
+                is_returning_customer: false // Could be enhanced to check previous orders
+              }
+            })
+          });
+          console.log('✅ High-value customer lead sent to LeadConnector');
+        }
+      } catch (e) {
+        console.log('❌ Payment lead webhook failed (non-blocking):', e);
+      }
+
       console.log('✅ [CALLBACK] Payment successful, redirecting to success page');
       return NextResponse.redirect(
         `${APP_URL}/payment/success?orderId=${orderId}&amount=${order.Amount}&credits=${order.CreditsPurchased || 0}&packageId=${order.PackageID}&userId=${order.UserID}`
