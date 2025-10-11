@@ -21,7 +21,10 @@ function PaymentSuccessContent() {
   // Process payment EXACTLY ONCE - runs when component mounts
   useEffect(() => {
     // Skip if loading
-    if (loading) return;
+    if (loading) {
+      console.log('🔍 [SUCCESS PAGE] Still loading auth, waiting...');
+      return;
+    }
     
     // Guarantee exactly-once processing with ref guard
     if (processedRef.current) {
@@ -36,10 +39,10 @@ function PaymentSuccessContent() {
     const packageId = searchParams.get('packageId');
     const userId = searchParams.get('userId');
     
-    console.log('🔍 [SUCCESS PAGE] Processing payment completion:', { orderId, amount, credits });
+    console.log('🔍 [SUCCESS PAGE] Processing payment completion:', { orderId, amount, credits, packageId, userId });
     
     // Validate parameters
-    if (!orderId || !amount || !credits || !orderId.startsWith('order_')) {
+    if (!orderId || !amount || !credits) {
       console.log('🔍 [SUCCESS PAGE] Invalid parameters, redirecting to packages...');
       router.push('/packages');
       return;
@@ -59,13 +62,19 @@ function PaymentSuccessContent() {
           body: JSON.stringify({ orderId, packageId, userId, amount, credits })
         });
 
+        console.log('🔍 [SUCCESS PAGE] API Response status:', response.status);
+
         if (response.ok) {
           const result = await response.json();
           console.log('🔍 [SUCCESS PAGE] ✅ Credits added successfully:', result);
           
           // Refresh user data (not in dependency array - called directly)
-          // eslint-disable-next-line react-hooks/exhaustive-deps
-          await refreshUserData();
+          try {
+            await refreshUserData();
+            console.log('🔍 [SUCCESS PAGE] ✅ User data refreshed');
+          } catch (refreshError) {
+            console.error('🔍 [SUCCESS PAGE] ⚠️ Failed to refresh user data:', refreshError);
+          }
           
           // Set payment data for display
           setPaymentData({
@@ -75,11 +84,15 @@ function PaymentSuccessContent() {
             packageName: result.packageName
           });
         } else {
-          console.error('🔍 [SUCCESS PAGE] ❌ Failed to add credits:', response.status);
+          const errorText = await response.text();
+          console.error('🔍 [SUCCESS PAGE] ❌ Failed to add credits:', response.status, errorText);
           
           // Still refresh and show fallback data
-          // eslint-disable-next-line react-hooks/exhaustive-deps
-          await refreshUserData();
+          try {
+            await refreshUserData();
+          } catch (refreshError) {
+            console.error('🔍 [SUCCESS PAGE] ⚠️ Failed to refresh user data:', refreshError);
+          }
           setPaymentData({
             orderId,
             amount: parseFloat(amount),
@@ -90,7 +103,7 @@ function PaymentSuccessContent() {
       } catch (error: any) {
         console.error('🔍 [SUCCESS PAGE] ❌ Payment completion error:', error);
         
-        // Show fallback data
+        // Show fallback data even on error so page doesn't stay stuck
         setPaymentData({
           orderId,
           amount: parseFloat(amount),
@@ -101,7 +114,7 @@ function PaymentSuccessContent() {
     };
     
     processPayment();
-  }, [router]); // Only router - we read searchParams once inside
+  }, [searchParams, router, loading, refreshUserData]); // Added missing dependencies
 
   // Handle user authentication redirect
   useEffect(() => {

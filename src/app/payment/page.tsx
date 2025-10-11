@@ -111,7 +111,7 @@ function PaymentPageContent() {
     };
 
     initializePayment();
-  }, [router, user]); // Only router and user - no discountCode!
+  }, [searchParams, router, user]); // Added searchParams to ensure effect runs when params available
 
   const handleProceedToPayment = () => {
     console.log('🔍 [PAYMENT PAGE] Proceeding to payment:', paymentUrl);
