@@ -184,7 +184,19 @@ The provided reference image shows THE EXACT CHILD who is the hero of this story
 
 🚨 CRITICAL: This is NOT a generic child or inspired character - this IS the exact child from the uploaded photo. They are the hero of the story and must appear IDENTICAL in every scene.
 
-Do NOT create a different child. Do NOT change their appearance. Draw THE EXACT SAME CHILD from the reference image.`;
+DETAILED COPYING REQUIREMENTS:
+- Copy the EXACT face shape, bone structure, and proportions from the reference
+- Copy the EXACT eye color, shape, size, and eyebrow details
+- Copy the EXACT nose shape, size, and proportions
+- Copy the EXACT mouth shape, lip size, and smile
+- Copy the EXACT hair color, style, length, and texture
+- Copy the EXACT skin tone, complexion, and facial features
+- Copy the EXACT clothing, colors, patterns, and accessories
+- Copy the EXACT body proportions, build, and age appearance
+- Copy ANY distinctive features, birthmarks, scars, or unique characteristics
+- Copy the EXACT age and maturity level appearance
+
+Do NOT create a different child. Do NOT change their appearance. Draw THE EXACT SAME CHILD from the reference image. The child must be IDENTICAL to the uploaded photo in every detail.`;
     }
 
     const { media } = await ai.generate(generateParams);
