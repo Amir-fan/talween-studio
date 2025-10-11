@@ -90,6 +90,73 @@ export default function PackagesPage() {
     }
   }, [user, loading, router]);
 
+  // Send high-intent lead to LeadConnector when user visits packages page
+  useEffect(() => {
+    if (user && user.email) {
+      // Only send once per session
+      const leadSent = sessionStorage.getItem(`lead_sent_${user.id}`);
+      if (!leadSent) {
+        console.log('📞 Sending high-intent lead to LeadConnector (packages page visit)...');
+        
+        fetch('https://services.leadconnectorhq.com/hooks/2xJ6VY43ugovZK68Cz74/webhook-trigger/e4a81e1d-830c-48ca-9396-38209636096d', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            // Lead basic information
+            email: user.email,
+            first_name: (user.displayName || 'User').split(' ')[0],
+            last_name: (user.displayName || 'User').split(' ').slice(1).join(' ') || '',
+            full_name: user.displayName || 'User',
+            
+            // Lead source and tracking
+            source: 'talween-studio-packages',
+            lead_source: 'Packages Page Visit',
+            campaign: 'High Intent - Viewing Pricing',
+            
+            // Lead details
+            lead_type: 'High Intent Prospect',
+            status: 'Warm Lead',
+            tags: ['high-intent', 'viewing-packages', 'warm-lead', 'pricing-page'],
+            
+            // User data
+            user_id: user.id,
+            current_credits: user.credits || 0,
+            
+            // Behavioral data
+            page_visited: '/packages',
+            intent_level: 'high',
+            funnel_stage: 'consideration',
+            
+            // Timestamps
+            created_at: new Date().toISOString(),
+            timestamp: Date.now(),
+            
+            // Additional metadata
+            metadata: {
+              visit_source: 'packages_page',
+              platform_version: '1.0',
+              user_status: user.status || 'active',
+              has_credits: (user.credits || 0) > 0,
+              is_returning_visitor: true // They signed up already
+            }
+          })
+        }).then(response => {
+          if (response.ok) {
+            console.log('✅ High-intent lead sent to LeadConnector successfully');
+            sessionStorage.setItem(`lead_sent_${user.id}`, 'true');
+          } else {
+            console.log('⚠️ LeadConnector webhook returned:', response.status);
+          }
+        }).catch(error => {
+          console.log('❌ High-intent lead webhook failed (non-blocking):', error);
+        });
+      }
+    }
+  }, [user]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
