@@ -72,16 +72,13 @@ function PaymentSuccessContent() {
             credits: parseInt(credits)
           });
           
-          const response = await fetch('/api/payment/add-credits', {
+          const response = await fetch('/api/payment/add-credits-simple', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              orderId,
-              packageId,
               userId,
-              amount: parseFloat(amount),
               credits: parseInt(credits)
             }),
             signal: controller.signal
