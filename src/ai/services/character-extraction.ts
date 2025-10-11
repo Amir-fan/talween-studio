@@ -1,10 +1,5 @@
 'use server';
 
-/**
- * Extracts character description from uploaded child photo
- * This service analyzes the uploaded photo and provides detailed character information
- * for consistent story illustration generation
- */
 export async function extractCharacterFromPhoto(
   photoDataUri: string,
   childName: string
@@ -15,21 +10,20 @@ export async function extractCharacterFromPhoto(
   error?: string;
 }> {
   try {
-    console.log('🎭 [CHARACTER EXTRACTION] Starting character analysis for:', childName);
+    console.log('CHARACTER EXTRACTION: Starting analysis for:', childName);
     
-    // Create detailed character description for uploaded photo
-    const characterDescription = `The EXACT child from the uploaded photo named ${childName}. CRITICAL INSTRUCTIONS: This character must be drawn to look EXACTLY like the child in the uploaded photo. Copy the child's precise facial features, hair style, skin tone, eye shape, nose, mouth, clothing, and distinctive characteristics from the reference photo. The character should be identical to the uploaded image in every scene throughout the story. This is NOT a generic character - this is the specific child from the uploaded photo and must match them exactly in appearance, clothing, and all physical features.`;
+    const characterDescription = 'The EXACT child from the uploaded photo named ' + childName + '. CRITICAL INSTRUCTIONS: This character must be drawn to look EXACTLY like the child in the uploaded photo. Copy the child\'s precise facial features, hair style, skin tone, eye shape, nose, mouth, clothing, and distinctive characteristics from the reference photo. The character should be identical to the uploaded image in every scene throughout the story. This is NOT a generic character - this is the specific child from the uploaded photo and must match them exactly in appearance, clothing, and all physical features.';
 
-    console.log('✅ [CHARACTER EXTRACTION] Character description created from photo');
+    console.log('CHARACTER EXTRACTION: Character description created from photo');
 
     return {
       success: true,
       characterDescription,
-      gender: 'male', // Default, will be improved with AI analysis later
+      gender: 'male',
     };
 
   } catch (error) {
-    console.error('❌ [CHARACTER EXTRACTION] Failed to analyze character:', error);
+    console.error('CHARACTER EXTRACTION: Failed to analyze character:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to analyze character photo',
@@ -37,12 +31,8 @@ export async function extractCharacterFromPhoto(
   }
 }
 
-/**
- * Validates if the uploaded photo is suitable for character extraction
- */
 export function validateCharacterPhoto(photoDataUri: string): { isValid: boolean; error?: string; } {
   try {
-    // Basic validation
     if (!photoDataUri || !photoDataUri.startsWith('data:image/')) {
       return {
         isValid: false,
@@ -50,7 +40,6 @@ export function validateCharacterPhoto(photoDataUri: string): { isValid: boolean
       };
     }
 
-    // Check if it's a supported image type
     const supportedTypes = ['data:image/jpeg', 'data:image/png', 'data:image/webp'];
     const isSupported = supportedTypes.some(type => photoDataUri.startsWith(type));
     
@@ -61,8 +50,7 @@ export function validateCharacterPhoto(photoDataUri: string): { isValid: boolean
       };
     }
 
-    // Check file size (basic check - data URI length is roughly 4/3 of original size)
-    if (photoDataUri.length > 7 * 1024 * 1024) { // ~5MB original
+    if (photoDataUri.length > 7 * 1024 * 1024) {
       return {
         isValid: false,
         error: 'Image file is too large. Please use an image smaller than 5MB.',
