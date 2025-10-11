@@ -16,7 +16,20 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🎁 [ADD CREDITS API] === CREDIT ADDITION START ===');
     
-    const { orderId, packageId, userId, amount, credits } = await request.json();
+    // Parse request body with error handling
+    let requestBody;
+    try {
+      requestBody = await request.json();
+      console.log('🎁 [ADD CREDITS API] Request body parsed successfully');
+    } catch (parseError) {
+      console.error('🎁 [ADD CREDITS API] ❌ Failed to parse request body:', parseError);
+      return NextResponse.json(
+        { error: 'Invalid request body' },
+        { status: 400 }
+      );
+    }
+    
+    const { orderId, packageId, userId, amount, credits } = requestBody;
     
     console.log('🎁 [ADD CREDITS API] Request received:', { 
       orderId, 
@@ -189,8 +202,13 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('🎁 [ADD CREDITS API] ❌ Error:', error);
+    console.error('🎁 [ADD CREDITS API] ❌ Error stack:', error instanceof Error ? error.stack : 'No stack');
     return NextResponse.json(
-      { error: 'Failed to add credits' },
+      { 
+        error: 'Failed to add credits',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      },
       { status: 500 }
     );
   }
