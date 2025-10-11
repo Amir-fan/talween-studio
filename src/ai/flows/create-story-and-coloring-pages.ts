@@ -14,7 +14,7 @@ import {z} from 'genkit';
 import { StoryAndPagesInputSchema, StoryAndPagesOutputSchema } from '@/app/create/story/types';
 import type { StoryAndPagesOutput, StoryAndPagesInput } from '@/app/create/story/types';
 import { generateWithRetryStrict, STRICT_BLACK_WHITE_PROMPT } from '@/lib/image-validation';
-// import { extractCharacterFromPhoto, validateCharacterPhoto } from '@/ai/services/character-extraction';
+import { extractCharacterFromPhoto, validateCharacterPhoto } from '@/ai/services/character-extraction';
 
 
 const ChapterSchema = z.object({
@@ -132,14 +132,19 @@ async function generatePageImage(
 Scene: ${sceneDescription}
 Character: ${characterName} (${characterDescription})
 
+CRITICAL CHARACTER REQUIREMENTS:
+- The character MUST look EXACTLY like the child in the reference photo
+- Copy the child's exact facial features, hair, skin tone, and clothing from the reference image
+- This is NOT a generic character - draw the SPECIFIC child from the uploaded photo
+- Maintain the exact same appearance in every scene throughout the story
+
 Additional Requirements:
 - Draw in black lines on white background only
 - Professional coloring book style with clean, bold black lines
 - Children will color this themselves
 - NO TEXT OR LETTERS of any kind (no signs, labels, or writing)
-- IMPORTANT: If character is a BOY, never add hijab
-- If character is a GIRL and setting is Islamic, draw her with hijab covering all hair
-- Keep the SAME character appearance throughout all scenes`;
+- CRITICAL: Match the reference photo exactly - do not change the child's appearance
+- The character should be identical to the reference image in facial features and clothing`;
 
   const imageUrl = await generateWithRetryStrict(async () => {
     const generateParams: any = {
@@ -150,12 +155,27 @@ Additional Requirements:
       },
     };
 
-    // If we have a character reference image, include it
+    // If we have a character reference image, include it with enhanced parameters
     if (characterReferenceImage) {
+      console.log('🎯 [IMAGE GENERATION] Using character reference image for consistency');
       generateParams.config = {
         ...generateParams.config,
         referenceImage: characterReferenceImage,
+        referenceImageWeight: 0.8, // Strong weight to match reference
+        referenceImageStyle: 'exact_match', // Ensure exact matching
       };
+      
+      // Add reference image info to prompt
+      generateParams.prompt = `${basePrompt}
+
+REFERENCE IMAGE: Use the provided reference image to draw the character EXACTLY as shown. The character must match the reference photo in:
+- Facial features (eyes, nose, mouth, face shape)
+- Hair style and color
+- Skin tone
+- Clothing and accessories
+- Overall appearance and proportions
+
+Do NOT deviate from the reference image. Draw the exact same child in every scene.`;
     }
 
     const { media } = await ai.generate(generateParams);
@@ -195,16 +215,22 @@ export async function createStoryAndColoringPagesFlow(input: StoryAndPagesInput)
 
     // 2. Handle character description - either from uploaded photo or AI generation
     if (input.useUploadedPhoto && input.childPhoto) {
-      console.log('📖 [STORY GENERATION] Using uploaded character photo...');
+      console.log('📖 [STORY GENERATION] Processing uploaded character photo...');
       
-      // Simple validation for uploaded photo
-      if (!input.childPhoto || !input.childPhoto.startsWith('data:image/')) {
-        throw new Error('Invalid character photo format');
+      // Validate the uploaded photo
+      const validation = validateCharacterPhoto(input.childPhoto);
+      if (!validation.isValid) {
+        throw new Error(validation.error || 'Invalid character photo');
       }
       
-      // Create a simple character description for uploaded photo
-      characterDescription = `A child named ${input.childName} from the uploaded photo. This character should be consistently portrayed throughout the story illustrations in a coloring book style, maintaining the same appearance, clothing, and distinctive features from the original photo in every scene.`;
-      console.log('✅ [STORY GENERATION] Using uploaded photo as character reference');
+      // Extract character description from uploaded photo
+      const characterExtraction = await extractCharacterFromPhoto(input.childPhoto, input.childName);
+      if (!characterExtraction.success || !characterExtraction.characterDescription) {
+        throw new Error(characterExtraction.error || 'Failed to extract character from photo');
+      }
+      
+      characterDescription = characterExtraction.characterDescription;
+      console.log('✅ [STORY GENERATION] Character extracted from photo');
       
       // Use the uploaded photo as character reference
       characterReferenceImage = input.childPhoto;

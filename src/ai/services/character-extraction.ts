@@ -17,9 +17,8 @@ export async function extractCharacterFromPhoto(
   try {
     console.log('🎭 [CHARACTER EXTRACTION] Starting character analysis for:', childName);
     
-    // For now, return a generic character description based on the photo
-    // This ensures the feature works while we can enhance AI analysis later
-    const characterDescription = `A child named ${childName} from the uploaded photo. This character should be consistently portrayed throughout the story illustrations in a coloring book style, maintaining the same appearance, clothing, and distinctive features from the original photo in every scene.`;
+    // Create detailed character description for uploaded photo
+    const characterDescription = `The EXACT child from the uploaded photo named ${childName}. CRITICAL INSTRUCTIONS: This character must be drawn to look EXACTLY like the child in the uploaded photo. Copy the child's precise facial features, hair style, skin tone, eye shape, nose, mouth, clothing, and distinctive characteristics from the reference photo. The character should be identical to the uploaded image in every scene throughout the story. This is NOT a generic character - this is the specific child from the uploaded photo and must match them exactly in appearance, clothing, and all physical features.`;
 
     console.log('✅ [CHARACTER EXTRACTION] Character description created from photo');
 
