@@ -60,6 +60,18 @@ function PaymentSuccessContent() {
         console.log('🔍 [SUCCESS PAGE] Calling add-credits API...');
         
         try {
+          // Add timeout to prevent hanging
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+          
+          console.log('🔍 [SUCCESS PAGE] Calling add-credits with:', {
+            orderId,
+            packageId,
+            userId,
+            amount: parseFloat(amount),
+            credits: parseInt(credits)
+          });
+          
           const response = await fetch('/api/payment/add-credits', {
             method: 'POST',
             headers: {
@@ -71,22 +83,35 @@ function PaymentSuccessContent() {
               userId,
               amount: parseFloat(amount),
               credits: parseInt(credits)
-            })
+            }),
+            signal: controller.signal
           });
           
-          const result = await response.json();
-          console.log('🔍 [SUCCESS PAGE] Add-credits response:', result);
+          clearTimeout(timeoutId);
           
-          if (result.success) {
-            console.log('✅ [SUCCESS PAGE] Credits added successfully:', result.newCredits);
-          } else if (result.alreadyProcessed) {
-            console.log('⚠️ [SUCCESS PAGE] Credits already added (prevented duplicate)');
+          if (!response.ok) {
+            console.error('❌ [SUCCESS PAGE] API returned error status:', response.status);
+            const errorText = await response.text();
+            console.error('❌ [SUCCESS PAGE] Error details:', errorText);
           } else {
-            console.error('❌ [SUCCESS PAGE] Failed to add credits:', result.error);
+            const result = await response.json();
+            console.log('🔍 [SUCCESS PAGE] Add-credits response:', result);
+            
+            if (result.success) {
+              console.log('✅ [SUCCESS PAGE] Credits added successfully:', result.newCredits);
+            } else if (result.alreadyProcessed) {
+              console.log('⚠️ [SUCCESS PAGE] Credits already added (prevented duplicate)');
+            } else {
+              console.error('❌ [SUCCESS PAGE] Failed to add credits:', result.error);
+            }
           }
           
-        } catch (apiError) {
-          console.error('🔍 [SUCCESS PAGE] ⚠️ Add-credits API failed:', apiError);
+        } catch (apiError: any) {
+          if (apiError.name === 'AbortError') {
+            console.error('🔍 [SUCCESS PAGE] ⚠️ Add-credits API timeout (10s)');
+          } else {
+            console.error('🔍 [SUCCESS PAGE] ⚠️ Add-credits API failed:', apiError);
+          }
           // Continue anyway - we'll refresh user data below
         }
         
@@ -99,23 +124,16 @@ function PaymentSuccessContent() {
           console.error('🔍 [SUCCESS PAGE] ⚠️ Failed to refresh user data:', refreshError);
         }
         
-        // Set payment data for display
+      } catch (error: any) {
+        console.error('🔍 [SUCCESS PAGE] ❌ Error processing payment:', error);
+      } finally {
+        // ALWAYS set payment data to remove loading state
+        console.log('🔍 [SUCCESS PAGE] Setting payment data to display page');
         setPaymentData({
           orderId,
           amount: parseFloat(amount),
           credits: parseInt(credits),
           packageName: packageId
-        });
-        
-      } catch (error: any) {
-        console.error('🔍 [SUCCESS PAGE] ❌ Error displaying payment:', error);
-        
-        // Still show payment data
-        setPaymentData({
-          orderId,
-          amount: parseFloat(amount),
-          credits: parseInt(credits),
-          error: error.message || 'Error displaying payment'
         });
       }
     };
