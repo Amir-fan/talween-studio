@@ -100,10 +100,7 @@ Remember: This description will be used to create consistent character illustrat
 /**
  * Validates if the uploaded photo is suitable for character extraction
  */
-export function validateCharacterPhoto(photoDataUri: string): {
-  isValid: boolean;
-  error?: string;
-} {
+export function validateCharacterPhoto(photoDataUri: string): { isValid: boolean; error?: string; } {
   try {
     // Basic validation
     if (!photoDataUri || !photoDataUri.startsWith('data:image/')) {
