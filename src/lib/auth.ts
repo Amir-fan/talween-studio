@@ -1,7 +1,7 @@
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { userDb } from './simple-database';
-import { googleSheetsUserDb } from './google-sheets-server';
+import { userLookupService } from './services/user-lookup-service';
+import { passwordVerifier } from './services/password-verifier';
+import { tokenService } from './services/token-service';
+import { userActivityService } from './services/user-activity-service';
 import { sendEmail } from './email-service-apps-script';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -121,159 +121,55 @@ export async function registerUser(
   }
 }
 
-// BULLETPROOF Login user with multiple fallback layers
+/**
+ * Login user - Refactored with clean service architecture
+ * Uses specialized services for lookup, verification, and token generation
+ */
 export async function loginUser(email: string, password: string): Promise<AuthResult> {
   try {
-    console.log('🔍 BULLETPROOF LOGIN ATTEMPT:');
-    console.log('  - email:', email);
-    console.log('  - password length:', password.length);
-    console.log('  - NODE_ENV:', process.env.NODE_ENV);
-    
-    let user = null;
-    
-    // In production, prioritize Google Sheets due to Vercel serverless limitations
-    if (process.env.NODE_ENV === 'production') {
-      console.log('  - PRODUCTION MODE: Using Google Sheets as primary database');
-      
-      // Layer 1: Try Google Sheets first in production
-      try {
-        const googleSheetsResult = await googleSheetsUserDb.findByEmail(email);
-        if (googleSheetsResult.success && googleSheetsResult.user) {
-          console.log('  - user found in Google Sheets');
-          user = googleSheetsResult.user;
-        }
-      } catch (error: any) {
-        console.log('  - Google Sheets lookup failed:', error?.message || error);
-      }
-      
-      // Layer 2: Fallback to local database in production
-      if (!user) {
-        console.log('  - trying local DB fallback...');
-        user = userDb.findByEmail(email);
-        console.log('  - user found in local DB:', !!user);
-      }
-      
-      // Layer 3: Check admin users
-      if (!user) {
-        console.log('  - checking admin users...');
-        const adminUser = userDb.findAdminByEmail(email);
-        if (adminUser) {
-          console.log('  - admin user found:', adminUser.email);
-          user = adminUser;
-        }
-      }
-    } else {
-      // Development mode: Use local database first
-      console.log('  - DEVELOPMENT MODE: Using local database as primary');
-      
-      // Layer 1: Try local database first
-      user = userDb.findByEmail(email);
-      console.log('  - user found in local DB:', !!user);
-      
-      // Layer 1.5: If not found in regular users, check admin users
-      if (!user) {
-        console.log('  - checking admin users...');
-        const adminUser = userDb.findAdminByEmail(email);
-        if (adminUser) {
-          console.log('  - admin user found:', adminUser.email);
-          user = adminUser;
-        }
-      }
-      
-      // Layer 2: If not found, try Google Sheets fallback
-      if (!user) {
-        console.log('  - trying Google Sheets fallback...');
-        try {
-          const googleSheetsUser = await googleSheetsUserDb.findByEmail(email);
-          if (googleSheetsUser) {
-            console.log('  - user found in Google Sheets, migrating to local DB...');
-            // Create user in local database from Google Sheets data
-            const migrationResult = userDb.create(
-              googleSheetsUser['البريد الإلكتروني'] || googleSheetsUser.email,
-              googleSheetsUser['كلمة المرور'] || googleSheetsUser.password || 'temp123',
-              googleSheetsUser['الاسم'] || googleSheetsUser.displayName || 'User'
-            );
-            
-            if (migrationResult.success) {
-              user = userDb.findByEmail(email);
-              console.log('  - user migrated to local DB:', user?.id);
-            } else {
-              console.log('  - migration failed:', migrationResult.error);
-            }
-          }
-        } catch (error: any) {
-          console.log('  - Google Sheets fallback failed:', error);
-        }
-      }
-    }
-    
-    // Layer 3: If still not found, check backup files
-    if (!user) {
-      console.log('  - checking backup files...');
-      try {
-        user = await restoreUserFromBackup(email);
-        if (user) {
-          console.log('  - user restored from backup:', user.id);
-        }
-      } catch (error: any) {
-        console.log('  - backup restoration failed:', error);
-      }
-    }
+    console.log('🔍 [LOGIN] Attempting login:', email);
+
+    // Find user across all data sources
+    const user = await userLookupService.findUser(email);
     
     if (!user) {
-      console.log('❌ User not found in any database or backup');
+      console.log('❌ [LOGIN] User not found');
       return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
     }
 
-    // Verify password using bcrypt with multiple attempts
-    let passwordMatch = false;
-    try {
-      passwordMatch = await bcrypt.compare(password, user.password);
-      console.log('  - password match:', passwordMatch);
-    } catch (bcryptError: any) {
-      console.log('  - bcrypt error, trying fallback verification:', bcryptError);
-      // Fallback for old plain text passwords (migration)
-      passwordMatch = password === user.password;
-    }
+    // Verify password
+    const isPasswordValid = await passwordVerifier.verify(password, user.password);
     
-    if (!passwordMatch) {
-      console.log('❌ Password mismatch');
+    if (!isPasswordValid) {
+      console.log('❌ [LOGIN] Password mismatch');
       return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
     }
     
-    console.log('✅ User found and password verified, proceeding with login');
+    console.log('✅ [LOGIN] User authenticated successfully');
 
-    // Update last login with bulletproof save
-    try {
-      userDb.updateUser(user.id, { last_login: Math.floor(Date.now() / 1000) });
-      console.log('  - last login updated');
-    } catch (updateError: any) {
-      console.log('  - last login update failed (non-critical):', updateError);
-    }
+    // Update last login activity
+    userActivityService.updateLastLogin(user.id);
 
     // Generate JWT token
-    const token = jwt.sign(
-      { userId: user.id, email: user.email },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = tokenService.generate({ id: user.id, email: user.email });
 
     return {
       success: true,
       user: {
         id: user.id,
         email: user.email,
-        displayName: user.display_name,
+        displayName: user.displayName || user.display_name,
         credits: user.credits,
         status: user.status,
         emailVerified: user.email_verified,
         subscriptionTier: user.subscription_tier,
-        role: user.role || 'user' // Include role for admin users
+        role: user.role || 'user'
       },
       token
     };
+
   } catch (error: any) {
-    console.error('❌ CRITICAL LOGIN ERROR:', error);
+    console.error('❌ [LOGIN] Critical error:', error);
     return { success: false, error: 'حدث خطأ أثناء تسجيل الدخول' };
   }
 }

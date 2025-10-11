@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { userDb } from '@/lib/simple-database';
-import { googleSheetsUserDb } from '@/lib/google-sheets-server';
+import { creditService } from '@/lib/services/credit-service';
 
 // Package definitions matching the packages page EXACTLY
 const PACKAGES = {
@@ -85,52 +84,26 @@ export async function POST(request: NextRequest) {
       userId
     });
 
-    // Check if user exists
-    const user = userDb.findById(userId);
-    if (!user) {
-      console.error('🎁 [ADD CREDITS API] User not found:', userId);
+    // Get current balance before adding credits
+    const currentCredits = creditService.getBalance(userId);
+    console.log('🎁 [ADD CREDITS API] User current credits:', currentCredits);
+
+    // Add credits using centralized service
+    const creditResult = await creditService.addCredits(
+      userId,
+      packageCredits,
+      `Package purchase: ${packageId} (Order: ${orderId})`
+    );
+
+    if (!creditResult.success) {
+      console.error('🎁 [ADD CREDITS API] ❌ Credit addition failed:', creditResult.error);
       return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
+        { error: creditResult.error || 'Failed to add credits' },
+        { status: 500 }
       );
     }
 
-    const currentCredits = user.credits || 0;
-    console.log('🎁 [ADD CREDITS API] User current credits:', currentCredits);
-
-    // SAFETY CHECK: Prevent duplicate credit addition
-    // Check if this order has already been processed by looking at recent credit history
-    // This is a simple check - in production you might want to track processed orders
-    console.log('🎁 [ADD CREDITS API] Checking for duplicate processing...');
-
-    // Add credits to local database
-    console.log('🎁 [ADD CREDITS API] Adding credits to local database...');
-    userDb.updateCredits(userId, packageCredits);
-    
-    const updatedUser = userDb.findById(userId);
-    const newCredits = updatedUser?.credits || 0;
-    console.log('🎁 [ADD CREDITS API] Local database updated:', { 
-      before: currentCredits, 
-      after: newCredits, 
-      added: packageCredits 
-    });
-
-    // Add credits to Google Sheets
-    console.log('🎁 [ADD CREDITS API] Adding credits to Google Sheets...');
-    let googleSheetsSuccess = false;
-    
-    try {
-      const addCreditsResult = await googleSheetsUserDb.addCredits(userId, packageCredits);
-      googleSheetsSuccess = addCreditsResult.success;
-      
-      if (addCreditsResult.success) {
-        console.log('🎁 [ADD CREDITS API] ✅ Google Sheets updated successfully:', addCreditsResult);
-      } else {
-        console.error('🎁 [ADD CREDITS API] ❌ Google Sheets update failed:', addCreditsResult.error);
-      }
-    } catch (error: any) {
-      console.error('🎁 [ADD CREDITS API] ❌ Google Sheets error:', error);
-    }
+    const newCredits = creditResult.newBalance || 0;
 
     console.log('🎁 [ADD CREDITS API] === CREDIT ADDITION COMPLETE ===');
     console.log('🎁 [ADD CREDITS API] Results:', {
@@ -142,9 +115,7 @@ export async function POST(request: NextRequest) {
       packageAmount,
       userId,
       currentCredits,
-      newCredits,
-      localUpdated: true,
-      googleSheetsUpdated: googleSheetsSuccess
+      newCredits
     });
 
     return NextResponse.json({
@@ -157,9 +128,7 @@ export async function POST(request: NextRequest) {
       amount: packageAmount,
       userId,
       currentCredits,
-      newCredits,
-      localUpdated: true,
-      googleSheetsUpdated: googleSheetsSuccess
+      newCredits
     });
 
   } catch (error) {

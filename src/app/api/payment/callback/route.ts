@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkPaymentStatus } from '@/lib/myfatoorah-service';
-import { userDb } from '@/lib/simple-database';
-import { googleSheetsUserDb } from '@/lib/google-sheets-server';
-import { getOrder, updateOrderStatus } from '@/lib/google-sheets-orders';
+import { paymentVerificationService } from '@/lib/services/payment-verification-service';
+import { orderManagerService } from '@/lib/services/order-manager-service';
+import { creditService } from '@/lib/services/credit-service';
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
 
 export async function GET(request: NextRequest) {
-  // Log immediately - before any try-catch
   const timestamp = new Date().toISOString();
   console.log('='.repeat(50));
   console.log(`🔍 [CALLBACK] ${timestamp} - PAYMENT CALLBACK TRIGGERED`);
@@ -14,149 +14,97 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const paymentId = searchParams.get('paymentId');
-    let invoiceId = searchParams.get('invoiceId');
+    const invoiceId = searchParams.get('invoiceId');
     const orderId = searchParams.get('orderId');
 
-    console.log('🔍 [CALLBACK] === PAYMENT CALLBACK START ===');
-    console.log('🔍 [CALLBACK] Received payment callback', { paymentId, invoiceId, orderId });
-    console.log('🔍 [CALLBACK] Full URL:', request.url);
-    console.log('🔍 [CALLBACK] All search params:', Object.fromEntries(request.nextUrl.searchParams.entries()));
+    console.log('🔍 [CALLBACK] Payment callback:', { paymentId, invoiceId, orderId });
 
-    if (!invoiceId && !orderId) {
-      console.error('🔍 [CALLBACK] ❌ Missing payment information');
-      return NextResponse.json(
-        { error: 'Missing payment information' },
-        { status: 400 }
+    // Validate required parameters
+    if (!paymentVerificationService.validateCallbackParams({ orderId, paymentId, invoiceId })) {
+      console.error('🔍 [CALLBACK] ❌ Missing required parameters');
+      return NextResponse.redirect(`${APP_URL}/payment/error?error=${encodeURIComponent('Missing payment information')}`);
+    }
+
+    // Find order
+    const orderResult = await orderManagerService.findById(orderId!);
+    if (!orderResult.success || !orderResult.order) {
+      console.error('🔍 [CALLBACK] ❌ Order not found');
+      return NextResponse.redirect(`${APP_URL}/payment/error?orderId=${orderId}&error=${encodeURIComponent('Order not found')}`);
+    }
+
+    const order = orderResult.order;
+
+    // Check if already processed
+    if (orderManagerService.isAlreadyProcessed(order)) {
+      console.log('⚠️ [CALLBACK] Order already processed, redirecting to success');
+      return NextResponse.redirect(
+        `${APP_URL}/payment/success?orderId=${orderId}&amount=${order.Amount}&credits=${order.CreditsPurchased || 0}&packageId=${order.PackageID}&userId=${order.UserID}`
       );
     }
 
-    // Ensure we use the correct InvoiceId; if missing from query, pull from Google Sheets order
-    if (!invoiceId && orderId) {
-      try {
-        console.log('🔍 [CALLBACK] Attempting to get invoiceId from order:', orderId);
-        const orderResult = await getOrder(orderId);
-        console.log('🔍 [CALLBACK] getOrder result for invoiceId:', orderResult);
-        if (orderResult.success && orderResult.order && orderResult.order.PaymentIntentID) {
-          invoiceId = orderResult.order.PaymentIntentID;
-          console.log('🔍 [CALLBACK] Found invoiceId from order:', invoiceId);
-        } else {
-          console.log('🔍 [CALLBACK] No invoiceId found in order or getOrder failed');
-        }
-      } catch (invoiceIdError) {
-        console.error('🔍 [CALLBACK] Error getting invoiceId from order:', invoiceIdError);
-      }
+    // Verify payment status
+    const isMock = paymentId?.startsWith('MOCK-');
+    const verificationKey = paymentId || invoiceId || order.PaymentIntentID;
+    
+    const paymentStatus = isMock
+      ? { success: true, status: 'Paid' as const }
+      : await paymentVerificationService.verifyPayment(
+          verificationKey!,
+          paymentId ? 'PaymentId' : 'InvoiceId'
+        );
+
+    if (!paymentStatus.success) {
+      console.error('🔍 [CALLBACK] ❌ Payment verification failed:', paymentStatus.error);
+      return NextResponse.redirect(
+        `${APP_URL}/payment/error?orderId=${orderId}&paymentId=${paymentId}&error=${encodeURIComponent(paymentStatus.error || 'Verification failed')}`
+      );
     }
 
-    // If a MOCK-* PaymentId is provided, short-circuit as Paid
-    const isMock = (paymentId?.startsWith('MOCK-') ?? false);
-    console.log('🔍 [CALLBACK] Checking if mock payment:', { isMock, paymentId });
-    
-    const statusResult = isMock
-      ? { success: true, status: 'Paid' as const, transactionId: paymentId || 'MOCK-TXN' }
-      : await checkPaymentStatus(paymentId || (invoiceId as string), paymentId ? 'PaymentId' : 'InvoiceId');
-    
-    console.log('🔍 [CALLBACK] Payment status check result:', statusResult);
-    
-    if (!statusResult.success) {
-      const errorMsg = 'error' in statusResult ? statusResult.error : 'Payment verification failed';
-      console.error('🔍 [CALLBACK] ❌ Payment status check failed:', errorMsg);
-      console.error('🔍 [CALLBACK] Full status result:', JSON.stringify(statusResult, null, 2));
-      console.error('🔍 [CALLBACK] Payment details:', { paymentId, invoiceId, orderId });
-      console.error('🔍 [CALLBACK] This indicates MyFatoorah API call failed or returned error');
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?orderId=${orderId}&paymentId=${paymentId}&Id=${paymentId}&error=${encodeURIComponent(errorMsg || 'Payment verification failed')}`);
-    }
-
-    // Find the order in Google Sheets
-    console.log('🔍 [CALLBACK] Looking for order in Google Sheets:', orderId);
-    let orderResult;
-    try {
-      orderResult = await getOrder(orderId!);
-      console.log('🔍 [CALLBACK] getOrder result:', orderResult);
-    } catch (getOrderError) {
-      console.error('🔍 [CALLBACK] ❌ getOrder function failed:', getOrderError);
-      throw new Error(`getOrder failed: ${getOrderError instanceof Error ? getOrderError.message : String(getOrderError)}`);
-    }
-    
-    if (!orderResult.success || !orderResult.order) {
-      console.error('🔍 [CALLBACK] ❌ Order not found in Google Sheets:', orderId);
-      console.error('🔍 [CALLBACK] Order result:', orderResult);
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?orderId=${orderId}&error=${encodeURIComponent('Order not found in Google Sheets')}`);
-    }
-    
-    const order = orderResult.order;
-    console.log('🔍 [CALLBACK] ✅ Found order in Google Sheets:', { 
-      ID: order.ID, 
-      UserID: order.UserID, 
-      Amount: order.Amount, 
-      CreditsPurchased: order.CreditsPurchased, 
-      Status: order.Status,
-      PaymentIntentID: order.PaymentIntentID
-    });
-
-    // Update order status based on payment result
-    if (statusResult.status === 'Paid') {
-      // Check if credits were already added to prevent duplicates
-      const alreadyProcessed = order.Status === 'paid';
+    // Handle different payment statuses
+    if (paymentStatus.status === 'Paid') {
+      // Mark order as paid
+      const markResult = await orderManagerService.markAsPaid(orderId!, paymentId || invoiceId || undefined);
       
-      if (alreadyProcessed) {
-        console.log('⚠️ [CALLBACK:GET] Order already processed, skipping credit addition to prevent duplicates');
-        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/success?orderId=${orderId}&amount=${order.Amount}&credits=${order.CreditsPurchased || 0}&packageId=${order.PackageID}&userId=${order.UserID}`);
+      if (!markResult.success) {
+        console.error('🔍 [CALLBACK] ❌ Failed to mark order as paid');
+        return NextResponse.redirect(`${APP_URL}/payment/error?orderId=${orderId}&error=${encodeURIComponent('Failed to update order')}`);
       }
 
-      // Mark order as paid in Google Sheets FIRST to prevent race conditions
-      console.log('💳 [CALLBACK:GET] Marking order as paid in Google Sheets...');
-      const updateResult = await updateOrderStatus({
-        orderId: orderId!,
-        status: 'paid',
-        paymentId: (paymentId || invoiceId) || undefined
-      });
-      
-      if (!updateResult.success) {
-        console.error('💳 [CALLBACK:GET] Failed to update order status:', updateResult.error);
-        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?error=${encodeURIComponent('Failed to update order status')}`);
-      }
-      console.log('💳 [CALLBACK:GET] Marked order as paid in Google Sheets, will add credits');
+      console.log('✅ [CALLBACK] Payment successful, redirecting to success page');
+      return NextResponse.redirect(
+        `${APP_URL}/payment/success?orderId=${orderId}&amount=${order.Amount}&credits=${order.CreditsPurchased || 0}&packageId=${order.PackageID}&userId=${order.UserID}`
+      );
 
-      // Credits will be added by the success page via /api/payment/add-credits
-      // This prevents duplicate credit addition and ensures consistency
-      console.log('💰 [CALLBACK:GET] Payment verified - credits will be added by success page via add-credits API');
+    } else if (paymentStatus.status === 'Failed') {
+      await orderManagerService.markAsFailed(orderId!);
+      console.log('❌ [CALLBACK] Payment failed');
+      return NextResponse.redirect(`${APP_URL}/payment/error?orderId=${orderId}&error=${encodeURIComponent('Payment failed')}`);
 
-      console.log(`✅ [CALLBACK:GET] Payment successful for order ${orderId}, credits will be added by success page`);
-        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/success?orderId=${orderId}&amount=${order.Amount}&credits=${order.CreditsPurchased || 0}&packageId=${order.PackageID}&userId=${order.UserID}`);
-    } else if (statusResult.status === 'Failed') {
-      await updateOrderStatus({
-        orderId: orderId!,
-        status: 'failed'
-      });
-      console.log(`❌ [CALLBACK:GET] Payment failed for order ${orderId}`);
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?orderId=${orderId}&error=${encodeURIComponent('Payment failed')}`);
     } else {
-      // Pending or other status
-      await updateOrderStatus({
-        orderId: orderId!,
-        status: 'pending'
-      });
-      console.log(`⏳ [CALLBACK:GET] Payment pending for order ${orderId}, status: ${statusResult.status}`);
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/pending?orderId=${orderId}&amount=${order.Amount}&credits=${order.CreditsPurchased || 0}&packageId=${order.PackageID}&userId=${order.UserID}`);
+      // Pending status
+      console.log('⏳ [CALLBACK] Payment pending');
+      return NextResponse.redirect(
+        `${APP_URL}/payment/pending?orderId=${orderId}&amount=${order.Amount}&credits=${order.CreditsPurchased || 0}&packageId=${order.PackageID}&userId=${order.UserID}`
+      );
     }
+
   } catch (error) {
-    console.error('💥 [CALLBACK:GET] Payment callback error:', error);
-    console.error('💥 [CALLBACK:GET] Error details:', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
+    console.error('💥 [CALLBACK] Error:', error);
     
-    // Include orderId and paymentId in error redirect for better debugging
     const searchParams = request.nextUrl.searchParams;
     const orderId = searchParams.get('orderId');
     const paymentId = searchParams.get('paymentId');
     
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/payment/error?orderId=${orderId || 'unknown'}&paymentId=${paymentId || 'unknown'}&Id=${paymentId || 'unknown'}&error=${encodeURIComponent('Payment verification error')}`);
+    return NextResponse.redirect(
+      `${APP_URL}/payment/error?orderId=${orderId || 'unknown'}&paymentId=${paymentId || 'unknown'}&error=${encodeURIComponent('Payment verification error')}`
+    );
   }
 }
 
 export async function POST(request: NextRequest) {
-  // Handle POST callbacks from MyFatoorah
   try {
     const body = await request.json();
-    console.log('MyFatoorah POST callback received:', body);
+    console.log('🔍 [CALLBACK:POST] MyFatoorah POST callback:', body);
 
     const { InvoiceId, TransactionStatus, TransactionId } = body;
     
@@ -164,89 +112,62 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing InvoiceId' }, { status: 400 });
     }
 
-    // Find order by invoice ID in Google Sheets
-    console.log('🔍 [CALLBACK:POST] Looking for order by InvoiceId:', InvoiceId);
-    const orderResult = await getOrder(InvoiceId);
+    // Find order by invoice ID
+    const orderResult = await orderManagerService.findById(InvoiceId);
     
     if (!orderResult.success || !orderResult.order) {
-      console.error('🔍 [CALLBACK:POST] Order not found for invoice:', InvoiceId);
+      console.error('🔍 [CALLBACK:POST] Order not found');
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
     
     const order = orderResult.order;
-    console.log('🔍 [CALLBACK:POST] Found order in Google Sheets:', {
-      ID: order.ID,
-      UserID: order.UserID,
-      Amount: order.Amount,
-      CreditsPurchased: order.CreditsPurchased,
-      Status: order.Status
-    });
 
-    // Update order status
+    // Check if already processed
+    if (orderManagerService.isAlreadyProcessed(order)) {
+      console.log('⚠️ [CALLBACK:POST] Order already processed');
+      return NextResponse.json({ success: true, message: 'Already processed' });
+    }
+
+    // Update order status and add credits
     if (TransactionStatus === 'Paid') {
-      // Check if already processed to prevent duplicates
-      if (order.Status === 'paid') {
-        console.log('⚠️ [CALLBACK:POST] Order already processed, skipping to prevent duplicate credits');
-        return NextResponse.json({ success: true, message: 'Already processed' });
-      }
-
-      // Mark as paid in Google Sheets FIRST to prevent race conditions
-      console.log('🔍 [CALLBACK:POST] Marking order as paid in Google Sheets...');
-      const updateResult = await updateOrderStatus({
-        orderId: order.ID,
-        status: 'paid',
-        paymentId: TransactionId
-      });
+      // Mark as paid
+      const markResult = await orderManagerService.markAsPaid(order.ID, TransactionId);
       
-      if (!updateResult.success) {
-        console.error('🔍 [CALLBACK:POST] Failed to update order status:', updateResult.error);
-        return NextResponse.json(
-          { error: 'Failed to update order status: ' + updateResult.error },
-          { status: 500 }
-        );
+      if (!markResult.success) {
+        console.error('🔍 [CALLBACK:POST] Failed to mark order as paid');
+        return NextResponse.json({ error: 'Failed to update order status' }, { status: 500 });
       }
       
-      // Add credits to user in both databases
-      const user = userDb.findById(order.UserID);
-      if (user) {
-        console.log('💳 [CALLBACK:POST] Adding credits:', { userId: user.id, credits: order.CreditsPurchased });
-        // Update local database
-        userDb.updateCredits(user.id, order.CreditsPurchased || 0);
+      // Add credits using centralized service
+      const creditResult = await creditService.addCredits(
+        order.UserID,
+        order.CreditsPurchased || 0,
+        `Payment callback: ${order.ID}`
+      );
 
-        // Update Google Sheets using server wrapper with email fallback
-        try {
-          let sheetsUpdated = false;
-          const byId = await googleSheetsUserDb.addCredits(user.id, order.CreditsPurchased || 0);
-          sheetsUpdated = !!byId.success;
-          if (!sheetsUpdated) {
-            const lookup = await googleSheetsUserDb.findByEmail(user.email);
-            if (lookup.success && lookup.user?.id) {
-              const targetId = lookup.user.id as string;
-              const addByEmail = await googleSheetsUserDb.addCredits(targetId, order.CreditsPurchased || 0);
-              sheetsUpdated = !!addByEmail.success;
-              if (!sheetsUpdated) {
-                const current = Number(lookup.user.credits || 0);
-                await googleSheetsUserDb.updateCredits(targetId, current + (order.CreditsPurchased || 0));
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Error updating Google Sheets (POST callback):', error);
-        }
+      if (!creditResult.success) {
+        console.error('🔍 [CALLBACK:POST] Failed to add credits:', creditResult.error);
+        // Order is marked as paid, so return success but log the error
+        return NextResponse.json({
+          success: true,
+          warning: 'Order processed but credits addition failed'
+        });
       }
 
-      console.log(`🔍 [CALLBACK:POST] Payment successful for order ${order.ID}, added ${order.CreditsPurchased || 0} credits`);
+      console.log(`✅ [CALLBACK:POST] Payment successful, ${order.CreditsPurchased} credits added`);
+      return NextResponse.json({ received: true, success: true });
+
     } else if (TransactionStatus === 'Failed') {
-      await updateOrderStatus({
-        orderId: order.ID,
-        status: 'failed'
-      });
-      console.log(`🔍 [CALLBACK:POST] Payment failed for order ${order.ID}`);
+      await orderManagerService.markAsFailed(order.ID);
+      console.log('❌ [CALLBACK:POST] Payment failed');
+      return NextResponse.json({ received: true });
     }
 
     return NextResponse.json({ received: true });
+
   } catch (error) {
-    console.error('Payment POST callback error:', error);
+    console.error('💥 [CALLBACK:POST] Error:', error);
     return NextResponse.json({ error: 'Callback processing failed' }, { status: 500 });
   }
 }
+
