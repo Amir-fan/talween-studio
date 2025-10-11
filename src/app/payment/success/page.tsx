@@ -72,14 +72,14 @@ function PaymentSuccessContent() {
             credits: parseInt(credits)
           });
           
-          const response = await fetch('/api/payment/add-credits-simple', {
+          const response = await fetch('/api/admin/add-credits', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
               userId,
-              credits: parseInt(credits)
+              amount: parseInt(credits)
             }),
             signal: controller.signal
           });
