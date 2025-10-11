@@ -130,21 +130,24 @@ async function generatePageImage(
   const basePrompt = `${STRICT_BLACK_WHITE_PROMPT}
 
 Scene: ${sceneDescription}
-Character: ${characterName} (${characterDescription})
+Character: ${characterName} - THIS IS THE EXACT SAME CHILD FROM THE UPLOADED PHOTO
 
-CRITICAL CHARACTER REQUIREMENTS:
-- The character MUST look EXACTLY like the child in the reference photo
-- Copy the child's exact facial features, hair, skin tone, and clothing from the reference image
-- This is NOT a generic character - draw the SPECIFIC child from the uploaded photo
-- Maintain the exact same appearance in every scene throughout the story
+🚨 ABSOLUTE REQUIREMENT - COPY THE EXACT CHILD FROM REFERENCE PHOTO:
+- Draw THE EXACT SAME CHILD from the uploaded photo - do not create a different child
+- Copy every single facial feature: eyes, nose, mouth, face shape, eyebrows
+- Copy the exact hair style, hair color, hair length, and hair texture
+- Copy the exact skin tone, complexion, and facial structure
+- Copy the exact clothing, accessories, and any distinctive features
+- This child is the HERO of the story - they must be IDENTICAL to the uploaded photo
+- Do NOT change their appearance, age, or any physical characteristics
+- This is NOT inspiration - this is copying the EXACT same child
 
 Additional Requirements:
 - Draw in black lines on white background only
 - Professional coloring book style with clean, bold black lines
 - Children will color this themselves
 - NO TEXT OR LETTERS of any kind (no signs, labels, or writing)
-- CRITICAL: Match the reference photo exactly - do not change the child's appearance
-- The character should be identical to the reference image in facial features and clothing`;
+- The child from the uploaded photo IS the main character - draw them exactly`;
 
   const imageUrl = await generateWithRetryStrict(async () => {
     const generateParams: any = {
@@ -161,21 +164,27 @@ Additional Requirements:
       generateParams.config = {
         ...generateParams.config,
         referenceImage: characterReferenceImage,
-        referenceImageWeight: 0.8, // Strong weight to match reference
+        referenceImageWeight: 0.95, // Maximum weight to match reference exactly
         referenceImageStyle: 'exact_match', // Ensure exact matching
       };
       
       // Add reference image info to prompt
       generateParams.prompt = `${basePrompt}
 
-REFERENCE IMAGE: Use the provided reference image to draw the character EXACTLY as shown. The character must match the reference photo in:
-- Facial features (eyes, nose, mouth, face shape)
-- Hair style and color
-- Skin tone
-- Clothing and accessories
-- Overall appearance and proportions
+🎯 REFERENCE IMAGE INSTRUCTIONS - COPY THE EXACT CHILD:
+The provided reference image shows THE EXACT CHILD who is the hero of this story. You MUST:
 
-Do NOT deviate from the reference image. Draw the exact same child in every scene.`;
+1. COPY THE EXACT CHILD: Look at the reference image and draw THE EXACT SAME CHILD
+2. FACIAL FEATURES: Copy eyes, nose, mouth, face shape, eyebrows, and expressions EXACTLY
+3. HAIR: Copy hair style, color, length, texture, and any hair accessories EXACTLY  
+4. SKIN TONE: Copy the exact skin color, complexion, and facial structure
+5. CLOTHING: Copy the exact clothes, accessories, and any distinctive items
+6. BODY PROPORTIONS: Copy height, build, and overall body proportions
+7. IDENTICAL APPEARANCE: The child must look IDENTICAL to the reference photo
+
+🚨 CRITICAL: This is NOT a generic child or inspired character - this IS the exact child from the uploaded photo. They are the hero of the story and must appear IDENTICAL in every scene.
+
+Do NOT create a different child. Do NOT change their appearance. Draw THE EXACT SAME CHILD from the reference image.`;
     }
 
     const { media } = await ai.generate(generateParams);

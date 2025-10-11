@@ -12,7 +12,7 @@ export async function extractCharacterFromPhoto(
   try {
     console.log('CHARACTER EXTRACTION: Starting analysis for:', childName);
     
-    const characterDescription = 'The EXACT child from the uploaded photo named ' + childName + '. CRITICAL INSTRUCTIONS: This character must be drawn to look EXACTLY like the child in the uploaded photo. Copy the child\'s precise facial features, hair style, skin tone, eye shape, nose, mouth, clothing, and distinctive characteristics from the reference photo. The character should be identical to the uploaded image in every scene throughout the story. This is NOT a generic character - this is the specific child from the uploaded photo and must match them exactly in appearance, clothing, and all physical features.';
+    const characterDescription = '🚨 THE EXACT CHILD FROM THE UPLOADED PHOTO named ' + childName + '. This IS the real child who is the hero of the story. CRITICAL: Draw THE EXACT SAME CHILD from the uploaded photo - do not create a different child. Copy every single detail: facial features, hair style, skin tone, eye shape, nose, mouth, clothing, accessories, body proportions, and distinctive characteristics. The child must be IDENTICAL to the uploaded image in every scene. This is NOT inspiration or a generic character - this IS the exact same child from the uploaded photo. They are the main character and hero of the story and must appear EXACTLY as they do in the reference photo.';
 
     console.log('CHARACTER EXTRACTION: Character description created from photo');
 
