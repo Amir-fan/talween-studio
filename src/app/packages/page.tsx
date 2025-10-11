@@ -15,6 +15,7 @@ const creditPackages = [
     name: 'اختبار الدفع',
     credits: 22,
     price: 1.00,
+    originalPrice: 5.00, // Fake higher price
     currency: 'USD',
     description: 'لاختبار نظام الدفع',
     features: ['22 نقطة للاختبار', 'تأكيد عمل نظام الدفع', 'تجربة سريعة', 'مثالي للاختبار'],
@@ -27,6 +28,7 @@ const creditPackages = [
     name: 'المجانية',
     credits: 128,
     price: 0,
+    originalPrice: null, // No fake price for free
     currency: 'USD',
     description: 'ابدأ مجاناً',
     features: ['قصة البداية: أول قصة تفاعلية باسم الطفل', 'ألوان التجربة: صفحتان للتلوين', 'كراسة معاينة: نسخة تعليمية مبسطة', 'طباعة محدودة: مقاس واحد + يظهر شعار'],
@@ -39,6 +41,7 @@ const creditPackages = [
     name: 'المكتشف',
     credits: 1368,
     price: 12.99,
+    originalPrice: 25.99, // Fake higher price
     currency: 'USD',
     description: 'مثالي للاستكشاف',
     features: ['كل مزايا المجانية', 'قصص الاستكشاف: 5 مغامرات قصيرة', 'ألوان إضافية: 10 صفحات للتلوين', 'كراسات التعلم: 3 كراسات جاهزة', 'ذكريات مرسومة: تحويل صورتين', 'طباعة منزلية: جودة عالية'],
@@ -51,6 +54,7 @@ const creditPackages = [
     name: 'عالم الإبداع',
     credits: 3440,
     price: 29.99,
+    originalPrice: 60.00, // Fake higher price
     currency: 'USD',
     description: 'للإبداع المتقدم',
     features: ['كل مزايا المكتشف', 'قصص الإبداع: 15 قصة متكاملة', 'ألوان بلا حدود: 30 صفحة جديدة شهرياً', 'كراسات متقدمة: 10 كراسات إضافية', 'صور عائلية ملونة: تحويل 5 صور', 'طباعة فاخرة: مقاسات متعددة'],
@@ -63,6 +67,7 @@ const creditPackages = [
     name: 'المعلم المبدع',
     credits: 7938,
     price: 59.99,
+    originalPrice: 120.00, // Fake higher price
     currency: 'USD',
     description: 'للمعلمين والمدارس',
     features: ['كل مزايا عالم الإبداع', 'قصص جماعية: أكثر من 40 قصة', 'ألوان الصف: 100+ صفحة إضافية', 'كراسات شاملة: 20 كراسة تربوية', 'ذكريات ممتدة: تحويل 15 صورة', 'طباعة احترافية: جودة K4 / HD'],
@@ -240,8 +245,20 @@ export default function PackagesPage() {
                     {pkg.credits}
                     <span className="text-lg text-talween-brown/70 mr-2">نقطة</span>
                   </div>
-                  <div className="text-3xl font-bold text-talween-orange">
-                    {pkg.price} {pkg.currency}
+                  <div className="flex flex-col items-center gap-1">
+                    {pkg.originalPrice && (
+                      <div className="text-lg text-gray-400 line-through">
+                        {pkg.originalPrice} {pkg.currency}
+                      </div>
+                    )}
+                    <div className="text-3xl font-bold text-talween-orange">
+                      {pkg.price} {pkg.currency}
+                    </div>
+                    {pkg.originalPrice && (
+                      <div className="text-sm text-talween-green font-semibold">
+                        وفر {((pkg.originalPrice - pkg.price) / pkg.originalPrice * 100).toFixed(0)}%
+                      </div>
+                    )}
                   </div>
                 </div>
 

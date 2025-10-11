@@ -48,7 +48,13 @@ export async function POST(request: NextRequest) {
         const data = await resp.json();
         if (data.success) {
           finalAmount = data.finalAmount;
-          appliedDiscount = { code: discountCode, percentOff: data.percentOff };
+          appliedDiscount = { 
+            code: discountCode, 
+            type: data.discountType,
+            value: data.discountValue,
+            amount: data.discountAmount,
+            description: data.description
+          };
         }
       }
     } catch {}

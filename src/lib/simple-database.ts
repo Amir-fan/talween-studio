@@ -576,26 +576,52 @@ export const orderDb = {
 
 // Discounts management
 export const discountDb = {
-  create: (code: string, percentOff: number, maxUses?: number, expiresAt?: number) => {
+  create: (code: string, type: 'percentage' | 'amount', value: number, maxUses?: number, expiresAt?: number, description?: string) => {
     const id = uuidv4();
     db.discounts = db.discounts || {};
     db.discounts[id] = {
       id,
       code: code.toUpperCase(),
-      percentOff,
+      type, // 'percentage' or 'amount'
+      value, // percentage (0-100) or fixed amount
       maxUses: maxUses || null,
       uses: 0,
       active: true,
+      description: description || '',
       created_at: Math.floor(Date.now() / 1000),
       expires_at: expiresAt || null
     };
     saveDatabase();
     return db.discounts[id];
   },
+  update: (id: string, updates: Partial<{code: string, type: 'percentage' | 'amount', value: number, maxUses: number, active: boolean, description: string, expires_at: number}>) => {
+    if (!db.discounts || !db.discounts[id]) return null;
+    
+    // Update fields
+    if (updates.code) db.discounts[id].code = updates.code.toUpperCase();
+    if (updates.type) db.discounts[id].type = updates.type;
+    if (updates.value !== undefined) db.discounts[id].value = updates.value;
+    if (updates.maxUses !== undefined) db.discounts[id].maxUses = updates.maxUses;
+    if (updates.active !== undefined) db.discounts[id].active = updates.active;
+    if (updates.description !== undefined) db.discounts[id].description = updates.description;
+    if (updates.expires_at !== undefined) db.discounts[id].expires_at = updates.expires_at;
+    
+    saveDatabase();
+    return db.discounts[id];
+  },
+  delete: (id: string) => {
+    if (!db.discounts || !db.discounts[id]) return false;
+    delete db.discounts[id];
+    saveDatabase();
+    return true;
+  },
   list: () => Object.values(db.discounts || {}),
   findByCode: (code: string) => {
     const all = db.discounts || {};
     return Object.values(all).find((d: any) => d.code === code.toUpperCase());
+  },
+  findById: (id: string) => {
+    return db.discounts?.[id] || null;
   },
   incrementUse: (id: string) => {
     if (!db.discounts || !db.discounts[id]) return;

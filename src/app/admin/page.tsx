@@ -73,8 +73,11 @@ function AdminDashboardContent() {
   const [creditsToAdd, setCreditsToAdd] = useState('');
   const [discounts, setDiscounts] = useState<any[]>([]);
   const [newCode, setNewCode] = useState('');
-  const [newPercent, setNewPercent] = useState('10');
+  const [newType, setNewType] = useState<'percentage' | 'amount'>('percentage');
+  const [newValue, setNewValue] = useState('10');
   const [newMaxUses, setNewMaxUses] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const [editingDiscount, setEditingDiscount] = useState<any>(null);
 
   // Use auth context for authentication
   const isAdminAuthenticated = isAdmin && user;
@@ -541,34 +544,102 @@ function AdminDashboardContent() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-              <Input placeholder="الكود" value={newCode} onChange={(e)=>setNewCode(e.target.value.toUpperCase())}/>
-              <Input placeholder="نسبة الخصم %" value={newPercent} onChange={(e)=>setNewPercent(e.target.value)} />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+              <Input placeholder="رمز الخصم" value={newCode} onChange={(e)=>setNewCode(e.target.value.toUpperCase())}/>
+              <div>
+                <select 
+                  className="w-full p-2 border rounded"
+                  value={newType}
+                  onChange={(e)=>setNewType(e.target.value as 'percentage' | 'amount')}
+                >
+                  <option value="percentage">نسبة مئوية (%)</option>
+                  <option value="amount">مبلغ محدد ($)</option>
+                </select>
+              </div>
+              <Input placeholder={newType === 'percentage' ? 'النسبة %' : 'المبلغ $'} value={newValue} onChange={(e)=>setNewValue(e.target.value)} />
               <Input placeholder="أقصى استخدام (اختياري)" value={newMaxUses} onChange={(e)=>setNewMaxUses(e.target.value)} />
               <Button onClick={async ()=>{
-                const resp = await fetch('/api/discounts/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:newCode,percentOff:Number(newPercent||0),maxUses:newMaxUses?Number(newMaxUses):undefined})});
+                const resp = await fetch('/api/discounts/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+                  code:newCode,
+                  type:newType,
+                  value:Number(newValue||0),
+                  maxUses:newMaxUses?Number(newMaxUses):undefined,
+                  description:newDescription
+                })});
                 const r = await resp.json();
-                if (r.success){ setDiscounts(r.discounts||[]); setNewCode(''); setNewPercent('10'); setNewMaxUses(''); }
+                if (r.success){ 
+                  setDiscounts(r.discounts||[]); 
+                  setNewCode(''); 
+                  setNewValue('10'); 
+                  setNewMaxUses(''); 
+                  setNewDescription('');
+                } else {
+                  alert(r.error || 'فشل إنشاء رمز الخصم');
+                }
               }}>إنشاء</Button>
             </div>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>الكود</TableHead>
-                  <TableHead>الخصم%</TableHead>
+                  <TableHead>النوع</TableHead>
+                  <TableHead>القيمة</TableHead>
                   <TableHead>الاستخدامات</TableHead>
                   <TableHead>الحد</TableHead>
                   <TableHead>الحالة</TableHead>
+                  <TableHead>الإجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {(discounts||[]).map((d:any)=> (
                   <TableRow key={d.id}>
-                    <TableCell>{d.code}</TableCell>
-                    <TableCell>{d.percentOff}</TableCell>
+                    <TableCell className="font-mono">{d.code}</TableCell>
+                    <TableCell>
+                      <Badge variant={d.type === 'percentage' ? 'default' : 'secondary'}>
+                        {d.type === 'percentage' ? 'نسبة %' : 'مبلغ $'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{d.value}{d.type === 'percentage' ? '%' : '$'}</TableCell>
                     <TableCell>{d.uses||0}</TableCell>
-                    <TableCell>{d.maxUses||'-'}</TableCell>
-                    <TableCell>{d.active? 'نشط':'متوقف'}</TableCell>
+                    <TableCell>{d.maxUses||'∞'}</TableCell>
+                    <TableCell>
+                      <Badge variant={d.active ? 'default' : 'destructive'}>
+                        {d.active ? 'نشط' : 'غير نشط'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => setEditingDiscount(d)}
+                        >
+                          تعديل
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          onClick={async () => {
+                            if (confirm('هل أنت متأكد من حذف هذا رمز الخصم؟')) {
+                              const resp = await fetch('/api/discounts/delete', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({id: d.id})
+                              });
+                              const r = await resp.json();
+                              if (r.success) {
+                                setDiscounts(r.discounts||[]);
+                                alert('تم حذف رمز الخصم بنجاح');
+                              } else {
+                                alert(r.error || 'فشل حذف رمز الخصم');
+                              }
+                            }
+                          }}
+                        >
+                          حذف
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

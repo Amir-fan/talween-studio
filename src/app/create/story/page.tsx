@@ -753,10 +753,10 @@ function CreateStoryPage() {
                                 <SelectValue placeholder="اختر عدد الصفحات" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="4">4 صفحات ({PRICING_CONFIG.FEATURE_COSTS.STORY_WITH_CHILD_NAME} نقطة - $3.00)</SelectItem>
-                                <SelectItem value="8">8 صفحات ({PRICING_CONFIG.FEATURE_COSTS.STORY_WITH_CHILD_NAME} نقطة - $3.00)</SelectItem>
-                                <SelectItem value="12">12 صفحة ({PRICING_CONFIG.FEATURE_COSTS.STORY_WITH_CHILD_NAME} نقطة - $3.00)</SelectItem>
-                                <SelectItem value="16">16 صفحة ({PRICING_CONFIG.FEATURE_COSTS.STORY_WITH_CHILD_NAME} نقطة - $3.00)</SelectItem>
+                                <SelectItem value="4">4 صفحات ({PRICING_CONFIG.FEATURE_COSTS.STORY_WITH_CHILD_NAME} نقطة)</SelectItem>
+                                <SelectItem value="8">8 صفحات ({PRICING_CONFIG.FEATURE_COSTS.STORY_WITH_CHILD_NAME} نقطة)</SelectItem>
+                                <SelectItem value="12">12 صفحة ({PRICING_CONFIG.FEATURE_COSTS.STORY_WITH_CHILD_NAME} نقطة)</SelectItem>
+                                <SelectItem value="16">16 صفحة ({PRICING_CONFIG.FEATURE_COSTS.STORY_WITH_CHILD_NAME} نقطة)</SelectItem>
                             </SelectContent>
                         </Select>
                    </div>
