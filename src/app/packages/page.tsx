@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Check, Star, Zap, Crown, Sparkles, ArrowRight } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Check, Star, Zap, Crown, Sparkles, ArrowRight, Tag } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const creditPackages = [
@@ -83,6 +84,9 @@ export default function PackagesPage() {
   const { toast } = useToast();
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [discountCode, setDiscountCode] = useState('');
+  const [discountInfo, setDiscountInfo] = useState<any>(null);
+  const [validatingDiscount, setValidatingDiscount] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -172,6 +176,76 @@ export default function PackagesPage() {
     return null; // Will redirect
   }
 
+  const handleApplyDiscount = async () => {
+    if (!discountCode.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'خطأ',
+        description: 'الرجاء إدخال رمز الخصم',
+      });
+      return;
+    }
+
+    setValidatingDiscount(true);
+    try {
+      // We'll validate against a sample package to get discount info
+      const samplePackage = creditPackages.find(pkg => pkg.id === 'EXPLORER');
+      const response = await fetch('/api/discounts/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code: discountCode,
+          amount: samplePackage?.price || 12.99,
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setDiscountInfo(result);
+        toast({
+          title: '✅ تم تطبيق رمز الخصم',
+          description: `خصم ${result.discountType === 'percentage' ? result.discountValue + '%' : '$' + result.discountValue} - ${result.description || 'خصم خاص'}`,
+        });
+      } else {
+        setDiscountInfo(null);
+        toast({
+          variant: 'destructive',
+          title: 'رمز خصم غير صالح',
+          description: result.error || 'الرمز غير صحيح أو منتهي الصلاحية',
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'خطأ',
+        description: 'حدث خطأ أثناء التحقق من رمز الخصم',
+      });
+    } finally {
+      setValidatingDiscount(false);
+    }
+  };
+
+  const handleRemoveDiscount = () => {
+    setDiscountCode('');
+    setDiscountInfo(null);
+    toast({
+      title: 'تم إزالة رمز الخصم',
+    });
+  };
+
+  const calculateDiscountedPrice = (originalPrice: number) => {
+    if (!discountInfo) return originalPrice;
+    
+    if (discountInfo.discountType === 'percentage') {
+      return originalPrice - (originalPrice * discountInfo.discountValue / 100);
+    } else {
+      return Math.max(0, originalPrice - discountInfo.discountValue);
+    }
+  };
+
   const handlePurchase = async (packageId: string) => {
     console.log('🔍 [PACKAGES PAGE] === PURCHASE BUTTON CLICKED ===');
     console.log('🔍 [PACKAGES PAGE] Package ID:', packageId);
@@ -226,6 +300,7 @@ export default function PackagesPage() {
           packageId: selectedPkg.id,
           credits: selectedPkg.credits,
           userId: user?.id,
+          discountCode: discountInfo ? discountCode : undefined,
         }),
       });
 
@@ -279,6 +354,70 @@ export default function PackagesPage() {
           </div>
         </div>
 
+        {/* Discount Code Section */}
+        <div className="max-w-md mx-auto mb-8">
+          <Card className="shadow-lg">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Tag className="h-5 w-5 text-talween-purple" />
+                <h3 className="font-bold text-talween-brown">هل لديك رمز خصم؟</h3>
+              </div>
+              
+              {discountInfo ? (
+                <div className="bg-talween-green/10 border border-talween-green rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-talween-green text-white">
+                        {discountInfo.discountType === 'percentage' 
+                          ? `${discountInfo.discountValue}%` 
+                          : `$${discountInfo.discountValue}`}
+                      </Badge>
+                      <span className="font-mono font-bold text-talween-brown">{discountCode}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveDiscount}
+                      className="text-talween-brown hover:text-red-600"
+                    >
+                      إزالة
+                    </Button>
+                  </div>
+                  {discountInfo.description && (
+                    <p className="text-sm text-talween-brown/70">{discountInfo.description}</p>
+                  )}
+                  <p className="text-sm text-talween-green font-semibold mt-2">
+                    ✅ سيتم تطبيق الخصم عند الشراء
+                  </p>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="أدخل رمز الخصم"
+                    value={discountCode}
+                    onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                    className="text-center font-mono"
+                    disabled={validatingDiscount}
+                  />
+                  <Button
+                    onClick={handleApplyDiscount}
+                    disabled={validatingDiscount || !discountCode.trim()}
+                    className="bg-talween-purple hover:bg-talween-purple/90"
+                  >
+                    {validatingDiscount ? (
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      </div>
+                    ) : (
+                      'تطبيق'
+                    )}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Packages Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {creditPackages.map((pkg) => (
@@ -318,13 +457,29 @@ export default function PackagesPage() {
                         {pkg.originalPrice} {pkg.currency}
                       </div>
                     )}
-                    <div className="text-3xl font-bold text-talween-orange">
-                      {pkg.price} {pkg.currency}
-                    </div>
-                    {pkg.originalPrice && (
-                      <div className="text-sm text-talween-green font-semibold">
-                        وفر {((pkg.originalPrice - pkg.price) / pkg.originalPrice * 100).toFixed(0)}%
-                      </div>
+                    {discountInfo && pkg.id !== 'FREE' ? (
+                      <>
+                        <div className="text-xl text-gray-400 line-through">
+                          {pkg.price} {pkg.currency}
+                        </div>
+                        <div className="text-3xl font-bold text-talween-green">
+                          {calculateDiscountedPrice(pkg.price).toFixed(2)} {pkg.currency}
+                        </div>
+                        <div className="text-sm text-talween-purple font-semibold">
+                          خصم إضافي {discountInfo.discountType === 'percentage' ? `${discountInfo.discountValue}%` : `$${discountInfo.discountValue}`}!
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-3xl font-bold text-talween-orange">
+                          {pkg.price} {pkg.currency}
+                        </div>
+                        {pkg.originalPrice && (
+                          <div className="text-sm text-talween-green font-semibold">
+                            وفر {((pkg.originalPrice - pkg.price) / pkg.originalPrice * 100).toFixed(0)}%
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
