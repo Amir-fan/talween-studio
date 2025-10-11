@@ -152,6 +152,9 @@ export async function POST(request: NextRequest) {
         paymentUrl: paymentResult.paymentUrl,
         orderId: orderIdStr,
         invoiceId: paymentResult.invoiceId,
+        finalAmount: finalAmount, // Return the final amount after discount
+        originalAmount: amount, // Return the original amount
+        discountApplied: appliedDiscount, // Return discount info
         message: 'Payment session created successfully'
       });
     } else {

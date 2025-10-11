@@ -20,8 +20,7 @@ function PaymentPageContent() {
   const [paymentData, setPaymentData] = useState<any>(null);
   const [paymentUrl, setPaymentUrl] = useState<string>('');
   const [error, setError] = useState<string>('');
-  const [discountCode, setDiscountCode] = useState<string>('');
-  const [discountApplied, setDiscountApplied] = useState<{percentOff:number, finalAmount:number} | null>(null);
+  const [appliedDiscountCode, setAppliedDiscountCode] = useState<string>('');
   
   // Use ref to guarantee exactly-once session creation
   const createdRef = useRef(false);
@@ -45,6 +44,7 @@ function PaymentPageContent() {
     const amount = searchParams.get('amount');
     const packageId = searchParams.get('packageId');
     const credits = searchParams.get('credits');
+    const discountCode = searchParams.get('discountCode');
     
     if (!orderId || !amount || !packageId || !credits) {
       console.log('🔍 [PAYMENT PAGE] Missing parameters, redirecting to packages');
@@ -55,11 +55,17 @@ function PaymentPageContent() {
     // Mark as created IMMEDIATELY to prevent duplicate session creation
     createdRef.current = true;
 
+    // Store discount code if present
+    if (discountCode) {
+      setAppliedDiscountCode(discountCode);
+    }
+
     setPaymentData({
       orderId,
       amount: parseFloat(amount),
       packageId,
-      credits: parseInt(credits)
+      credits: parseInt(credits),
+      discountCode: discountCode || undefined
     });
 
     // Create MyFatoorah payment session
@@ -252,11 +258,25 @@ function PaymentPageContent() {
                   <span className="text-muted-foreground">المبلغ</span>
                   <span className="font-medium">${paymentData?.amount || '0'}</span>
                 </div>
+                {appliedDiscountCode && (
+                  <div className="flex justify-between items-center bg-green-50 p-3 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-green-600" />
+                      <span className="text-sm text-green-700">رمز الخصم</span>
+                    </div>
+                    <span className="font-mono font-bold text-green-700">{appliedDiscountCode}</span>
+                  </div>
+                )}
                 <div className="border-t pt-4">
                   <div className="flex justify-between text-lg font-bold">
-                    <span>المجموع</span>
-                    <span>${paymentData?.amount || '0'}</span>
+                    <span>المجموع النهائي</span>
+                    <span className="text-green-600">${paymentData?.amount || '0'}</span>
                   </div>
+                  {appliedDiscountCode && (
+                    <p className="text-xs text-green-600 text-right mt-1">
+                      ✅ تم تطبيق رمز الخصم
+                    </p>
+                  )}
                 </div>
 
                 {/* Security Features */}

@@ -311,8 +311,10 @@ export default function PackagesPage() {
 
       if (result.success && result.paymentUrl) {
         console.log('🔍 [PACKAGES PAGE] ✅ Payment session created successfully, redirecting...');
+        // Use the finalAmount from API response (already has discount applied)
+        const finalAmount = result.finalAmount || selectedPkg.price;
         // Redirect to payment page with order details
-        const paymentUrl = `/payment?orderId=${result.orderId}&amount=${selectedPkg.price}&packageId=${selectedPkg.id}&credits=${selectedPkg.credits}&userId=${user.id}`;
+        const paymentUrl = `/payment?orderId=${result.orderId}&amount=${finalAmount}&packageId=${selectedPkg.id}&credits=${selectedPkg.credits}&userId=${user.id}${discountInfo ? `&discountCode=${discountCode}` : ''}`;
         console.log('🔍 [PACKAGES PAGE] Redirecting to:', paymentUrl);
         window.location.href = paymentUrl;
       } else {
