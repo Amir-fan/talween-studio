@@ -484,10 +484,15 @@ function CreateStoryPage() {
         // INSTANTLY sync latest credits from Google Sheets after successful generation
         console.log('🔄 INSTANTLY refreshing credits after story generation...');
         try { 
-          await refreshUserData(); 
+          // Use a timeout to prevent hanging
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 5000)
+          );
+          await Promise.race([refreshUserData(), timeoutPromise]); 
           console.log('✅ Credits refreshed instantly');
         } catch (e) {
           console.error('❌ Failed to refresh credits:', e);
+          // Don't block the user experience if credit sync fails
         }
       }
 

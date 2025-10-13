@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Performance optimizations
+  poweredByHeader: false,
+  compress: true,
+  reactStrictMode: false, // Disable for better performance
   images: {
     remotePatterns: [
       {
@@ -35,12 +39,51 @@ const nextConfig: NextConfig = {
   // Performance optimizations
   experimental: {
     optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react', '@radix-ui/react-*'],
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
   // Remove standalone output for Vercel deployment
   // output: 'standalone',
+  // Add caching headers for better performance
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+        ],
+      },
+      {
+        source: '/api/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=60, s-maxage=60',
+          },
+        ],
+      },
+    ];
+  },
   // Optimize bundle
   webpack: (config, { dev, isServer }) => {
     if (!dev && !isServer) {

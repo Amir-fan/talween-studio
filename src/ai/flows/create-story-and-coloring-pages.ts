@@ -32,7 +32,7 @@ const StoryContentSchema = z.object({
 
 const storyContentPrompt = ai.definePrompt({
     name: 'storyContentPrompt',
-    input: { schema: StoryAndPagesInputSchema.pick({ childName: true, ageGroup: true, setting: true, lesson: true}) },
+    input: { schema: StoryAndPagesInputSchema.pick({ childName: true, ageGroup: true, setting: true, lesson: true, numberOfPages: true}) },
     output: { schema: StoryContentSchema },
     prompt: `You are a children's story generator that creates engaging, educational stories in Arabic designed for coloring books.
 
@@ -43,10 +43,11 @@ Main character name: {{childName}}
 Age: {{ageGroup}}
 Place/Setting: {{setting}}
 Lesson/Moral: {{lesson}}
+Number of pages requested: {{numberOfPages}}
 
 Story Rules:
 Language: Arabic only.
-Story length: Short, divided into 3 chapters maximum.
+Story length: Create EXACTLY {{numberOfPages}} chapters - one chapter per page requested.
 Each chapter must include: • Chapter Title (2–3 words). • Narrative (90–130 words) suitable for {{ageGroup}} years old. • Illustration Description: a single, concrete scene description for coloring that references the main character by name and the chosen setting.
 
 Story Structure:
@@ -228,10 +229,17 @@ export async function createStoryAndColoringPagesFlow(input: StoryAndPagesInput)
         ageGroup: input.ageGroup,
         setting: input.setting,
         lesson: input.lesson,
+        numberOfPages: input.numberOfPages,
     });
 
     if (!storyContent || !storyContent.chapters || storyContent.chapters.length === 0 || !storyContent.characterDescription) {
       throw new Error('Story text generation failed to return complete content.');
+    }
+
+    // Validate that we got the correct number of chapters
+    const requestedPages = parseInt(input.numberOfPages, 10);
+    if (storyContent.chapters.length !== requestedPages) {
+      console.warn(`⚠️ AI generated ${storyContent.chapters.length} chapters but ${requestedPages} were requested. Using what was generated.`);
     }
 
     // 2. Handle character description - either from uploaded photo or AI generation
@@ -273,8 +281,8 @@ export async function createStoryAndColoringPagesFlow(input: StoryAndPagesInput)
     }
 
     // 3. Generate images for each chapter using the reference image.
-    const numPagesToGenerate = Math.min(parseInt(input.numberOfPages, 10), storyContent.chapters.length);
-    const chaptersToProcess = storyContent.chapters.slice(0, numPagesToGenerate);
+    // The AI should have generated exactly the number of chapters requested
+    const chaptersToProcess = storyContent.chapters;
 
     const imageUrls = await Promise.all(chaptersToProcess.map(async (chapter, index) => {
       try {

@@ -39,7 +39,13 @@ export async function POST(request: NextRequest) {
 
     // Apply discount if provided (must be done before creating order)
     let finalAmount = amount;
-    let appliedDiscount: { code?: string; percentOff?: number } | null = null;
+    let appliedDiscount: { 
+      code?: string; 
+      type?: string;
+      value?: number;
+      amount?: number;
+      description?: string;
+    } | null = null;
     try {
       if (discountCode) {
         const resp = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/discounts/validate`, {
@@ -123,7 +129,7 @@ export async function POST(request: NextRequest) {
       orderId: orderIdStr,
       packageId: packageId,
       credits: credits,
-      description: `تالوين — شراء ${credits} نقطة (${packageId})${appliedDiscount ? ` — خصم ${appliedDiscount.percentOff}%: ${appliedDiscount.code}` : ''}`,
+      description: `تالوين — شراء ${credits} نقطة (${packageId})${appliedDiscount ? ` — خصم ${appliedDiscount.value}${appliedDiscount.type === 'percentage' ? '%' : '$'}: ${appliedDiscount.code}` : ''}`,
       // Redirect to callback first to verify payment and add credits
       returnUrl: `${baseUrl}/api/payment/callback?orderId=${orderIdStr}`,
       errorUrl: `${baseUrl}/payment/error?orderId=${orderIdStr}`,

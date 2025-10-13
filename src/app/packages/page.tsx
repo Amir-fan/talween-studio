@@ -12,32 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 
 const creditPackages = [
   {
-    id: 'TEST',
-    name: 'اختبار الدفع',
-    credits: 22,
-    price: 1.00,
-    originalPrice: 5.00, // Fake higher price
-    currency: 'USD',
-    description: 'لاختبار نظام الدفع',
-    features: ['22 نقطة للاختبار', 'تأكيد عمل نظام الدفع', 'تجربة سريعة', 'مثالي للاختبار'],
-    popular: false,
-    icon: <Star className="h-8 w-8" />,
-    color: 'from-green-500 to-green-600',
-  },
-  {
-    id: 'FREE',
-    name: 'المجانية',
-    credits: 128,
-    price: 0,
-    originalPrice: null, // No fake price for free
-    currency: 'USD',
-    description: 'ابدأ مجاناً',
-    features: ['قصة البداية: أول قصة تفاعلية باسم الطفل', 'ألوان التجربة: صفحتان للتلوين', 'كراسة معاينة: نسخة تعليمية مبسطة', 'طباعة محدودة: مقاس واحد + يظهر شعار'],
-    popular: false,
-    icon: <Star className="h-8 w-8" />,
-    color: 'from-gray-500 to-gray-600',
-  },
-  {
     id: 'EXPLORER',
     name: 'المكتشف',
     credits: 1368,
@@ -94,69 +68,72 @@ export default function PackagesPage() {
     }
   }, [user, loading, router]);
 
-  // Send high-intent lead to LeadConnector when user visits packages page
+  // Send high-intent lead to LeadConnector when user visits packages page (optimized)
   useEffect(() => {
     if (user && user.email) {
       // Only send once per session
       const leadSent = sessionStorage.getItem(`lead_sent_${user.id}`);
       if (!leadSent) {
-        console.log('📞 Sending high-intent lead to LeadConnector (packages page visit)...');
-        
-        fetch('https://services.leadconnectorhq.com/hooks/2xJ6VY43ugovZK68Cz74/webhook-trigger/e4a81e1d-830c-48ca-9396-38209636096d', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            // Lead basic information
-            email: user.email,
-            first_name: (user.displayName || 'User').split(' ')[0],
-            last_name: (user.displayName || 'User').split(' ').slice(1).join(' ') || '',
-            full_name: user.displayName || 'User',
-            
-            // Lead source and tracking
-            source: 'talween-studio-packages',
-            lead_source: 'Packages Page Visit',
-            campaign: 'High Intent - Viewing Pricing',
-            
-            // Lead details
-            lead_type: 'High Intent Prospect',
-            status: 'Warm Lead',
-            tags: ['high-intent', 'viewing-packages', 'warm-lead', 'pricing-page'],
-            
-            // User data
-            user_id: user.id,
-            current_credits: user.credits || 0,
-            
-            // Behavioral data
-            page_visited: '/packages',
-            intent_level: 'high',
-            funnel_stage: 'consideration',
-            
-            // Timestamps
-            created_at: new Date().toISOString(),
-            timestamp: Date.now(),
-            
-            // Additional metadata
-            metadata: {
-              visit_source: 'packages_page',
-              platform_version: '1.0',
-              user_status: user.status || 'active',
-              has_credits: (user.credits || 0) > 0,
-              is_returning_visitor: true // They signed up already
+        // Use setTimeout to avoid blocking the main thread
+        setTimeout(() => {
+          console.log('📞 Sending high-intent lead to LeadConnector (packages page visit)...');
+          
+          fetch('https://services.leadconnectorhq.com/hooks/2xJ6VY43ugovZK68Cz74/webhook-trigger/e4a81e1d-830c-48ca-9396-38209636096d', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+              // Lead basic information
+              email: user.email,
+              first_name: (user.displayName || 'User').split(' ')[0],
+              last_name: (user.displayName || 'User').split(' ').slice(1).join(' ') || '',
+              full_name: user.displayName || 'User',
+              
+              // Lead source and tracking
+              source: 'talween-studio-packages',
+              lead_source: 'Packages Page Visit',
+              campaign: 'High Intent - Viewing Pricing',
+              
+              // Lead details
+              lead_type: 'High Intent Prospect',
+              status: 'Warm Lead',
+              tags: ['high-intent', 'viewing-packages', 'warm-lead', 'pricing-page'],
+              
+              // User data
+              user_id: user.id,
+              current_credits: user.credits || 0,
+              
+              // Behavioral data
+              page_visited: '/packages',
+              intent_level: 'high',
+              funnel_stage: 'consideration',
+              
+              // Timestamps
+              created_at: new Date().toISOString(),
+              timestamp: Date.now(),
+              
+              // Additional metadata
+              metadata: {
+                visit_source: 'packages_page',
+                platform_version: '1.0',
+                user_status: user.status || 'active',
+                has_credits: (user.credits || 0) > 0,
+                is_returning_visitor: true // They signed up already
+              }
+            })
+          }).then(response => {
+            if (response.ok) {
+              console.log('✅ High-intent lead sent to LeadConnector successfully');
+              sessionStorage.setItem(`lead_sent_${user.id}`, 'true');
+            } else {
+              console.log('⚠️ LeadConnector webhook returned:', response.status);
             }
-          })
-        }).then(response => {
-          if (response.ok) {
-            console.log('✅ High-intent lead sent to LeadConnector successfully');
-            sessionStorage.setItem(`lead_sent_${user.id}`, 'true');
-          } else {
-            console.log('⚠️ LeadConnector webhook returned:', response.status);
-          }
-        }).catch(error => {
-          console.log('❌ High-intent lead webhook failed (non-blocking):', error);
-        });
+          }).catch(error => {
+            console.log('❌ High-intent lead webhook failed (non-blocking):', error);
+          });
+        }, 100); // Small delay to not block initial render
       }
     }
   }, [user]);
@@ -190,6 +167,11 @@ export default function PackagesPage() {
     try {
       // We'll validate against a sample package to get discount info
       const samplePackage = creditPackages.find(pkg => pkg.id === 'EXPLORER');
+      
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      
       const response = await fetch('/api/discounts/validate', {
         method: 'POST',
         headers: {
@@ -199,8 +181,10 @@ export default function PackagesPage() {
           code: discountCode,
           amount: samplePackage?.price || 12.99,
         }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       const result = await response.json();
       
       if (result.success) {
@@ -218,11 +202,19 @@ export default function PackagesPage() {
         });
       }
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'خطأ',
-        description: 'حدث خطأ أثناء التحقق من رمز الخصم',
-      });
+      if (error instanceof Error && error.name === 'AbortError') {
+        toast({
+          variant: 'destructive',
+          title: 'انتهت مهلة الطلب',
+          description: 'استغرق التحقق من رمز الخصم وقتاً طويلاً. حاول مرة أخرى.',
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'خطأ',
+          description: 'حدث خطأ أثناء التحقق من رمز الخصم',
+        });
+      }
     } finally {
       setValidatingDiscount(false);
     }
@@ -261,18 +253,8 @@ export default function PackagesPage() {
         return;
       }
 
-      // Handle FREE package - do NOT give credits, just show info
-      if (selectedPkg.id === 'FREE') {
-        console.log('🔍 [PACKAGES PAGE] FREE package selected, showing info only');
-        toast({
-          title: 'الباقة المجانية',
-          description: 'تحصل على 128 نقطة مجانية عند التسجيل. رصيدك الحالي: ' + (user.credits || 0) + ' نقطة',
-        });
-        setProcessing(false);
-        return;
-      }
 
-      // All other packages (including TEST) require payment
+      // All packages require payment
       console.log('🔍 [PACKAGES PAGE] Creating payment session for package:', {
         packageId: selectedPkg.id,
         name: selectedPkg.name,
@@ -289,6 +271,10 @@ export default function PackagesPage() {
         userId: user?.id,
       });
 
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       const response = await fetch('/api/payment/create-session', {
         method: 'POST',
         headers: {
@@ -302,7 +288,10 @@ export default function PackagesPage() {
           userId: user?.id,
           discountCode: discountInfo ? discountCode : undefined,
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       console.log('🔍 [PACKAGES PAGE] Create session response status:', response.status);
       
@@ -322,11 +311,19 @@ export default function PackagesPage() {
         throw new Error(result.error || 'فشل في إنشاء جلسة الدفع');
       }
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'خطأ في الدفع',
-        description: error instanceof Error ? error.message : 'حدث خطأ غير متوقع',
-      });
+      if (error instanceof Error && error.name === 'AbortError') {
+        toast({
+          variant: 'destructive',
+          title: 'انتهت مهلة الطلب',
+          description: 'استغرق إنشاء جلسة الدفع وقتاً طويلاً. حاول مرة أخرى.',
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'خطأ في الدفع',
+          description: error instanceof Error ? error.message : 'حدث خطأ غير متوقع',
+        });
+      }
     } finally {
       setProcessing(false);
     }
@@ -459,7 +456,7 @@ export default function PackagesPage() {
                         {pkg.originalPrice} {pkg.currency}
                       </div>
                     )}
-                    {discountInfo && pkg.id !== 'FREE' ? (
+                    {discountInfo ? (
                       <>
                         <div className="text-xl text-gray-400 line-through">
                           {pkg.price} {pkg.currency}
@@ -497,24 +494,15 @@ export default function PackagesPage() {
 
                 <Button
                   onClick={() => handlePurchase(pkg.id)}
-                  disabled={processing || pkg.id === 'FREE'}
-                  className={`w-full bg-gradient-to-r ${pkg.color} hover:opacity-90 text-white font-bold py-3 text-lg shadow-lg hover:shadow-xl transition-all duration-300 ${
-                    pkg.id === 'FREE' ? 'opacity-60 cursor-not-allowed' : ''
-                  }`}
+                  disabled={processing}
+                  className={`w-full bg-gradient-to-r ${pkg.color} hover:opacity-90 text-white font-bold py-3 text-lg shadow-lg hover:shadow-xl transition-all duration-300`}
                 >
                   {processing ? (
                     <div className="flex items-center gap-2">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                       جاري المعالجة...
                     </div>
-                  ) : pkg.id === 'FREE' ? (
-                    'الباقة الحالية'
-                  ) : pkg.id === 'TEST' ? (
-                    <div className="flex items-center gap-2">
-                      🧪 اختبر الدفع - $1
-                      <ArrowRight className="h-5 w-5" />
-                    </div>
-                  ) : (
+                    ) : (
                     <div className="flex items-center gap-2">
                       اشتر الآن
                       <ArrowRight className="h-5 w-5" />
