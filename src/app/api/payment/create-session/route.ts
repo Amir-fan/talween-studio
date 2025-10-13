@@ -3,6 +3,39 @@ import { createPaymentSession } from '@/lib/myfatoorah-service';
 import { createOrder, updateOrderStatus } from '@/lib/google-sheets-orders';
 import { userDb } from '@/lib/simple-database';
 
+// Helper function to get package name by ID
+function getPackageName(packageId: string): string {
+  const packageNames: Record<string, string> = {
+    'EXPLORER': 'المكتشف',
+    'CREATOR': 'المبدع',
+    'STUDIO': 'الاستوديو',
+    'TEACHER': 'المعلم المبدع'
+  };
+  return packageNames[packageId] || packageId;
+}
+
+// Helper function to calculate lead score based on purchase intent
+function calculateLeadScore(amount: number, credits: number, packageId: string): number {
+  let score = 50; // Base score
+  
+  // Higher amount = higher score
+  if (amount >= 50) score += 30;
+  else if (amount >= 25) score += 20;
+  else if (amount >= 12) score += 10;
+  
+  // More credits = higher score
+  if (credits >= 5000) score += 20;
+  else if (credits >= 2000) score += 15;
+  else if (credits >= 1000) score += 10;
+  
+  // Premium packages = higher score
+  if (packageId === 'TEACHER') score += 25;
+  else if (packageId === 'STUDIO') score += 15;
+  else if (packageId === 'CREATOR') score += 10;
+  
+  return Math.min(score, 100); // Cap at 100
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log('🔍 [CREATE SESSION] === PAYMENT SESSION CREATION START ===');
@@ -153,6 +186,83 @@ export async function POST(request: NextRequest) {
       } catch (e) {
         console.log('Failed to store invoiceId on order (non-blocking):', e);
       }
+
+      // Send purchase intent lead to LeadConnector (non-blocking)
+      try {
+        console.log('📞 Sending purchase intent lead to LeadConnector webhook...');
+        
+        // Use setTimeout to make it non-blocking
+        setTimeout(async () => {
+          try {
+            await fetch('https://services.leadconnectorhq.com/hooks/2xJ6VY43ugovZK68Cz74/webhook-trigger/f75cf95c-c0b9-41ae-93d7-2b5711d9059d', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+              },
+              body: JSON.stringify({
+                // Lead basic information
+                email: customerEmail,
+                first_name: customerName.split(' ')[0] || customerName,
+                last_name: customerName.split(' ').slice(1).join(' ') || '',
+                full_name: customerName,
+                
+                // Lead source and tracking
+                source: 'talween-studio-purchase-intent',
+                lead_source: 'Package Purchase Intent',
+                campaign: 'Credit Package Purchase',
+                
+                // Lead details
+                lead_type: 'Purchase Intent',
+                status: 'Hot Lead',
+                tags: ['purchase-intent', 'package-selection', 'high-value', 'ready-to-buy'],
+                
+                // Purchase data
+                user_id: userId,
+                order_id: orderIdStr,
+                package_id: packageId,
+                package_name: getPackageName(packageId),
+                purchase_amount: finalAmount,
+                original_amount: amount,
+                credits_purchased: credits,
+                payment_method: 'MyFatoorah',
+                payment_status: 'pending',
+                invoice_id: paymentResult.invoiceId,
+                
+                // Discount information
+                discount_applied: appliedDiscount ? {
+                  code: appliedDiscount.code,
+                  type: appliedDiscount.type,
+                  value: appliedDiscount.value,
+                  amount: appliedDiscount.amount,
+                  description: appliedDiscount.description
+                } : null,
+                discount_savings: appliedDiscount ? (amount - finalAmount) : 0,
+                
+                // Timestamps
+                created_at: new Date().toISOString(),
+                timestamp: Date.now(),
+                
+                // Additional metadata
+                metadata: {
+                  purchase_method: 'online',
+                  platform_version: '1.0',
+                  payment_source: 'myfatoorah',
+                  session_type: 'payment_intent',
+                  lead_score: calculateLeadScore(finalAmount, credits, packageId),
+                  conversion_stage: 'payment_initiated'
+                }
+              })
+            });
+            console.log('✅ Purchase intent lead sent to LeadConnector successfully');
+          } catch (webhookError) {
+            console.log('❌ Purchase intent lead webhook failed (non-blocking):', webhookError);
+          }
+        }, 100); // 100ms delay to ensure response is sent first
+      } catch (e) {
+        console.log('❌ Failed to initiate purchase intent lead webhook:', e);
+      }
+
       return NextResponse.json({
         success: true,
         paymentUrl: paymentResult.paymentUrl,

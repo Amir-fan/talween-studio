@@ -139,11 +139,11 @@ export async function GET(request: NextRequest) {
               'Accept': 'application/json'
             },
             body: JSON.stringify({
-              // Lead basic information
-              email: user.email,
-              first_name: (user.displayName || user.display_name || 'User').split(' ')[0],
-              last_name: (user.displayName || user.display_name || 'User').split(' ').slice(1).join(' ') || '',
-              full_name: user.displayName || user.display_name || 'User',
+            // Lead basic information
+            email: user.email,
+            first_name: (user.display_name || 'User').split(' ')[0],
+            last_name: (user.display_name || 'User').split(' ').slice(1).join(' ') || '',
+            full_name: user.display_name || 'User',
               
               // Lead source and tracking
               source: 'talween-studio-payment',
