@@ -99,6 +99,7 @@ function CreateStoryPage() {
 
   const [story, setStory] = useState<StoryAndPagesOutput | null>(null);
   const [loading, setLoading] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState('');
   const [showCreditsPopup, setShowCreditsPopup] = useState(false);
   const { toast } = useToast();
 
@@ -424,6 +425,7 @@ function CreateStoryPage() {
 
     setLoading(true);
     setStory(null);
+    setGenerationProgress('جاري إنشاء القصة...');
     setStep(4); // Move to the story view step
 
     try {
@@ -458,6 +460,7 @@ function CreateStoryPage() {
           
           // Refresh user data to show updated credits
           refreshUserData();
+          setGenerationProgress('جاري إنشاء النص...');
         } else {
           console.log('❌ Not enough credits:', user.credits, '<', cost);
           setShowCreditsPopup(true);
@@ -478,6 +481,7 @@ function CreateStoryPage() {
           useUploadedPhoto,
       };
 
+      setGenerationProgress('جاري إنشاء الصور...');
       const result = await generateStoryAction(input);
 
       if (result.success && result.data) {
@@ -497,6 +501,7 @@ function CreateStoryPage() {
       }
 
       if (result.success && result.data) {
+          setGenerationProgress('تم الإنشاء بنجاح!');
           setStory(result.data);
       } else {
            if (result.error === 'NotEnoughCredits') {
@@ -515,16 +520,43 @@ function CreateStoryPage() {
         setStep(3); // Go back to the previous step on error
     } finally {
         setLoading(false);
+        setGenerationProgress('');
     }
   };
 
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">جاري التحميل...</p>
+      <div className="min-h-screen bg-yellow-50/30 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-6"></div>
+          <h2 className="text-xl font-semibold mb-2">جاري إنشاء قصتك...</h2>
+          {generationProgress && (
+            <p className="text-muted-foreground mb-4">{generationProgress}</p>
+          )}
+          <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="text-sm text-muted-foreground space-y-2">
+              <div className="flex items-center justify-between">
+                <span>إنشاء النص</span>
+                <span className="text-green-600">✓</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>إنشاء الصور</span>
+                <span className={generationProgress.includes('صور') ? 'text-blue-600' : 'text-gray-400'}>
+                  {generationProgress.includes('صور') ? '⏳' : '✓'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>التجميع النهائي</span>
+                <span className={generationProgress.includes('نجاح') ? 'text-green-600' : 'text-gray-400'}>
+                  {generationProgress.includes('نجاح') ? '✓' : '⏳'}
+                </span>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-4">
+            قد تستغرق العملية 1-2 دقيقة حسب عدد الصفحات
+          </p>
         </div>
       </div>
     );

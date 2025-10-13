@@ -48,39 +48,39 @@ Number of pages requested: {{numberOfPages}}
 Story Rules:
 Language: Arabic only.
 Story length: Create EXACTLY {{numberOfPages}} chapters - one chapter per page requested.
-Each chapter must include: • Chapter Title (2–3 words). • Narrative (90–130 words) suitable for {{ageGroup}} years old. • Illustration Description: a single, concrete scene description for coloring that references the main character by name and the chosen setting.
+Each chapter must include: • Chapter Title (2–3 words). • Narrative (60–80 words) suitable for {{ageGroup}} years old. • Illustration Description: a simple, concrete scene description for coloring.
 
 Story Structure:
-- Clear beginning, middle, and end with a complete story arc
-- Fun, imaginative, and child-friendly tone with age-appropriate vocabulary
-- Each chapter should advance the plot and build toward the lesson
-- End of the story should naturally reinforce the lesson/moral through the character's actions
-- Use simple, clear sentences that children can understand
-- Include dialogue and action to make the story engaging
-- Make the story relatable to children's experiences
-- CRITICAL: The main character must remain the SAME person throughout all chapters - same name, same appearance, same personality
+- Simple beginning, middle, and end
+- Fun, child-friendly tone with basic vocabulary
+- Each chapter should advance the plot toward the lesson
+- Use simple, clear sentences
+- Include some dialogue and action
+- CRITICAL: The main character must remain the SAME person throughout all chapters
 
 Character Description:
-Provide a detailed "characterDescription" of the main character's appearance (face, hair, clothes) for creating a reference image. Keep it simple and clear.
+Provide a simple "characterDescription" of the main character's appearance (face, hair, clothes). Keep it brief and clear.
 
-IMPORTANT GENDER RULES:
-- If the character is a BOY: Never add hijab or any head covering, regardless of setting
-- If the character is a GIRL and setting is Islamic (mosque, Islamic school): She must wear hijab covering all hair
-- If the character is a GIRL and setting is secular (regular school, park, home): Normal clothing without hijab
-- The character's gender and appearance must remain CONSISTENT throughout all chapters
+GENDER RULES:
+- BOY: No hijab or head covering
+- GIRL + Islamic setting: Hijab covering hair
+- GIRL + secular setting: Normal clothing without hijab
 
-Illustration Description Rules (for black-and-white coloring page):
-- Describe only one scene per chapter
-- Keep it simple, clear, and visually rich: (e.g., "{{childName}} standing in front of {{setting}} holding a small book, with one tree behind")
+Illustration Description Rules:
+- One simple scene per chapter
+- Basic line art description: "{{childName}} at {{setting}} doing [action]"
 - No colors, shading, or gray — line art only
-- Focus on the main action or moment of that chapter
+- Focus on main action
 
 Output Format:
-- Story Title (engaging and relevant)
+- Story Title (simple and relevant)
 - Chapters: (Array of Title + Narrative + Illustration Description)
 - Character Description
 `,
-    config: {}
+    config: {
+      temperature: 0.7, // Lower temperature for faster, more consistent generation
+      maxOutputTokens: 1000, // Limit output for faster generation
+    }
 });
 
 // Real character reference image generation using AI
@@ -95,15 +95,15 @@ async function generateCharacterReferenceImage(description: string, characterNam
 Character: ${characterName}
 Description: ${description}
 
-Additional Requirements:
-- Draw in black lines on white background only
-- Professional coloring book style with clean, bold black lines
-- Children will color this themselves
-- NO TEXT OR LETTERS of any kind (no signs, labels, or writing)
-- IMPORTANT: If character is a BOY, never add hijab
-- If character is a GIRL and setting is Islamic, draw her with hijab covering all hair`,
+Requirements:
+- Black lines on white background only
+- Simple coloring book style
+- No text or letters
+- Child character only`,
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
+        temperature: 0.8, // Faster generation
+        maxOutputTokens: 100, // Limit tokens for speed
       },
     });
 
@@ -131,24 +131,13 @@ async function generatePageImage(
   const basePrompt = `${STRICT_BLACK_WHITE_PROMPT}
 
 Scene: ${sceneDescription}
-Character: ${characterName} - THIS IS THE EXACT SAME CHILD FROM THE UPLOADED PHOTO
+Character: ${characterName}
 
-🚨 ABSOLUTE REQUIREMENT - COPY THE EXACT CHILD FROM REFERENCE PHOTO:
-- Draw THE EXACT SAME CHILD from the uploaded photo - do not create a different child
-- Copy every single facial feature: eyes, nose, mouth, face shape, eyebrows
-- Copy the exact hair style, hair color, hair length, and hair texture
-- Copy the exact skin tone, complexion, and facial structure
-- Copy the exact clothing, accessories, and any distinctive features
-- This child is the HERO of the story - they must be IDENTICAL to the uploaded photo
-- Do NOT change their appearance, age, or any physical characteristics
-- This is NOT inspiration - this is copying the EXACT same child
-
-Additional Requirements:
-- Draw in black lines on white background only
-- Professional coloring book style with clean, bold black lines
-- Children will color this themselves
-- NO TEXT OR LETTERS of any kind (no signs, labels, or writing)
-- The child from the uploaded photo IS the main character - draw them exactly`;
+Requirements:
+- Black lines on white background only
+- Simple coloring book style
+- No text or letters
+- Child character in the scene`;
 
   const imageUrl = await generateWithRetryStrict(async () => {
     const generateParams: any = {
@@ -159,45 +148,28 @@ Additional Requirements:
       },
     };
 
-    // If we have a character reference image, include it with enhanced parameters
+    // If we have a character reference image, include it with basic parameters
     if (characterReferenceImage) {
       console.log('🎯 [IMAGE GENERATION] Using character reference image for consistency');
       generateParams.config = {
         ...generateParams.config,
         referenceImage: characterReferenceImage,
-        referenceImageWeight: 0.95, // Maximum weight to match reference exactly
-        referenceImageStyle: 'exact_match', // Ensure exact matching
+        referenceImageWeight: 0.7, // Reduced weight for faster generation
+        referenceImageStyle: 'similar', // Faster than exact_match
+        temperature: 0.8, // Faster generation
+        maxOutputTokens: 100, // Limit tokens for speed
       };
       
-      // Add reference image info to prompt
+      // Simplified reference image prompt for speed
       generateParams.prompt = `${basePrompt}
 
-🎯 REFERENCE IMAGE INSTRUCTIONS - COPY THE EXACT CHILD:
-The provided reference image shows THE EXACT CHILD who is the hero of this story. You MUST:
-
-1. COPY THE EXACT CHILD: Look at the reference image and draw THE EXACT SAME CHILD
-2. FACIAL FEATURES: Copy eyes, nose, mouth, face shape, eyebrows, and expressions EXACTLY
-3. HAIR: Copy hair style, color, length, texture, and any hair accessories EXACTLY  
-4. SKIN TONE: Copy the exact skin color, complexion, and facial structure
-5. CLOTHING: Copy the exact clothes, accessories, and any distinctive items
-6. BODY PROPORTIONS: Copy height, build, and overall body proportions
-7. IDENTICAL APPEARANCE: The child must look IDENTICAL to the reference photo
-
-🚨 CRITICAL: This is NOT a generic child or inspired character - this IS the exact child from the uploaded photo. They are the hero of the story and must appear IDENTICAL in every scene.
-
-DETAILED COPYING REQUIREMENTS:
-- Copy the EXACT face shape, bone structure, and proportions from the reference
-- Copy the EXACT eye color, shape, size, and eyebrow details
-- Copy the EXACT nose shape, size, and proportions
-- Copy the EXACT mouth shape, lip size, and smile
-- Copy the EXACT hair color, style, length, and texture
-- Copy the EXACT skin tone, complexion, and facial features
-- Copy the EXACT clothing, colors, patterns, and accessories
-- Copy the EXACT body proportions, build, and age appearance
-- Copy ANY distinctive features, birthmarks, scars, or unique characteristics
-- Copy the EXACT age and maturity level appearance
-
-Do NOT create a different child. Do NOT change their appearance. Draw THE EXACT SAME CHILD from the reference image. The child must be IDENTICAL to the uploaded photo in every detail.`;
+Reference: Use the provided character image as reference for the child's appearance.`;
+    } else {
+      generateParams.config = {
+        ...generateParams.config,
+        temperature: 0.8, // Faster generation
+        maxOutputTokens: 100, // Limit tokens for speed
+      };
     }
 
     const { media } = await ai.generate(generateParams);
@@ -284,19 +256,32 @@ export async function createStoryAndColoringPagesFlow(input: StoryAndPagesInput)
     // The AI should have generated exactly the number of chapters requested
     const chaptersToProcess = storyContent.chapters;
 
-    const imageUrls = await Promise.all(chaptersToProcess.map(async (chapter, index) => {
+    console.log(`🚀 [STORY GENERATION] Starting parallel image generation for ${chaptersToProcess.length} pages...`);
+    
+    // Generate images in parallel with timeout
+    const imagePromises = chaptersToProcess.map(async (chapter, index) => {
       try {
-        return await generatePageImage(
+        // Add timeout for each image generation
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Image generation timeout')), 15000) // 15 second timeout per image
+        );
+        
+        const imagePromise = generatePageImage(
           chapter.illustrationDescription,
           input.childName,
           characterDescription,
           characterReferenceImage
         );
+        
+        return Promise.race([imagePromise, timeoutPromise]);
       } catch (error) {
-        console.error(`Page ${index + 1} image generation failed (strict):`, error);
+        console.error(`Page ${index + 1} image generation failed:`, error);
         throw error;
       }
-    }));
+    });
+
+    const imageUrls = await Promise.all(imagePromises) as string[];
+    console.log(`✅ [STORY GENERATION] All ${imageUrls.length} images generated successfully`);
 
     // 4. Combine text and images into pages.
     const pages = chaptersToProcess.map((chapter, index) => ({

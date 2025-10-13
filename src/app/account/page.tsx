@@ -56,7 +56,7 @@ export default function AccountPage() {
   const [favorites, setFavorites] = useState<UserContent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch user statistics and transactions
+  // Fetch user statistics and transactions (optimized)
   useEffect(() => {
     const fetchUserStats = async () => {
       if (!user?.id) {
@@ -65,11 +65,31 @@ export default function AccountPage() {
       }
 
       try {
-        // INSTANTLY refresh credits from Google Sheets first
+        // Add timeout to prevent hanging requests
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+
+        // INSTANTLY refresh credits from Google Sheets first (with timeout)
         console.log('🔄 Account Page: Refreshing credits from Google Sheets...');
-        await refreshUserData();
+        try {
+          const refreshPromise = refreshUserData();
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 3000)
+          );
+          await Promise.race([refreshPromise, timeoutPromise]);
+        } catch (refreshError) {
+          console.warn('Credit refresh failed, continuing with cached data:', refreshError);
+          // Continue without blocking the page load
+        }
         
-        const response = await fetch(`/api/user/stats?userId=${user.id}`);
+        const response = await fetch(`/api/user/stats?userId=${user.id}`, {
+          signal: controller.signal,
+          headers: {
+            'Cache-Control': 'max-age=60', // Cache for 1 minute
+          },
+        });
+        
+        clearTimeout(timeoutId);
         const data = await response.json();
         
         if (data.success) {
@@ -87,12 +107,32 @@ export default function AccountPage() {
           });
         }
       } catch (error) {
-        console.error('Error fetching user stats:', error);
-        toast({
-          variant: 'destructive',
-          title: 'خطأ',
-          description: 'فشل في تحميل بيانات الحساب',
-        });
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.warn('Account page load timeout, showing basic info');
+          // Show basic account info even if API fails
+          setStats({
+            stories: 0,
+            coloring: 0,
+            images: 0,
+            totalContent: 0,
+            creditsUsed: 0,
+            creditsRemaining: user?.credits || 0,
+            totalPurchased: 0,
+            joinDate: Date.now() / 1000,
+            subscriptionTier: 'FREE',
+            emailVerified: true
+          });
+          setRecentTransactions([]);
+          setUserContent([]);
+          setFavorites([]);
+        } else {
+          console.error('Error fetching user stats:', error);
+          toast({
+            variant: 'destructive',
+            title: 'خطأ',
+            description: 'فشل في تحميل بيانات الحساب',
+          });
+        }
       } finally {
         setLoading(false);
       }
