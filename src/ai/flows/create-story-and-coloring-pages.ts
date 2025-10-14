@@ -72,14 +72,29 @@ Illustration Description Rules:
 - No colors, shading, or gray — line art only
 - Focus on main action
 
-Output Format:
-- Story Title (simple and relevant)
-- Chapters: (Array of Title + Narrative + Illustration Description)
-- Character Description
+CRITICAL OUTPUT REQUIREMENTS:
+You MUST return a valid JSON object with EXACTLY this structure:
+{
+  "title": "Story Title in Arabic",
+  "chapters": [
+    {
+      "chapterTitle": "Chapter 1 Title",
+      "narrative": "Chapter 1 story text in Arabic (60-80 words)",
+      "illustrationDescription": "Simple scene description for coloring"
+    }
+  ],
+  "characterDescription": "Character appearance description"
+}
+
+IMPORTANT: 
+- Return ONLY valid JSON, no other text
+- Create EXACTLY {{numberOfPages}} chapters
+- Each chapter must have all three fields: chapterTitle, narrative, illustrationDescription
+- The story must be complete and educational
 `,
     config: {
       temperature: 0.7, // Lower temperature for faster, more consistent generation
-      maxOutputTokens: 1000, // Limit output for faster generation
+      maxOutputTokens: 4000, // Increased limit to ensure complete story generation
     }
 });
 
@@ -195,18 +210,81 @@ export async function createStoryAndColoringPagesFlow(input: StoryAndPagesInput)
     let characterDescription: string;
     let characterReferenceImage: string;
     
-    // 1. Generate story content first (always needed)
-    const { output: storyContent } = await storyContentPrompt({
-        childName: input.childName,
-        ageGroup: input.ageGroup,
-        setting: input.setting,
-        lesson: input.lesson,
-        numberOfPages: input.numberOfPages,
+    // 1. Generate story content first (always needed) with retry mechanism
+    console.log('📖 [STORY GENERATION] Generating story content...');
+    let storyResult: any = null;
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        storyResult = await storyContentPrompt({
+            childName: input.childName,
+            ageGroup: input.ageGroup,
+            setting: input.setting,
+            lesson: input.lesson,
+            numberOfPages: input.numberOfPages,
+        });
+        
+        // Check if we got a valid response
+        if (storyResult.output && storyResult.output.title && storyResult.output.chapters && storyResult.output.characterDescription) {
+          console.log(`✅ [STORY GENERATION] Story generated successfully on attempt ${retryCount + 1}`);
+          break;
+        } else {
+          throw new Error('Invalid story response');
+        }
+      } catch (error) {
+        retryCount++;
+        console.warn(`⚠️ [STORY GENERATION] Attempt ${retryCount} failed:`, error);
+        
+        if (retryCount >= maxRetries) {
+          console.error('❌ [STORY GENERATION] All retry attempts failed');
+          throw new Error(`Story generation failed after ${maxRetries} attempts. Please try again.`);
+        }
+        
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+      }
+    }
+
+    // At this point, storyResult should be valid due to the retry logic above
+    if (!storyResult || !storyResult.output) {
+      throw new Error('Story generation failed - no valid result after retries');
+    }
+
+    console.log('📖 [STORY GENERATION] Story generation result:', {
+      hasOutput: !!storyResult.output,
+      outputType: typeof storyResult.output,
+      outputKeys: storyResult.output ? Object.keys(storyResult.output) : 'null'
     });
 
-    if (!storyContent || !storyContent.chapters || storyContent.chapters.length === 0 || !storyContent.characterDescription) {
-      throw new Error('Story text generation failed to return complete content.');
+    const storyContent = storyResult.output;
+
+    if (!storyContent) {
+      console.error('📖 [STORY GENERATION] ❌ Story generation returned null/undefined');
+      throw new Error('Story text generation failed - AI returned null response. Please try again.');
     }
+
+    if (!storyContent.chapters || storyContent.chapters.length === 0) {
+      console.error('📖 [STORY GENERATION] ❌ No chapters generated:', storyContent);
+      throw new Error('Story text generation failed - no chapters were created. Please try again.');
+    }
+
+    if (!storyContent.characterDescription) {
+      console.error('📖 [STORY GENERATION] ❌ No character description generated:', storyContent);
+      throw new Error('Story text generation failed - no character description was created. Please try again.');
+    }
+
+    if (!storyContent.title) {
+      console.error('📖 [STORY GENERATION] ❌ No story title generated:', storyContent);
+      throw new Error('Story text generation failed - no story title was created. Please try again.');
+    }
+
+    console.log('✅ [STORY GENERATION] Story content generated successfully:', {
+      title: storyContent.title,
+      chaptersCount: storyContent.chapters.length,
+      hasCharacterDescription: !!storyContent.characterDescription
+    });
 
     // Validate that we got the correct number of chapters
     const requestedPages = parseInt(input.numberOfPages, 10);
@@ -259,7 +337,7 @@ export async function createStoryAndColoringPagesFlow(input: StoryAndPagesInput)
     console.log(`🚀 [STORY GENERATION] Starting parallel image generation for ${chaptersToProcess.length} pages...`);
     
     // Generate images in parallel with timeout
-    const imagePromises = chaptersToProcess.map(async (chapter, index) => {
+    const imagePromises = chaptersToProcess.map(async (chapter: any, index: number) => {
       try {
         // Add timeout for each image generation
         const timeoutPromise = new Promise((_, reject) => 
@@ -284,14 +362,14 @@ export async function createStoryAndColoringPagesFlow(input: StoryAndPagesInput)
     console.log(`✅ [STORY GENERATION] All ${imageUrls.length} images generated successfully`);
 
     // 4. Combine text and images into pages.
-    const pages = chaptersToProcess.map((chapter, index) => ({
+    const pages = chaptersToProcess.map((chapter: any, index: number) => ({
       pageNumber: index + 1,
       text: `${chapter.chapterTitle} - ${input.childName} في ${input.setting}\n\n${chapter.narrative}`,
       imageDataUri: imageUrls[index],
     }));
 
     // Ensure at least one image
-    if (pages.every(p => !p.imageDataUri)) {
+    if (pages.every((p: any) => !p.imageDataUri)) {
         throw new Error("All image generations failed.");
     }
 
