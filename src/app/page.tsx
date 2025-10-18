@@ -26,6 +26,7 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { HomeCTA } from '@/components/home-cta';
+import { HeroVideoPlayer } from '@/components/hero-video-player';
 import { useAuth } from '@/context/auth-context';
 
 export default function Home() {
@@ -118,18 +119,14 @@ export default function Home() {
             {/* Right Side - Visual */}
             <div className="relative flex items-center justify-center order-1 lg:order-2">
               <div className="relative w-full max-w-lg mx-auto">
-                {/* Main Image Container */}
+                {/* Main Video Container */}
                 <div className="relative group">
                   <div className="absolute inset-0 bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 rounded-3xl blur-2xl opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
                   <div className="relative bg-white/90 backdrop-blur-sm rounded-3xl p-4 shadow-2xl group-hover:shadow-3xl transition-all duration-300 group-hover:scale-105">
-                    <Image
-                      src="https://images.unsplash.com/photo-1612539466809-8be5e4e01256?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxraWRzJTIwY29sb3Jpbmd8ZW58MHx8fHwxNzU2MTMxMzYzfDA&ixlib=rb-4.1.0&q=80&w=1080"
-                      alt="أطفال سعداء يلونون"
-                      width={600}
-                      height={600}
-                      className="rounded-2xl object-cover aspect-square shadow-xl"
-                      priority={true}
-                      unoptimized={true}
+                    <HeroVideoPlayer
+                      videoSrc="/herovideo.mp4"
+                      poster="https://images.unsplash.com/photo-1612539466809-8be5e4e01256?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxraWRzJTIwY29sb3Jpbmd8ZW58MHx8fHwxNzU2MTMxMzYzfDA&ixlib=rb-4.1.0&q=80&w=1080"
+                      className="w-full h-[300px] xs:h-[350px] sm:h-[450px] md:h-[500px] lg:h-[550px] xl:h-[600px] rounded-2xl"
                     />
                   </div>
                 </div>
