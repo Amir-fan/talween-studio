@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Paintbrush } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { DevTag } from './dev-tag';
 
 export default function Footer() {
   const [currentYear, setCurrentYear] = useState(2024);
@@ -41,6 +42,9 @@ export default function Footer() {
             </Link>
           </div>
         </div>
+        
+        {/* Dev Tag - Centered under everything */}
+        <DevTag />
       </div>
     </footer>
   );
