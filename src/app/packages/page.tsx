@@ -16,7 +16,7 @@ const creditPackages = [
     name: 'المكتشف',
     credits: 1368,
     price: 12.99,
-    originalPrice: 25.99, // Fake higher price
+    originalPrice: 17.00, // 25% off to $12.99
     currency: 'USD',
     description: 'مثالي للاستكشاف',
     features: ['كل مزايا المجانية', 'قصص الاستكشاف: 5 مغامرات قصيرة', 'ألوان إضافية: 10 صفحات للتلوين', 'كراسات التعلم: 3 كراسات جاهزة', 'ذكريات مرسومة: تحويل صورتين', 'طباعة منزلية: جودة عالية'],
@@ -42,7 +42,7 @@ const creditPackages = [
     name: 'المعلم المبدع',
     credits: 7938,
     price: 59.99,
-    originalPrice: 120.00, // Fake higher price
+    originalPrice: 200.00, // 70% off to $59.99
     currency: 'USD',
     description: 'للمعلمين والمدارس',
     features: ['كل مزايا عالم الإبداع', 'قصص جماعية: أكثر من 40 قصة', 'ألوان الصف: 100+ صفحة إضافية', 'كراسات شاملة: 20 كراسة تربوية', 'ذكريات ممتدة: تحويل 15 صورة', 'طباعة احترافية: جودة K4 / HD'],
