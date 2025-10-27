@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPaymentSession } from '@/lib/myfatoorah-service';
 import { createOrder, updateOrderStatus } from '@/lib/google-sheets-orders';
-import { userDb } from '@/lib/simple-database';
+import { userDb, orderDb } from '@/lib/simple-database';
 
 // Helper function to get package name by ID
 function getPackageName(packageId: string): string {
@@ -98,46 +98,60 @@ export async function POST(request: NextRequest) {
       }
     } catch {}
 
-    // Create a local order record first and use its ID everywhere to keep references consistent
+    // Create order with graceful fallback to local storage
     let orderId: string | null = providedOrderId || null;
-    try {
-      console.log('🔍 [CREATE SESSION] === ORDER CREATION START ===');
-      console.log('🔍 [CREATE SESSION] Creating order in Google Sheets:', { 
-        userId, 
-        finalAmount, 
-        packageId, 
-        credits, 
-        providedOrderId 
-      });
-      
-      // Create order in Google Sheets
-      const orderResult = await createOrder({
-        userId,
-        amount: finalAmount,
-        packageId,
-        credits: credits
-      });
-      
-      if (!orderResult.success) {
-        console.error('🔍 [CREATE SESSION] ❌ Failed to create order in Google Sheets:', orderResult.error);
-        throw new Error('Failed to create order: ' + orderResult.error);
+    let orderNumber: string | null = null;
+    let isOrderInGoogleSheets = false;
+    
+    const createOrderInDatabase = async () => {
+      console.log('🔍 [CREATE SESSION] Creating order in Google Sheets...');
+      try {
+        const orderResult = await createOrder({
+          userId,
+          amount: finalAmount,
+          packageId,
+          credits: credits
+        });
+        
+        if (orderResult.success && orderResult.orderId) {
+          console.log('🔍 [CREATE SESSION] ✅ Order created in Google Sheets');
+          return { 
+            success: true, 
+            orderId: orderResult.orderId, 
+            orderNumber: orderResult.orderNumber || null 
+          };
+        } else {
+          console.warn('🔍 [CREATE SESSION] ⚠️ Google Sheets failed, trying local storage');
+          throw new Error(orderResult.error || 'Google Sheets order creation failed');
+        }
+      } catch (e) {
+        console.error('🔍 [CREATE SESSION] Google Sheets error:', e);
+        throw e;
       }
-      
-      orderId = orderResult.orderId!;
-      const orderNumber = orderResult.orderNumber!;
-      
-      console.log('🔍 [CREATE SESSION] ✅ Order created successfully in Google Sheets:', {
-        orderId,
-        orderNumber,
-        userId,
-        totalAmount: finalAmount,
-        creditsPurchased: credits,
-        packageId
-      });
-    } catch (e) {
-      console.error('🔍 [CREATE SESSION] ❌ Order creation failed:', e);
+    };
+
+    const createOrderLocally = () => {
+      console.log('🔍 [CREATE SESSION] Creating order in local database...');
+      const localOrder = orderDb.create(userId, finalAmount, packageId, credits);
+      console.log('🔍 [CREATE SESSION] ✅ Order created locally:', localOrder);
+      return localOrder;
+    };
+
+    try {
+      // Try Google Sheets first
+      const googleOrder = await createOrderInDatabase();
+      orderId = googleOrder.orderId;
+      orderNumber = googleOrder.orderNumber;
+      isOrderInGoogleSheets = true;
+    } catch (error) {
+      // Fallback to local storage if Google Sheets fails
+      const localOrder = createOrderLocally();
+      orderId = localOrder.id;
+      orderNumber = localOrder.orderNumber;
+      isOrderInGoogleSheets = false;
+      console.log('🔍 [CREATE SESSION] Using local order ID:', orderId);
     }
-    console.log('🔍 PAYMENT API - Generated order ID:', orderId);
+    
     if (!orderId) {
       return NextResponse.json(
         { error: 'فشل إنشاء رقم الطلب، الرجاء المحاولة مرة أخرى' },
@@ -175,17 +189,32 @@ export async function POST(request: NextRequest) {
 
     if (paymentResult.success) {
       // Store invoice id on the order (as payment_intent_id) with pending status
-      try {
-        if (paymentResult.invoiceId) {
-          await updateOrderStatus({
-            orderId: orderIdStr,
-            status: 'pending',
-            paymentId: paymentResult.invoiceId
-          });
+      const updateOrderStatusAsync = async () => {
+        if (!paymentResult.invoiceId) return;
+        
+        try {
+          if (isOrderInGoogleSheets) {
+            // Update in Google Sheets
+            await updateOrderStatus({
+              orderId: orderIdStr,
+              status: 'pending',
+              paymentId: paymentResult.invoiceId
+            });
+            console.log('✅ Order status updated in Google Sheets');
+          } else {
+            // Update in local database
+            orderDb.updateStatus(orderIdStr, 'pending', paymentResult.invoiceId);
+            console.log('✅ Order status updated in local database');
+          }
+        } catch (e) {
+          console.log('❌ Failed to update order status (non-blocking):', e);
         }
-      } catch (e) {
-        console.log('Failed to store invoiceId on order (non-blocking):', e);
-      }
+      };
+      
+      // Run update async to avoid blocking response
+      setTimeout(() => {
+        updateOrderStatusAsync();
+      }, 0);
 
       // Send purchase intent lead to LeadConnector (non-blocking)
       try {

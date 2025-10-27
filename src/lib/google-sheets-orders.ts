@@ -35,7 +35,7 @@ export interface UpdateOrderStatusData {
 }
 
 /**
- * Create a new order in Google Sheets
+ * Create a new order in Google Sheets with timeout handling
  */
 export async function createOrder(data: CreateOrderData): Promise<{ success: boolean; orderId?: string; orderNumber?: string; error?: string }> {
   try {
@@ -43,35 +43,57 @@ export async function createOrder(data: CreateOrderData): Promise<{ success: boo
     
     const GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
     
-    const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        action: 'createOrder',
-        apiKey: GOOGLE_SHEETS_API_KEY,
-        userId: data.userId,
-        amount: data.amount,
-        packageId: data.packageId,
-        credits: data.credits
-      })
-    });
-
-    const result = await response.json();
-    console.log('🛒 [GOOGLE SHEETS ORDERS] Create order response:', result);
+    // Add timeout to prevent hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 5000); // 5 second timeout
     
-    if (result.success) {
-      return {
-        success: true,
-        orderId: result.orderId,
-        orderNumber: result.orderNumber
-      };
-    } else {
-      return {
-        success: false,
-        error: result.error || 'Failed to create order'
-      };
+    try {
+      const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'createOrder',
+          apiKey: GOOGLE_SHEETS_API_KEY,
+          userId: data.userId,
+          amount: data.amount,
+          packageId: data.packageId,
+          credits: data.credits
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      
+      const result = await response.json();
+      console.log('🛒 [GOOGLE SHEETS ORDERS] Create order response:', result);
+      
+      if (result.success) {
+        return {
+          success: true,
+          orderId: result.orderId,
+          orderNumber: result.orderNumber
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error || 'Failed to create order'
+        };
+      }
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      
+      if (fetchError.name === 'AbortError') {
+        console.error('❌ [GOOGLE SHEETS ORDERS] Request timeout');
+        return {
+          success: false,
+          error: 'Google Sheets request timed out'
+        };
+      }
+      throw fetchError;
     }
   } catch (error: any) {
     console.error('❌ [GOOGLE SHEETS ORDERS] Create order error:', error);
